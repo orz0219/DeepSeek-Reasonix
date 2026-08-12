@@ -92,6 +92,7 @@ func (a *Agent) emitCompletionSummary(c *taskcontract.Contract) {
 	case taskcontract.VerdictContinue:
 		summaryVerdict = "continue"
 	}
+	summaryVerdict = waiverAdjustedVerdict(summaryVerdict, a.turn.deliveryWaiverActive)
 	a.svc.sink.Emit(event.Event{
 		Kind: event.CompletionSummary,
 		Completion: &event.CompletionSummaryInfo{
@@ -106,4 +107,14 @@ func (a *Agent) emitCompletionSummary(c *taskcontract.Contract) {
 			ConstraintDegraded: constraintDegraded,
 		},
 	})
+}
+
+// waiverAdjustedVerdict reports the completion verdict as partial when the
+// user explicitly accepted the unverified state, so the UI never suggests
+// more delivery work is owed after a waiver.
+func waiverAdjustedVerdict(verdict string, waived bool) string {
+	if waived && verdict != "complete" {
+		return "partial"
+	}
+	return verdict
 }

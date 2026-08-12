@@ -55,6 +55,10 @@ type turnRuntime struct {
 	// (or a pending recovery of) a prior readiness failure, so the final
 	// allowed audit can report Recovered=true.
 	readinessRecovered bool
+	// deliveryWaiverActive is true for the one Run that consumed a user
+	// delivery waiver: final readiness stands down and the completion summary
+	// reports partial instead of complete.
+	deliveryWaiverActive bool
 
 	// recoveryTaskSummary is the bounded task text for this Agent.Run. It lets
 	// a shared recovery gate review sub-agent mutations against the child
@@ -113,6 +117,10 @@ type pendingTurn struct {
 	// An explicit host recovery action can consume it to preserve the failed
 	// turn's receipts once; an ordinary user turn still resets evidence.
 	deliveryRecovery bool
+	// deliveryWaiver is armed when the user explicitly accepted the unverified
+	// state instead of continuing recovery. It preserves evidence like
+	// deliveryRecovery but stands final readiness down so the turn ends.
+	deliveryWaiver bool
 	// forkRestore, when armed, swaps the frozen fork-bundle conversation in
 	// right after beginRunTurn — the counterfactual-continuation seam.
 	forkRestore func(*turnRuntime)

@@ -153,6 +153,7 @@ await waitFor("workspace rows", () => document.querySelector('[data-workspace-pa
 await openRowMenu("README.md");
 
 const fileLabels = [
+  "Refresh file tree",
   "Open with default app",
   "Show in file manager",
   "Open in integrated terminal",
@@ -161,7 +162,7 @@ const fileLabels = [
   "Add file reference",
   "Add file contents",
 ];
-ok(JSON.stringify(menuLabels()) === JSON.stringify(fileLabels), "file menu keeps the default-open action first and preserves command order");
+ok(JSON.stringify(menuLabels()) === JSON.stringify(fileLabels), "file menu leads with refresh tree and preserves command order");
 ok(document.querySelectorAll(".workspace-tree-menu [role=separator]").length === 1, "file menu separates path commands from chat commands");
 
 const defaultOpen = Array.from(document.querySelectorAll<HTMLButtonElement>(".workspace-tree-menu button")).find(
@@ -181,6 +182,7 @@ await openRowMenu("docs/");
 ok(!menuLabels().includes("Open with default app"), "folder menu does not offer default-open");
 ok(
   JSON.stringify(menuLabels()) === JSON.stringify([
+    "Refresh file tree",
     "Show in file manager",
     "Open in integrated terminal",
     "Copy relative path",

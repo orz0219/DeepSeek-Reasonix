@@ -1,4 +1,4 @@
-import { ExternalLink, FileText, FolderOpen, MessageSquarePlus, TerminalSquare } from "lucide-react";
+import { ExternalLink, FileText, FolderOpen, MessageSquarePlus, RefreshCw, TerminalSquare } from "lucide-react";
 import { app } from "../lib/bridge";
 import { useT } from "../lib/i18n";
 import {
@@ -23,6 +23,7 @@ export function WorkspaceTreeMenu({
   onOpenInTerminal,
   onAddReference,
   onAddFile,
+  onRefreshTree,
 }: {
   target: WorkspaceTreeMenuTarget;
   workspaceTabId: string;
@@ -31,6 +32,7 @@ export function WorkspaceTreeMenu({
   onOpenInTerminal?: (path: string) => void;
   onAddReference: () => void;
   onAddFile: () => void;
+  onRefreshTree: () => void;
 }) {
   const t = useT();
   const closeThen = (action: () => void) => {
@@ -47,6 +49,11 @@ export function WorkspaceTreeMenu({
     >
       <FloatingMenuItems
         items={[
+          {
+            icon: <RefreshCw size={14} />,
+            label: t("workspace.refreshTree"),
+            onSelect: () => closeThen(onRefreshTree),
+          },
           ...(target.isDir
             ? []
             : [{

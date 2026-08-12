@@ -217,7 +217,7 @@ export function Transcript({
   tabId,
   footerHeight = 0,
   onPrompt,
-  onDeliveryContinue,
+  onDeliveryContinue, onDeliveryWaive,
   onOpenChanges,
   onEditPrompt,
   onRewind,
@@ -245,7 +245,7 @@ export function Transcript({
   tabId?: string;
   footerHeight?: number;
   onPrompt: (text: string) => void;
-  onDeliveryContinue?: () => void;
+  onDeliveryContinue?: () => void; onDeliveryWaive?: () => void;
   onOpenChanges?: () => void;
   onEditPrompt?: (turn: number, displayText: string, submitText?: string) => boolean | void | Promise<boolean | void>;
   onRewind?: (turn: number, scope: string) => void;
@@ -665,7 +665,7 @@ export function Transcript({
         return (
           <NoticeCard
             item={row.item}
-            actionDisabled={running}
+            actionDisabled={running} onDeliveryWaive={row.item.action === "continue_delivery" ? onDeliveryWaive : undefined}
             onAction={row.item.action === "continue_delivery"
               ? (onDeliveryContinue ?? (() => onPrompt(t("notice.deliveryIncompleteContinuePrompt"))))
               : row.item.action === "open_changes"
@@ -1023,7 +1023,7 @@ function DecisionReceiptLine({ receipt }: { receipt: NonNullable<NoticeItem["dec
   );
 }
 
-export function NoticeCard({ item, onAction, actionDisabled = false }: { item: NoticeItem; onAction?: () => void; actionDisabled?: boolean }) {
+export function NoticeCard({ item, onAction, onDeliveryWaive, actionDisabled = false }: { item: NoticeItem; onAction?: () => void; onDeliveryWaive?: () => void; actionDisabled?: boolean }) {
   const t = useT();
   const StatusIcon = item.level === "warn" ? TriangleAlert : Info;
   const ActionIcon = item.action === "open_changes" ? FileSearch : CirclePlay;
@@ -1045,14 +1045,10 @@ export function NoticeCard({ item, onAction, actionDisabled = false }: { item: N
               <ActionIcon size={13} aria-hidden="true" />
               <span>{item.action === "open_changes" ? t("notice.completionViewChanges") : t("notice.deliveryIncompleteContinue")}</span>
             </button>
+            {item.action === "continue_delivery" && onDeliveryWaive ? <button className="btn btn--small" type="button" onClick={onDeliveryWaive} disabled={actionDisabled}>{t("notice.deliveryWaive")}</button> : null}
           </div>
         ) : null}
-        {item.detail ? (
-          <details className="notice-line__details">
-            <summary>{t("notice.details")}</summary>
-            <div>{item.detail}</div>
-          </details>
-        ) : null}
+        {item.detail && <details className="notice-line__details"><summary>{t("notice.details")}</summary><div>{item.detail}</div></details>}
       </div>
     </div>
   );

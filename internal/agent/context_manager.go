@@ -15,7 +15,7 @@ import (
 // committed under. All three are cleared together whenever the lineage resets,
 // which is why they travel as one value rather than three fields.
 type compactionProgress struct {
-	stuck       bool // a fold landed above the trigger, so pressure retries are pointless
+	stuck       bool // a fold landed at/above the stuck ceiling, so pressure retries are pointless
 	consecutive int  // back-to-back folds since one last helped
 	// lastTurn stops the post-turn observer and the pre-send preflight from
 	// paying for two summaries during one active tool loop.
@@ -104,7 +104,10 @@ func (m ContextManager) prepareOnce(ctx context.Context, policy ContextPreparePo
 		}
 		return prepared, nil
 	}
-	if est < fold {
+	// Only a view below the stuck ceiling is breathing room: a fold that lands
+	// at/above it means the fixed prefix and protected content dominate the
+	// window, so pressure retries would land in the same place.
+	if est < a.stuckCeiling() {
 		a.sess.compaction.consecutive = 0
 		a.sess.compaction.stuck = false
 	}
@@ -117,10 +120,10 @@ func (m ContextManager) prepareOnce(ctx context.Context, policy ContextPreparePo
 		return prepared, nil
 	}
 
-	return m.foldContext(ctx, prepared, policy, inputHash, est, fold, hard, forceFold)
+	return m.foldContext(ctx, prepared, policy, inputHash, est, hard, forceFold)
 }
 
-func (m ContextManager) foldContext(ctx context.Context, prepared PreparedContext, policy ContextPreparePolicy, inputHash string, est, fold, hard int, forceFold bool) (PreparedContext, error) {
+func (m ContextManager) foldContext(ctx context.Context, prepared PreparedContext, policy ContextPreparePolicy, inputHash string, est, hard int, forceFold bool) (PreparedContext, error) {
 	a := m.agent
 	// Where this function would answer ErrCompactionRequired, the fold is the
 	// only way out and a failed summary must degrade rather than strand the turn.
@@ -168,8 +171,11 @@ func (m ContextManager) foldContext(ctx context.Context, prepared PreparedContex
 	if policy.Trigger == CompactionTriggerManual {
 		return result, nil
 	}
-	if result.InputTokens >= fold {
-		reason := fmt.Sprintf("summary result remains above fold trigger (%d >= %d)", result.InputTokens, fold)
+	// A fold that lands at/above the stuck ceiling (40% of the window) means
+	// the session is uncompressible: fixed prefix and protected content
+	// dominate, so further pressure folds would pay and land in the same place.
+	if result.InputTokens >= a.stuckCeiling() {
+		reason := fmt.Sprintf("summary result remains at or above the stuck ceiling (%d >= %d)", result.InputTokens, a.stuckCeiling())
 		a.recordContextMaintenanceBlocked(a.contextMaintenanceInputHash(result.Messages), policy.Trigger, "summary", reason)
 		a.sess.compaction.stuck = true
 		a.sess.compaction.consecutive++

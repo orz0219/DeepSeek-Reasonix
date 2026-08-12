@@ -119,6 +119,26 @@ func (a *App) submitDeliveryRecoveryToTab(tabID, display, input, submissionID st
 	return nil
 }
 
+func (a *App) SubmitDeliveryWaiverToTabWithID(tabID, display, input, submissionID string) error {
+	return a.submitDeliveryWaiverToTab(tabID, display, input, submissionID)
+}
+
+func (a *App) submitDeliveryWaiverToTab(tabID, display, input, submissionID string) error {
+	if err := validateTurnInput(input); err != nil {
+		return err
+	}
+	admission, ctrl, err := a.beginTabTurn(tabID, true, submissionID)
+	if err != nil {
+		return err
+	}
+	defer admission.abort()
+	tab := admission.tab
+	a.ensureTabTopicIndexedForUserTurn(tab)
+	ctrl.SubmitDeliveryWaiver(display, input)
+	admission.finish(ctrl)
+	return nil
+}
+
 func (a *App) SubmitInvocationsToTabWithID(tabID, display, input string, invocations []InvocationRequest, submissionID string) error {
 	return a.submitInvocationsToTab(tabID, display, input, invocations, submissionID)
 }

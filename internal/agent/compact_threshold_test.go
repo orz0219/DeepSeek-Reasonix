@@ -49,6 +49,9 @@ func TestCheckpointCeilingAndExceptionalSavings(t *testing.T) {
 	if got := a.checkpointCeiling(); got != 500_000 {
 		t.Fatalf("checkpointCeiling = %d, want 500000", got)
 	}
+	if got := a.stuckCeiling(); got != 400_000 {
+		t.Fatalf("stuckCeiling = %d, want 400000", got)
+	}
 	if got := a.exceptionalMinimumSavings(); got != 250_000 {
 		t.Fatalf("exceptionalMinimumSavings = %d, want 250000", got)
 	}

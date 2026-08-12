@@ -1055,6 +1055,7 @@ export default function App() {
     activeTabId,
     sendToTab,
     recoverDeliveryToTab,
+    waiveDeliveryToTab,
     runShellForTab,
     steerForTab,
     notice,
@@ -3490,10 +3491,7 @@ export default function App() {
   }, [sendToTab, setRewindStateForTab, t, tabMetas]);
 
   const handleTranscriptPrompt = useCallback((text: string) => {
-    if (!activeTabId || !controllerReady) return;
-    void commitThenSend(activeTabId, text).catch((err) => {
-      console.warn("Failed to submit transcript prompt", err);
-    });
+    if (activeTabId && controllerReady) void commitThenSend(activeTabId, text).catch((err) => console.warn("Failed to submit transcript prompt", err));
   }, [activeTabId, commitThenSend, controllerReady]);
 
   const handleDeliveryContinue = useCallback(async () => {
@@ -4863,6 +4861,7 @@ export default function App() {
                   footerHeight={footerHeight}
                   onPrompt={handleTranscriptPrompt}
                   onDeliveryContinue={() => void handleDeliveryContinue()}
+                  onDeliveryWaive={() => { if (activeTabIdRef.current && controllerReady) void waiveDeliveryToTab(activeTabIdRef.current, t("notice.deliveryWaivePrompt")); }}
                   onOpenChanges={() => openRightDockMode("changed")}
                   onEditPrompt={handleEditPrompt}
                   onRewind={handleMessageAction}

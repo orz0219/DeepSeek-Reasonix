@@ -71,7 +71,6 @@ import { formatSelectionReference, languageFor } from "../lib/selectedTextContex
 import { cleanGitDiff } from "../lib/diff";
 import { CodeViewer } from "./CodeViewer";
 import { DiffView } from "./DiffView";
-import { ContextMenu, contextMenuPointFromEvent, type ContextMenuItem, type ContextMenuPoint } from "./ContextMenu";
 import { FloatingMenu, FloatingMenuItems } from "./FloatingMenu";
 import { Markdown } from "./Markdown";
 import { Tooltip } from "./Tooltip";
@@ -283,7 +282,6 @@ export function WorkspacePanel({
   const [loadingCommit, setLoadingCommit] = useState(false);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; text: string; path: string } | null>(null);
   const [treeMenu, setTreeMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
-  const [treeBlankMenuPoint, setTreeBlankMenuPoint] = useState<ContextMenuPoint | null>(null);
   const [filter, setFilter] = useState("");
   const [searchResults, setSearchResults] = useState<DirEntry[] | null>(null);
   const [scopedFilePaths, setScopedFilePaths] = useState<string[] | null>(null);
@@ -586,7 +584,6 @@ export function WorkspacePanel({
   useEffect(() => {
     setSelectionMenu(null);
     setTreeMenu(null);
-    setTreeBlankMenuPoint(null);
   }, [tabId, workspaceScopeKey]);
 
   useEffect(() => {
@@ -786,7 +783,6 @@ export function WorkspacePanel({
   }, [selectionMenu, treeMenu]);
 
   const refreshWorkspaceList = useCallback(() => {
-    setTreeBlankMenuPoint(null);
     setSelectionMenu(null);
     setTreeMenu(null);
     if (viewMode === "changed") {
@@ -856,6 +852,7 @@ export function WorkspacePanel({
     workingTreeSchedulerRef: workingTreeRefreshSchedulerRef,
     workspaceRefresh,
     workspaceScopeKey,
+    autoRefreshContent: false,
   });
 
   const toggleDir = useCallback(
@@ -1326,10 +1323,15 @@ export function WorkspacePanel({
   const openSelectionMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (!selectedPath || loadingPreview || preview?.err || preview?.binary || preview?.kind) return;
     const text = selectedTextFromPreview();
-    if (text.trim() === "") return;
     event.preventDefault();
     event.stopPropagation();
     setSelectionMenu({ x: event.clientX, y: event.clientY, text, path: selectedPath });
+  };
+
+  const refreshPreviewContent = () => {
+    setSelectionMenu(null);
+    if (viewMode === "changed") void loadChangeDetail();
+    else refreshSelected();
   };
 
   // Selecting code with the mouse pops the "Add to Chat" button right away,
@@ -1355,19 +1357,8 @@ export function WorkspacePanel({
   const openTreeMenu = (event: ReactMouseEvent<HTMLElement>, path: string, isDir: boolean) => {
     event.preventDefault();
     event.stopPropagation();
-    setTreeBlankMenuPoint(null);
     setSelectionMenu(null);
     setTreeMenu({ x: event.clientX, y: event.clientY, path, isDir });
-  };
-
-  const openTreeBlankMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest(".workspace-tree__row,.workspace-change,button,input,textarea,select")) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setSelectionMenu(null);
-    setTreeMenu(null);
-    setTreeBlankMenuPoint(contextMenuPointFromEvent(event));
   };
 
   const startTreeDrag = (event: ReactDragEvent<HTMLElement>, path: string, isDir: boolean) => {
@@ -1513,14 +1504,6 @@ export function WorkspacePanel({
     setCodeSearchRequestPath(selectedPath);
     setCodeSearchRequestPending(true);
   };
-  const treeBlankMenuItems: ContextMenuItem[] = [
-    {
-      key: "refresh-tree",
-      icon: <RefreshCw size={13} />,
-      label: t(viewMode === "changed" ? "workspace.refreshChanges" : "workspace.refreshTree"),
-      onSelect: refreshWorkspaceList,
-    },
-  ];
 
   return (
     <aside
@@ -2012,10 +1995,19 @@ export function WorkspacePanel({
             <FloatingMenu x={selectionMenu.x} y={selectionMenu.y} estimatedHeight={WORKSPACE_CONTEXT_MENU_SELECTION_HEIGHT}>
               <FloatingMenuItems
                 items={[
+                  ...(selectionMenu.text.trim() !== ""
+                    ? [
+                        {
+                          icon: <MessageSquarePlus size={14} />,
+                          label: t("workspace.addSelectionToChat"),
+                          onSelect: addSelectionToChat,
+                        },
+                      ]
+                    : []),
                   {
-                    icon: <MessageSquarePlus size={14} />,
-                    label: t("workspace.addSelectionToChat"),
-                    onSelect: addSelectionToChat,
+                    icon: <RefreshCw size={14} />,
+                    label: t("workspace.refreshFile"),
+                    onSelect: refreshPreviewContent,
                   },
                 ]}
               />
@@ -2143,7 +2135,6 @@ export function WorkspacePanel({
         <div
           className="workspace-tree"
           ref={treeRef}
-          onContextMenu={openTreeBlankMenu}
           style={{
             height: "100%",
             overflow: "auto",
@@ -2191,16 +2182,9 @@ export function WorkspacePanel({
           onOpenInTerminal={onOpenInTerminal}
           onAddReference={addTreeReferenceToChat}
           onAddFile={() => void addTreeFileToChat()}
+          onRefreshTree={refreshWorkspaceList}
         />
       )}
-      <ContextMenu
-        open={Boolean(treeBlankMenuPoint)}
-        point={treeBlankMenuPoint}
-        items={treeBlankMenuItems}
-        minWidth={150}
-        ariaLabel={t("workspace.treeMenu")}
-        onClose={() => setTreeBlankMenuPoint(null)}
-      />
     </aside>
   );
 }

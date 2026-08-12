@@ -3651,21 +3651,18 @@ export function useController() {
     }
   }, [bumpCancelHydrateSeq, dispatchTo]);
 
-  const recoverDeliveryToTab = useCallback(async (tabId: string, displayText: string, submitText = displayText) => {
+  const submitDeliveryTurnToTab = useCallback(async (tabId: string, displayText: string, submitText: string, submit: (tabId: string, display: string, input: string, submissionId: string) => Promise<void>) => {
     if (!tabId) throw new Error(t("composer.workspaceStarting"));
     const currentState = getOrCreateState(statesRef.current, tabId);
-    const runtime = currentState.meta?.runtime;
     if (currentState.meta && !runtimeReadyForSubmit(currentState.meta)) {
-      throw new Error(runtime?.issue?.message || currentState.meta.startupErr || t("composer.workspaceStarting"));
+      throw new Error(currentState.meta?.runtime?.issue?.message || currentState.meta.startupErr || t("composer.workspaceStarting"));
     }
-    const seq = currentState.seq;
-    const submissionId = createTurnSubmissionId(tabId, currentState.sessionGen, seq, runtimeEpochByTabRef.current.get(tabId) ?? runtime?.epoch);
-    const display = displayText.trim();
-    const submit = submitText.trim();
-    dispatchTo(tabId, { type: "user", text: displayText, submitText: display !== submit ? submit : undefined, seq, submissionId, deliveryRecovery: true });
+    const submissionId = createTurnSubmissionId(tabId, currentState.sessionGen, currentState.seq, runtimeEpochByTabRef.current.get(tabId) ?? currentState.meta?.runtime?.epoch);
+    const display = displayText.trim(), trimmedSubmit = submitText.trim();
+    dispatchTo(tabId, { type: "user", text: displayText, submitText: display !== trimmedSubmit ? trimmedSubmit : undefined, seq: currentState.seq, submissionId, deliveryRecovery: true });
     invalidateCache();
     try {
-      void app.SubmitDeliveryRecoveryToTabWithID(tabId, display, submit, submissionId).then(
+      void submit(tabId, display, trimmedSubmit, submissionId).then(
         () => dispatchTo(tabId, { type: "send_confirmed", submissionId }),
         (error) => dispatchTo(tabId, { type: "send_failed", submissionId, error: `Send failed: ${error instanceof Error ? error.message : String(error)}` }),
       );
@@ -3674,6 +3671,9 @@ export function useController() {
       throw error;
     }
   }, [dispatchTo]);
+
+  const recoverDeliveryToTab = useCallback((tabId: string, displayText: string, submitText = displayText) => submitDeliveryTurnToTab(tabId, displayText, submitText, (id, d, s, sid) => app.SubmitDeliveryRecoveryToTabWithID(id, d, s, sid)), [submitDeliveryTurnToTab]);
+  const waiveDeliveryToTab = useCallback((tabId: string, displayText: string, submitText = displayText) => submitDeliveryTurnToTab(tabId, displayText, submitText, (id, d, s, sid) => app.SubmitDeliveryWaiverToTabWithID(id, d, s, sid)), [submitDeliveryTurnToTab]);
 
   const send = useCallback((displayText: string, submitText = displayText) => {
     const tabId = activeTabIdRef.current ?? activeTabId;
@@ -4747,7 +4747,7 @@ export function useController() {
     state: activeState,
     liveStore,
     activeTabId,
-    send, sendToTab, recoverDeliveryToTab, runShell, runShellForTab, steer, steerForTab, notice, cancel, approve, resolvePlanDecision, resolveRecovery, answerQuestion, setControllerMode,
+    send, sendToTab, recoverDeliveryToTab, waiveDeliveryToTab, runShell, runShellForTab, steer, steerForTab, notice, cancel, approve, resolvePlanDecision, resolveRecovery, answerQuestion, setControllerMode,
     dismissExtensionForm, drainExtensionNotifications,
     setCollaborationMode, setCollaborationModeForTab, setToolApprovalMode, setToolApprovalModeForTab, setComposerProfileForTab, setGoal, setGoalForTab, clearGoal, clearGoalForTab, resumeGoal, resumeGoalForTab, pauseGoal, pauseGoalForTab,
     newSession, clearSession, listSessions, listTrashedSessions, retrySessionHistory, resumeSession, openChannelSession, previewSession, deleteSession, restoreSession, purgeTrashedSession, renameSession,

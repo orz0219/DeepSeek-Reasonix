@@ -23,6 +23,7 @@ import (
 const (
 	defaultCompactRatio        = 0.85 // sole automatic maintenance trigger (new configs)
 	checkpointCeilingRatio     = 0.50 // normal auto-checkpoint acceptance ceiling
+	stuckCeilingRatio          = 0.40 // post-fold occupancy at which pressure retries become pointless
 	recentTailBudgetRatio      = 0.10 // recent verbatim tail as a fraction of the window
 	minRecentTailTokens        = 32 * 1024
 	maxRecentTailTokens        = 96 * 1024
@@ -141,6 +142,16 @@ func (a *Agent) checkpointCeiling() int {
 		return 0
 	}
 	return max(1, int(float64(a.contextWindow)*checkpointCeilingRatio))
+}
+
+// stuckCeiling is the post-fold occupancy at which the session is treated as
+// uncompressible: the fixed prefix and protected content dominate the window,
+// so a later pressure fold would land in the same place.
+func (a *Agent) stuckCeiling() int {
+	if a == nil || a.contextWindow <= 0 {
+		return 0
+	}
+	return max(1, int(float64(a.contextWindow)*stuckCeilingRatio))
 }
 
 // exceptionalMinimumSavings is required only when the fixed prefix alone already

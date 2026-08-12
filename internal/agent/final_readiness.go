@@ -82,7 +82,7 @@ func (c finalReadinessCheck) audit(result evidence.ReadinessAuditResult, recover
 }
 
 func (a *Agent) finalReadinessCheckFor() finalReadinessCheck {
-	if a.task.ledger == nil || a.ablation.Off(ablation.Evidence) {
+	if a.evidenceSkipped() {
 		return finalReadinessCheck{}
 	}
 	var missing []string
@@ -256,4 +256,10 @@ func finalReadinessIncompleteTodos(items []evidence.TodoStepMatch) string {
 		parts = append(parts, fmt.Sprintf("%s: %s", label, item.Status))
 	}
 	return "latest successful todo_write still has incomplete items: " + strings.Join(parts, ", ")
+}
+
+// evidenceSkipped reports whether the evidence gate is off for this run: no
+// ledger, the ablation arm, or the user's explicit delivery waiver.
+func (a *Agent) evidenceSkipped() bool {
+	return a.task.ledger == nil || a.ablation.Off(ablation.Evidence) || a.turn.deliveryWaiverActive
 }

@@ -1342,15 +1342,15 @@ func (a *Agent) RestoreDeliveryCheckpoint(checkpoint evidence.DeliveryCheckpoint
 	a.task.scopeID = checkpoint.ScopeID
 }
 
-// PrepareDeliveryRecovery preserves the exhausted turn's evidence for exactly
-// one explicit continuation. It returns false when there is no matching
-// readiness failure, so normal follow-up turns cannot inherit stale mutations.
-func (a *Agent) PrepareDeliveryRecovery() bool {
+// PrepareDeliveryRecovery and PrepareDeliveryWaiver keep the exhausted ledger; the waiver stands readiness down.
+func (a *Agent) PrepareDeliveryRecovery() bool { return a.prepareDeliveryConsumption(false) }
+func (a *Agent) PrepareDeliveryWaiver() bool   { return a.prepareDeliveryConsumption(true) }
+
+func (a *Agent) prepareDeliveryConsumption(waiver bool) bool {
 	if !a.deliveryProfile || !a.pending.deliveryRecovery {
 		return false
 	}
-	a.pending.preserveEvidence = true
-	a.pending.deliveryRecovery = false
+	a.pending.preserveEvidence, a.pending.deliveryWaiver, a.pending.deliveryRecovery = true, waiver, false
 	return true
 }
 

@@ -22,6 +22,9 @@ interface WorkspaceRefreshInvalidationOptions {
   workingTreeSchedulerRef: SchedulerRef;
   workspaceRefresh: WorkspaceRefreshSnapshot;
   workspaceScopeKey: string;
+  // Manual-refresh previews opt out of content invalidation; the file body and
+  // change detail then reload only on explicit user action.
+  autoRefreshContent: boolean;
 }
 
 export interface WorkspaceRefreshActions {
@@ -82,6 +85,7 @@ export function useWorkspaceRefreshInvalidation({
   workingTreeSchedulerRef,
   workspaceRefresh,
   workspaceScopeKey,
+  autoRefreshContent,
 }: WorkspaceRefreshInvalidationOptions): void {
   const lastSequenceRef = useRef(workspaceRefresh.sequence);
   const lastRevisionsRef = useRef(workspaceRefresh.revisions);
@@ -104,7 +108,7 @@ export function useWorkspaceRefreshInvalidation({
     const affectsSelected = workspaceRefresh.allPaths || !selectedPath || changes.some((change) =>
       change.path === selectedPath || change.oldPath === selectedPath || selectedPath.startsWith(`${change.path}/`),
     );
-    if (actions.content && (actions.forceVisible || affectsSelected) && selectedPath) void refreshSelected();
+    if (autoRefreshContent && actions.content && (actions.forceVisible || affectsSelected) && selectedPath) void refreshSelected();
     if (actions.tree && (actions.forceVisible || workspaceRefresh.allPaths || changes.length > 0)) {
       const affectedDirs = workspaceRefresh.allPaths
         ? openDirsRef.current
@@ -117,7 +121,11 @@ export function useWorkspaceRefreshInvalidation({
     if (viewMode === "changed") {
       if (actions.workingTree) {
         workingTreeSchedulerRef.current?.trigger(async () => {
-          await Promise.all([loadWorkspaceChanges(), selectedPath ? loadChangeDetail() : Promise.resolve()]);
+          if (autoRefreshContent && selectedPath) {
+            await Promise.all([loadWorkspaceChanges(), loadChangeDetail()]);
+          } else {
+            await loadWorkspaceChanges();
+          }
         });
       }
       if (actions.gitMeta) gitMetaSchedulerRef.current?.trigger(loadGitHistory);

@@ -188,6 +188,7 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
   SubmitDisplayToTabWithID(tabID: string, display: string, input: string, submissionID: string): Promise<void>;
   SubmitDeliveryRecoveryToTab(tabID: string, display: string, input: string): Promise<void>;
   SubmitDeliveryRecoveryToTabWithID(tabID: string, display: string, input: string, submissionID: string): Promise<void>;
+  SubmitDeliveryWaiverToTabWithID(tabID: string, display: string, input: string, submissionID: string): Promise<void>;
   SubmitInvocationsToTab(tabID: string, display: string, input: string, invocations: InvocationRequest[]): Promise<void>;
   SubmitInvocationsToTabWithID(tabID: string, display: string, input: string, invocations: InvocationRequest[], submissionID: string): Promise<void>;
   SubmitInitialGoalToTab(
@@ -998,8 +999,6 @@ export function onRemoteServer(cb: (s: RemoteServerView) => void): () => void {
   }
   return registerMockRemoteListener("server", cb as (v: unknown) => void);
 }
-
-
 
 // Mock event fan-out so browser-dev and tsx tests can drive remote:* events
 // without a Wails runtime.
@@ -2881,6 +2880,7 @@ function makeMockApp(): AppBindings {
         async SubmitDisplayToTabWithID(_tabID, _display, input, submissionID) { await this.SubmitToTabWithID(_tabID, input, submissionID); },
         async SubmitDeliveryRecoveryToTab(_tabID, display, input) { await withMockTabScope(_tabID, () => this.SubmitDisplay(display, input)); },
         async SubmitDeliveryRecoveryToTabWithID(_tabID, _display, input, submissionID) { await this.SubmitToTabWithID(_tabID, input, submissionID); },
+        async SubmitDeliveryWaiverToTabWithID(_tabID, _display, input, submissionID) { await this.SubmitToTabWithID(_tabID, input, submissionID); },
         async SubmitInvocationsToTab(_tabID, display, input, _invocations) { await withMockTabScope(_tabID, () => this.SubmitDisplay(display, input)); },
         async SubmitInvocationsToTabWithID(_tabID, _display, input, _invocations, submissionID) { await this.SubmitToTabWithID(_tabID, input, submissionID); },
         async SubmitInitialGoalToTab(

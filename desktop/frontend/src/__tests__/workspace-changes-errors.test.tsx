@@ -691,14 +691,16 @@ console.log("\nworkspace changes git errors");
   await rerender({ tabId: "tab-b" });
   ok(document.querySelector(".floating-menu") == null, "a tab switch discards the selection toolbar");
 
-  const tree = document.querySelector(".workspace-tree") as HTMLElement;
+  const treeRow = document.querySelector(".workspace-tree__row") as HTMLElement;
+  if (!treeRow) throw new Error("tree rendered no row to open the row menu on");
   await act(async () => {
-    tree.dispatchEvent(new window.MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 200 }));
+    treeRow.dispatchEvent(new window.MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 30 }));
     await flushPromises();
   });
-  ok(document.querySelector(".context-menu") != null, "right-clicking blank tree space opens the tree menu");
+  ok(document.querySelector(".workspace-tree-menu") != null, "right-clicking a tree row opens the row menu");
+  ok(document.body.textContent?.includes("Refresh file tree") === true, "the row menu leads with refresh tree");
   await rerender({ workspaceScopeKey: "scope-b" });
-  ok(document.querySelector(".context-menu") == null, "a scope switch discards the tree menu");
+  ok(document.querySelector(".workspace-tree-menu") == null, "a scope switch discards the tree menu");
 
   await act(async () => {
     root.unmount();

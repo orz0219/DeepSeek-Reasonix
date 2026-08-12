@@ -50,6 +50,7 @@ type TurnControl interface {
 	Submit(input string)
 	SubmitDisplay(display, input string)
 	SubmitDeliveryRecovery(display, input string)
+	SubmitDeliveryWaiver(display, input string)
 	SubmitInvocationDisplay(display, input string, invocations []InvocationRequest)
 	SubmitEditedDisplay(display, input, original string)
 	SubmitHTTP(input string)

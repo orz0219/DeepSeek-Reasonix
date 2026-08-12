@@ -602,22 +602,20 @@ func TestSummarizeToolArgs(t *testing.T) {
 	}
 }
 
-// TestMaybeCompactClearsStuckLatchAnywhereBelowTrigger pins the documented
-// contract that any turn under the compact trigger is "breathing room" that
-// clears the stuck latch. The snip band ([snip, high)) is the regression: it
-// returned before the reset ran, so a compaction that healthily settled the
-// prompt at, say, 70% of the window left a stale consecutive-run count behind
-// and the next compaction latched the session as "window too small" — silently
-// disabling auto-compaction for the rest of the run.
-func TestMaybeCompactClearsStuckLatchAnywhereBelowTrigger(t *testing.T) {
-	// contextWindow 20000 => soft 10000, snip 12000, high (trigger) 16000.
+// TestPrepareClearsStuckLatchOnlyBelowStuckCeiling pins the contract that only
+// a view under the stuck ceiling (40% of the window) is breathing room that
+// clears the stuck latch. A fold that lands at/above the ceiling means the
+// fixed prefix and protected content dominate the window, so the pressure
+// path must keep skipping instead of paying for another summary.
+func TestPrepareClearsStuckLatchOnlyBelowStuckCeiling(t *testing.T) {
+	// contextWindow 20000 => stuck ceiling 8000, trigger 16000.
 	for _, tc := range []struct {
 		name   string
 		prompt int
 	}{
-		{"below soft", 8000},
-		{"soft band", 11000},
-		{"snip band", 14000},
+		{"far below ceiling", 6000},
+		{"just below ceiling", 7900},
+		{"at ceiling", 8000},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sess := NewSession("sys")
@@ -628,9 +626,10 @@ func TestMaybeCompactClearsStuckLatchAnywhereBelowTrigger(t *testing.T) {
 
 			prepareForObservedUsage(a, context.Background(), &provider.Usage{PromptTokens: tc.prompt})
 
-			if a.sess.compaction.consecutive != 0 || a.sess.compaction.stuck {
-				t.Fatalf("prompt %d sits under the trigger; want the latch cleared, got consecutiveCompacts=%d compactStuck=%v",
-					tc.prompt, a.sess.compaction.consecutive, a.sess.compaction.stuck)
+			cleared := a.sess.compaction.consecutive == 0 && !a.sess.compaction.stuck
+			if cleared != (tc.prompt < 8000) {
+				t.Fatalf("prompt %d: want latch cleared=%v, got consecutiveCompacts=%d compactStuck=%v",
+					tc.prompt, tc.prompt < 8000, a.sess.compaction.consecutive, a.sess.compaction.stuck)
 			}
 		})
 	}

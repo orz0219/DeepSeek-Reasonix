@@ -1233,13 +1233,13 @@ func (c *Controller) SubmitDisplay(display, input string) {
 	c.submit(input, display, "")
 }
 
-// SubmitDeliveryRecovery runs the same visible prompt path as SubmitDisplay but
-// first authorizes the executor to retain the immediately preceding exhausted
-// delivery ledger. The agent consumes that authorization once; if the card came
-// from an older/reloaded session this safely degrades to an ordinary turn.
-func (c *Controller) SubmitDeliveryRecovery(display, input string) {
+func (c *Controller) SubmitDeliveryRecovery(display, input string) { c.deliver(display, input, false) }
+func (c *Controller) SubmitDeliveryWaiver(display, input string)   { c.deliver(display, input, true) }
+func (c *Controller) deliver(display, input string, waiver bool) {
 	c.runGuarded(func(ctx context.Context) error {
-		if c.executor != nil {
+		if c.executor != nil && waiver {
+			c.executor.PrepareDeliveryWaiver()
+		} else if c.executor != nil {
 			c.executor.PrepareDeliveryRecovery()
 		}
 		return c.runGoalLoopWithRawDisplay(ctx, input, input, display)

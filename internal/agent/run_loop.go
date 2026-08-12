@@ -133,7 +133,7 @@ func (a *Agent) beginRunTurn(ctx context.Context, input string) (rawInput string
 			a.resetTurnEvidence()
 		}
 	}
-	a.pending.preserveEvidence = false
+	a.turn.deliveryWaiverActive, a.pending.deliveryWaiver, a.pending.preserveEvidence = a.pending.deliveryWaiver, false, false
 	if !preserveEvidence {
 		a.pending.deliveryRecovery = false
 	}
