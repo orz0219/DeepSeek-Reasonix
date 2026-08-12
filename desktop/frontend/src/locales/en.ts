@@ -2915,7 +2915,7 @@ export const en = {
   "notice.deliveryIncompleteContinue": "Continue checks",
   "notice.deliveryIncompleteContinuePrompt": "Continue and complete the remaining delivery checks.",
   "notice.deliveryWaive": "Skip verification, finish partial",
-  "notice.deliveryWaivePrompt": "The user accepted the unverified state; finish as partial and do not run further verification.",
+  "notice.deliveryWaivePrompt": "The user accepted the unverified state; no test/verification commands are required. Review each todo below: mark completed items with todo_write as completed, leave unfinished ones as-is with a brief reason, then end the turn. Todos:",
   "notice.completionAttentionTitle": "This turn still needs attention",
   "notice.completionGapsBody": "Some verification is incomplete or limited. Review the changes for details.",
   "notice.completionViewChanges": "View changes",

@@ -13,7 +13,6 @@ import (
 	"reasonix/internal/memory"
 	"reasonix/internal/plugin"
 	"reasonix/internal/pluginpkg"
-	"reasonix/internal/secrets"
 	"reasonix/internal/skill"
 )
 
@@ -655,153 +654,37 @@ func sortIssues(issues []Issue) {
 	})
 }
 
-func sanitizeErr(err error) string {
-	if err == nil {
-		return ""
-	}
-	return sanitizeErrText(err.Error())
-}
-
 // sanitizeErrText redacts secrets and machine-local identity from diagnostic
 // strings. Prefer sanitizeErrTextWithPaths when workspace/home are known.
-func sanitizeErrText(s string) string {
-	return sanitizeErrTextWithPaths(s, "", "", "")
-}
 
-func sanitizeErrTextWithPaths(s, workspace, home, reasonixHome string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return s
-	}
-	// Collapse whitespace so multi-line stderr is one line.
-	s = strings.Join(strings.Fields(s), " ")
+// Collapse whitespace so multi-line stderr is one line.
 
-	// Strip URL query/fragment early.
-	if i := strings.IndexAny(s, "?#"); i >= 0 {
-		// Only cut when it looks like a URL fragment, not ordinary prose "?".
-		prefix := s[:i]
-		if strings.Contains(prefix, "://") || strings.Contains(strings.ToLower(prefix), "http") {
-			s = prefix
-		}
-	}
+// Strip URL query/fragment early.
 
-	// PATH=... (often embedded in stdio resolve errors; not a credential, so
-	// the shared redactor below leaves it alone).
-	s = redactKeyValue(s, "PATH=")
-	s = redactKeyValue(s, "path=")
+// Only cut when it looks like a URL fragment, not ordinary prose "?".
 
-	// Transport errors embed arbitrary HTTP bodies and stdio stderr, so run
-	// the product-wide credential recognizer (KEY=value and JSON
-	// "key":"value" forms, Authorization schemes, Cookie/Set-Cookie values,
-	// Bearer/JWT/vendor token shapes) instead of a second, narrower list.
-	s = secrets.Redact(s)
+// PATH=... (often embedded in stdio resolve errors; not a credential, so
+// the shared redactor below leaves it alone).
 
-	// The shared Bearer pattern only masks tokens of 16+ chars; diagnostics
-	// text can afford to redact shorter bearer tokens too.
-	s = redactBearer(s)
+// Transport errors embed arbitrary HTTP bodies and stdio stderr, so run
+// the product-wide credential recognizer (KEY=value and JSON
+// "key":"value" forms, Authorization schemes, Cookie/Set-Cookie values,
+// Bearer/JWT/vendor token shapes) instead of a second, narrower list.
 
-	// Absolute paths: rewrite with displayPath when possible.
-	s = redactAbsolutePaths(s, workspace, home, reasonixHome)
+// The shared Bearer pattern only masks tokens of 16+ chars; diagnostics
+// text can afford to redact shorter bearer tokens too.
 
-	// Cap length after redaction.
-	const max = 400
-	if len(s) > max {
-		s = s[:max] + "…"
-	}
-	return s
-}
+// Absolute paths: rewrite with displayPath when possible.
 
-func redactKeyValue(s, key string) string {
-	var b strings.Builder
-	for {
-		i := strings.Index(s, key)
-		if i < 0 {
-			b.WriteString(s)
-			return b.String()
-		}
-		b.WriteString(s[:i])
-		b.WriteString(key)
-		b.WriteString("<redacted>")
-		rest := s[i+len(key):]
-		end := len(rest)
-		if j := strings.IndexAny(rest, " \t\n\r;,"); j >= 0 {
-			end = j
-		}
-		s = rest[end:]
-	}
-}
+// Cap length after redaction.
 
-func redactBearer(s string) string {
-	var b strings.Builder
-	lower := strings.ToLower(s)
-	const needle = "bearer "
-	for {
-		i := strings.Index(lower, needle)
-		if i < 0 {
-			b.WriteString(s)
-			return b.String()
-		}
-		b.WriteString(s[:i])
-		b.WriteString("Bearer <redacted>")
-		rest := s[i+len(needle):]
-		end := len(rest)
-		if j := strings.IndexAny(rest, " \t\n\r;,\"'"); j >= 0 {
-			end = j
-		}
-		s = rest[end:]
-		lower = strings.ToLower(s)
-	}
-}
+// Walk for POSIX and Windows absolute path-like tokens.
 
-func redactAbsolutePaths(s, workspace, home, reasonixHome string) string {
-	// Walk for POSIX and Windows absolute path-like tokens.
-	var b strings.Builder
-	i := 0
-	for i < len(s) {
-		// Find candidate start: / or X:\
-		start := -1
-		if s[i] == '/' {
-			start = i
-		} else if i+2 < len(s) && ((s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= 'a' && s[i] <= 'z')) && s[i+1] == ':' && (s[i+2] == '\\' || s[i+2] == '/') {
-			start = i
-		}
-		if start < 0 {
-			b.WriteByte(s[i])
-			i++
-			continue
-		}
-		j := start + 1
-		for j < len(s) {
-			c := s[j]
-			if c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '"' || c == '\'' || c == ',' || c == ';' || c == ')' || c == ']' {
-				break
-			}
-			j++
-		}
-		token := s[start:j]
-		// Only rewrite if it looks like a path with a directory separator beyond root.
-		if strings.ContainsAny(token, `/\`) && len(token) > 1 {
-			b.WriteString(displayPath(token, workspace, home, reasonixHome))
-		} else {
-			b.WriteString(token)
-		}
-		i = j
-	}
-	return b.String()
-}
+// Find candidate start: / or X:\
 
-func redactCommandDisplay(cmd, root, home, reasonixHome string) string {
-	cmd = strings.TrimSpace(cmd)
-	if cmd == "" {
-		return ""
-	}
-	// Only show the command token, redacted if it looks like a path.
-	fields := strings.Fields(cmd)
-	if len(fields) == 0 {
-		return ""
-	}
-	return displayPath(fields[0], root, home, reasonixHome)
-}
+// Only rewrite if it looks like a path with a directory separator beyond root.
+
+// Only show the command token, redacted if it looks like a path.
 
 // ioDiscard avoids importing io in every call site for skill.Options.Stderr.
 func ioDiscard() *discardWriter { return &discardWriter{} }

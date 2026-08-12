@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -20,7 +19,6 @@ import (
 	"reasonix/internal/command"
 	"reasonix/internal/fileutil"
 	fileencoding "reasonix/internal/fileutil/encoding"
-	"reasonix/internal/frontmatter"
 )
 
 const (
@@ -44,16 +42,6 @@ type Package struct {
 	ManifestKind  string
 	Manifest      Manifest
 	Compatibility Compatibility
-}
-
-type Inventory struct {
-	Skills     []SkillRef
-	Agents     []AgentRef
-	Commands   []CommandRef
-	Prompts    []PromptRef
-	Themes     []ThemeRef
-	Hooks      []HookRef
-	MCPServers []MCPServerRef
 }
 
 type Compatibility struct {
@@ -739,462 +727,46 @@ func normalizeHooks(in map[string][]Hook) map[string][]Hook {
 	return out
 }
 
-func validateManifest(root string, m *Manifest) error {
-	if !IsValidName(m.Name) {
-		return fmt.Errorf("invalid plugin name %q", m.Name)
-	}
-	for _, p := range m.Skills {
-		if err := validateRelativePath(p); err != nil {
-			return err
-		}
-	}
-	for _, p := range m.Commands {
-		if err := validateRelativePath(p); err != nil {
-			return err
-		}
-	}
-	for _, p := range m.Agents {
-		if err := validateRelativePath(p); err != nil {
-			return err
-		}
-	}
-	for _, p := range m.Prompts {
-		if err := validateRelativePath(p); err != nil {
-			return err
-		}
-	}
-	for _, p := range m.Themes {
-		if err := validateRelativePath(p); err != nil {
-			return err
-		}
-	}
-	for event, hooks := range m.Hooks {
-		if strings.TrimSpace(event) == "" {
-			return fmt.Errorf("hook event is required")
-		}
-		for _, h := range hooks {
-			if h.Command == "" && h.ContextFile == "" {
-				return fmt.Errorf("hook command or contextFile is required")
-			}
-			if !h.ArgsSet && !validHookShell(h.Shell) {
-				return fmt.Errorf("hook shell %q is not supported (use auto, bash, powershell, pwsh, or cmd)", h.Shell)
-			}
-			if h.Command != "" && !h.ShellCommand && !filepath.IsAbs(h.Command) {
-				if err := validateRelativePath(h.Command); err != nil {
-					return err
-				}
-			}
-			if h.ContextFile != "" {
-				if err := validateRelativePath(h.ContextFile); err != nil {
-					return err
-				}
-			}
-			if h.Cwd != "" && !filepath.IsAbs(h.Cwd) {
-				if err := validateRelativePath(h.Cwd); err != nil {
-					return err
-				}
-			}
-		}
-	}
-	for name := range m.MCPServers {
-		if !IsValidName(name) {
-			return fmt.Errorf("invalid MCP server name %q", name)
-		}
-	}
-	if _, err := os.Stat(root); err != nil {
-		return err
-	}
-	return nil
-}
-
-func validHookShell(shell string) bool {
-	switch strings.ToLower(strings.TrimSpace(shell)) {
-	case "", "auto", "bash", "powershell", "pwsh", "cmd":
-		return true
-	default:
-		return false
-	}
-}
-
-func validateRelativePath(p string) error {
-	if strings.TrimSpace(p) == "" {
-		return fmt.Errorf("plugin path is required")
-	}
-	_, err := cleanPortableRelativePath(p)
-	return err
-}
-
 // cleanPortableRelativePath applies the same manifest path contract on every
 // host OS. A plugin prepared on Windows must not turn a drive/UNC path into a
 // harmless-looking relative path on Unix, and a Unix-rooted path must remain
 // absolute when the same package is parsed on Windows.
-func cleanPortableRelativePath(raw string) (string, error) {
-	trimmed := strings.TrimSpace(raw)
-	normalized := strings.ReplaceAll(trimmed, `\`, "/")
-	if filepath.IsAbs(trimmed) || path.IsAbs(normalized) || windowsAbsolutePath.MatchString(normalized) {
-		return "", fmt.Errorf("plugin path %q must be relative and stay inside the plugin root", trimmed)
-	}
-	cleaned := path.Clean(normalized)
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return "", fmt.Errorf("plugin path %q must be relative and stay inside the plugin root", trimmed)
-	}
-	return cleaned, nil
-}
-
-func (p Package) SkillRoots() []string {
-	var out []string
-	for _, rel := range p.Manifest.Skills {
-		out = append(out, filepath.Join(p.Root, filepath.FromSlash(rel)))
-	}
-	sort.Strings(out)
-	return out
-}
-
-func (p Package) AgentRoots() []string {
-	var out []string
-	for _, rel := range p.Manifest.Agents {
-		out = append(out, filepath.Join(p.Root, filepath.FromSlash(rel)))
-	}
-	sort.Strings(out)
-	return out
-}
 
 // CommandRoots returns the absolute command directories this package
 // contributes to custom slash-command discovery.
-func (p Package) CommandRoots() []string {
-	var out []string
-	for _, rel := range p.Manifest.Commands {
-		out = append(out, filepath.Join(p.Root, filepath.FromSlash(rel)))
-	}
-	sort.Strings(out)
-	return out
-}
 
 // PromptRoots returns the absolute prompt-template directories this package
 // contributes through a native Manifest v2.
-func (p Package) PromptRoots() []string {
-	var out []string
-	for _, rel := range p.Manifest.Prompts {
-		out = append(out, filepath.Join(p.Root, filepath.FromSlash(rel)))
-	}
-	sort.Strings(out)
-	return out
-}
-
-func (p Package) CapabilityCounts() (skills, commands, hooks, mcp int) {
-	skills = len(p.skillRefs())
-	commands = len(p.commandRefs())
-	for _, hs := range p.Manifest.Hooks {
-		hooks += len(hs)
-	}
-	mcp = len(p.Manifest.MCPServers)
-	return
-}
-
-func (p Package) AgentCount() int { return len(p.agentRefs()) }
 
 // PromptCount counts the prompt templates discovered under Manifest.Prompts.
-func (p Package) PromptCount() int { return len(p.promptRefs()) }
 
 // ThemeCount counts the theme files resolved from Manifest.Themes.
-func (p Package) ThemeCount() int { return len(p.themeRefs()) }
 
 // CapabilitySummary is the full per-package capability count set. The
 // four-value CapabilityCounts predates native runtime manifests and keeps its
 // signature for existing callers (the desktop module among them); newer fields
 // live here.
-type CapabilitySummary struct {
-	Skills     int
-	Agents     int
-	Commands   int
-	Hooks      int
-	MCPServers int
-	Prompts    int
-	Themes     int
-	Runtime    bool
-}
 
 // CapabilitySummary counts everything the package contributes, including
 // native Manifest v2 prompts, themes, and runtime.
-func (p Package) CapabilitySummary() CapabilitySummary {
-	skills, commands, hooks, mcp := p.CapabilityCounts()
-	return CapabilitySummary{
-		Skills:     skills,
-		Agents:     p.AgentCount(),
-		Commands:   commands,
-		Hooks:      hooks,
-		MCPServers: mcp,
-		Prompts:    len(p.promptRefs()),
-		Themes:     len(p.themeRefs()),
-		Runtime:    p.Manifest.Runtime != nil,
-	}
-}
-
-func (p Package) Inventory() Inventory {
-	return Inventory{
-		Skills:     p.skillRefs(),
-		Agents:     p.agentRefs(),
-		Commands:   p.commandRefs(),
-		Prompts:    p.promptRefs(),
-		Themes:     p.themeRefs(),
-		Hooks:      p.hookRefs(),
-		MCPServers: p.mcpServerRefs(),
-	}
-}
 
 // commandRefs loads the package's command dirs through the same loader the
 // runtime uses (internal/command), so names, namespacing, and frontmatter
 // semantics can never drift between the inventory and actual invocation.
-func (p Package) commandRefs() []CommandRef {
-	roots := p.CommandRoots()
-	if len(roots) == 0 {
-		return nil
-	}
-	cmds, _ := command.Load(roots...) // best-effort: malformed files are surfaced at load time elsewhere
-	out := make([]CommandRef, 0, len(cmds))
-	for _, c := range cmds {
-		out = append(out, CommandRef{
-			Name:        c.Name,
-			Description: c.Description,
-			ArgHint:     c.ArgHint,
-			Path:        c.Source,
-			Invocation:  "/" + c.Name,
-		})
-	}
-	return out
-}
+
+// best-effort: malformed files are surfaced at load time elsewhere
 
 // promptRefs loads the package's prompt dirs through the same loader the
 // command inventory uses (internal/command): prompt templates share the
 // slash-command file shape, so names, frontmatter, and malformed-file
 // handling stay identical.
-func (p Package) promptRefs() []PromptRef {
-	roots := p.PromptRoots()
-	if len(roots) == 0 {
-		return nil
-	}
-	cmds, _ := command.Load(roots...) // best-effort, like commandRefs
-	out := make([]PromptRef, 0, len(cmds))
-	for _, c := range cmds {
-		out = append(out, PromptRef{
-			Name:        c.Name,
-			Description: c.Description,
-			ArgHint:     c.ArgHint,
-			Path:        c.Source,
-		})
-	}
-	return out
-}
+
+// best-effort, like commandRefs
 
 // themeRefs resolves the manifest's themes list (plain paths and
 // per-segment globs) to concrete theme files. Parse-time validation has
 // already rejected escapes and non-regular files, so unreadable entries
 // here simply drop out (they were reported as parse warnings).
-func (p Package) themeRefs() []ThemeRef {
-	seen := map[string]bool{}
-	var out []ThemeRef
-	for _, pattern := range p.Manifest.Themes {
-		var matches []string
-		if hasGlobMeta(pattern) {
-			matches, _ = globThemePattern(p.Root, pattern)
-		} else {
-			abs := filepath.Join(p.Root, filepath.FromSlash(pattern))
-			if info, err := os.Stat(abs); err == nil && info.Mode().IsRegular() {
-				matches = []string{abs}
-			}
-		}
-		for _, match := range matches {
-			match = filepath.Clean(match)
-			if seen[match] {
-				continue
-			}
-			seen[match] = true
-			base := filepath.Base(match)
-			out = append(out, ThemeRef{
-				Name: strings.TrimSuffix(base, filepath.Ext(base)),
-				Path: match,
-			})
-		}
-	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Name != out[j].Name {
-			return out[i].Name < out[j].Name
-		}
-		return out[i].Path < out[j].Path
-	})
-	return out
-}
-
-func (p Package) skillRefs() []SkillRef {
-	var out []SkillRef
-	seen := map[string]bool{}
-	for _, rel := range p.Manifest.Skills {
-		root := filepath.Join(p.Root, filepath.FromSlash(rel))
-		p.scanSkillPath(root, 1, map[string]bool{}, &out)
-	}
-	filtered := out[:0]
-	for _, sk := range out {
-		key := sk.Path
-		if key == "" {
-			key = sk.Name
-		}
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		filtered = append(filtered, sk)
-	}
-	sort.SliceStable(filtered, func(i, j int) bool {
-		if filtered[i].Name != filtered[j].Name {
-			return filtered[i].Name < filtered[j].Name
-		}
-		return filtered[i].Path < filtered[j].Path
-	})
-	return filtered
-}
-
-func (p Package) scanSkillPath(path string, depth int, seen map[string]bool, out *[]SkillRef) {
-	info, err := os.Stat(path)
-	if err != nil {
-		return
-	}
-	if !info.IsDir() {
-		if info.Mode().IsRegular() && strings.EqualFold(filepath.Ext(path), ".md") {
-			if sk, ok := parseSkillRef(path, strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))); ok {
-				*out = append(*out, sk)
-			}
-		}
-		return
-	}
-
-	key := filepath.Clean(path)
-	if resolved, err := filepath.EvalSymlinks(path); err == nil {
-		key = filepath.Clean(resolved)
-	}
-	if seen[key] {
-		return
-	}
-	seen[key] = true
-
-	if sk, ok := parseSkillRef(filepath.Join(path, "SKILL.md"), filepath.Base(path)); ok {
-		*out = append(*out, sk)
-		return
-	}
-	if depth >= 5 {
-		return
-	}
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if shouldSkipSkillScanDir(name) {
-			continue
-		}
-		full := filepath.Join(path, name)
-		if entry.IsDir() {
-			p.scanSkillPath(full, depth+1, seen, out)
-			continue
-		}
-		if entry.Type().IsRegular() && strings.EqualFold(filepath.Ext(name), ".md") {
-			if sk, ok := parseSkillRef(full, strings.TrimSuffix(name, filepath.Ext(name))); ok {
-				*out = append(*out, sk)
-			}
-		}
-	}
-}
-
-func shouldSkipSkillScanDir(name string) bool {
-	if strings.HasPrefix(name, ".") {
-		return true
-	}
-	switch strings.ToLower(name) {
-	case "assets", "node_modules", "references", "scripts":
-		return true
-	default:
-		return false
-	}
-}
-
-func parseSkillRef(path, stem string) (SkillRef, bool) {
-	if !IsValidName(stem) {
-		return SkillRef{}, false
-	}
-	b, err := fileencoding.ReadFileUTF8(path)
-	if err != nil {
-		return SkillRef{}, false
-	}
-	content := strings.TrimPrefix(strings.ReplaceAll(string(b), "\r\n", "\n"), "\uFEFF")
-	fm, _ := frontmatter.Split(content)
-	name := stem
-	if v := strings.TrimSpace(fm["name"]); IsValidName(v) {
-		name = v
-	}
-	return SkillRef{
-		Name:        name,
-		Description: strings.TrimSpace(fm["description"]),
-		Path:        filepath.Clean(path),
-		Invocation:  "/" + name,
-		RunAs:       pluginSkillRunMode(fm),
-	}, true
-}
-
-func pluginSkillRunMode(fm map[string]string) string {
-	if strings.TrimSpace(fm["runas"]) == "subagent" {
-		return "subagent"
-	}
-	if strings.EqualFold(strings.TrimSpace(fm["context"]), "fork") {
-		return "subagent"
-	}
-	if strings.TrimSpace(fm["agent"]) != "" {
-		return "subagent"
-	}
-	return "inline"
-}
-
-func (p Package) hookRefs() []HookRef {
-	events := make([]string, 0, len(p.Manifest.Hooks))
-	for event := range p.Manifest.Hooks {
-		events = append(events, event)
-	}
-	sort.Strings(events)
-	var out []HookRef
-	for _, event := range events {
-		for _, hook := range p.Manifest.Hooks[event] {
-			out = append(out, HookRef{
-				Event:       event,
-				Match:       hook.Match,
-				Command:     hook.Command,
-				ContextFile: hook.ContextFile,
-				Description: hook.Description,
-			})
-		}
-	}
-	return out
-}
-
-func (p Package) mcpServerRefs() []MCPServerRef {
-	names := make([]string, 0, len(p.Manifest.MCPServers))
-	for name := range p.Manifest.MCPServers {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	out := make([]MCPServerRef, 0, len(names))
-	for _, name := range names {
-		server := p.Manifest.MCPServers[name]
-		out = append(out, MCPServerRef{
-			Name:        name,
-			DisplayName: firstNonEmpty(strings.TrimSpace(server.DisplayName), name),
-			Description: strings.TrimSpace(server.Description),
-			Transport:   pluginMCPTransport(server),
-			Command:     strings.TrimSpace(server.Command),
-			URL:         strings.TrimSpace(server.URL),
-			AutoStart:   server.AutoStart == nil || *server.AutoStart,
-		})
-	}
-	return out
-}
 
 func pluginMCPTransport(server MCPServer) string {
 	if typ := strings.TrimSpace(server.Type); typ != "" {

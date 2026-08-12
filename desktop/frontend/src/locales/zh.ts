@@ -2918,7 +2918,7 @@ export const zh: Record<DictKey, string> = {
   "notice.deliveryIncompleteContinue": "继续检查",
   "notice.deliveryIncompleteContinuePrompt": "继续完成剩余的交付检查。",
   "notice.deliveryWaive": "不用验证，部分完成",
-  "notice.deliveryWaivePrompt": "用户接受未验证状态，请以部分完成结束，不要继续运行验证。",
+  "notice.deliveryWaivePrompt": "用户已接受未验证状态，不再要求运行测试/验证命令。请逐条检查以下待办：已完成的用 todo_write 标记为 completed，未完成的保持原状并简述原因，然后结束回合。待办清单：",
   "notice.completionAttentionTitle": "本轮仍需处理",
   "notice.completionGapsBody": "部分验证未完成或受限，请查看改动详情。",
   "notice.completionViewChanges": "查看改动",

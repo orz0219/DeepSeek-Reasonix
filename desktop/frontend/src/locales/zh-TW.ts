@@ -2014,7 +2014,7 @@ export const zhTW: Record<DictKey, string> = {
   "notice.deliveryIncompleteContinue": "繼續檢查",
   "notice.deliveryIncompleteContinuePrompt": "繼續完成剩餘的交付檢查。",
   "notice.deliveryWaive": "不用驗證，部分完成",
-  "notice.deliveryWaivePrompt": "使用者接受未驗證狀態，請以部分完成結束，不要繼續執行驗證。",
+  "notice.deliveryWaivePrompt": "使用者已接受未驗證狀態，不再要求執行測試/驗證命令。請逐條檢查下列待辦：已完成的用 todo_write 標記為 completed，未完成的保持原狀並簡述原因，然後結束回合。待辦清單：",
   "notice.completionAttentionTitle": "本輪仍需處理",
   "notice.completionGapsBody": "部分驗證未完成或受限，請查看變更詳情。",
   "notice.completionViewChanges": "查看變更",

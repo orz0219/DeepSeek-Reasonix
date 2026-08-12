@@ -21,21 +21,15 @@
 package extension
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 // Public callback types
@@ -389,357 +383,35 @@ type fatalError struct{ err error }
 func (e *fatalError) Error() string { return e.err.Error() }
 func (e *fatalError) Unwrap() error { return e.err }
 
-func (s *server) handleInitialize(ctx context.Context, raw json.RawMessage) (any, error) {
-	var p InitializeParams
-	if err := strictDecode(raw, &p); err != nil {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	if err := compareProtocolVersion(p.ProtocolID, p.ProtocolVersion); err != nil {
-		return nil, &fatalError{err: err}
-	}
-	result, err := s.handler.Initialize(ctx, p)
-	if err != nil {
-		s.log.Printf("extension: initialize handler failed: %v", err)
-		return nil, &fatalError{err: err}
-	}
-	if result == nil {
-		return nil, &fatalError{err: errors.New("extension: Initialize returned a nil result")}
-	}
-	result.ProtocolVersion = ProtocolVersion
-	if result.Name == "" {
-		result.Name = s.opts.Name
-	}
-	if result.Version == "" {
-		result.Version = s.opts.Version
-	}
-	if strings.TrimSpace(result.Name) == "" || strings.TrimSpace(result.Version) == "" {
-		return nil, &fatalError{err: errors.New("extension: initialize result requires a name and version")}
-	}
-	if result.StateSchemaVersion < 0 {
-		return nil, &fatalError{err: errors.New("extension: stateSchemaVersion must be non-negative")}
-	}
-	return result, nil
-}
-
 // compareProtocolVersion mirrors the host's handshake identity check.
-func compareProtocolVersion(peerID, peerVersion string) error {
-	if peerID != ProtocolID {
-		return MustProtocolError(ErrUnsupportedVersion)
-	}
-	major, err := strconv.Atoi(peerVersion)
-	if err != nil {
-		return MustProtocolError(ErrProtocolError)
-	}
-	if major != ProtocolMajor {
-		return MustProtocolError(ErrUnsupportedVersion)
-	}
-	return nil
-}
 
-func (s *server) handleInitialized(context.Context, json.RawMessage) {
-	// The barrier itself opened in gateNotification, synchronously on the
-	// read loop, so no later frame can overtake it.
-}
+// The barrier itself opened in gateNotification, synchronously on the
+// read loop, so no later frame can overtake it.
 
-func (s *server) handleShutdown(ctx context.Context, raw json.RawMessage) (any, error) {
-	var p ShutdownParams
-	if err := strictDecode(raw, &p); err != nil || p.TimeoutMillis < 0 {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	s.shutdownOnce.Do(func() {
-		s.mu.Lock()
-		s.state = stateShutdown
-		s.mu.Unlock()
-		if s.opts.Shutdown != nil {
-			fnCtx := ctx
-			cancel := func() {}
-			if p.TimeoutMillis > 0 {
-				fnCtx, cancel = context.WithTimeout(ctx, time.Duration(p.TimeoutMillis)*time.Millisecond)
-			}
-			defer cancel()
-			done := make(chan struct{})
-			go func() {
-				s.opts.Shutdown(fnCtx)
-				close(done)
-			}()
-			select {
-			case <-done:
-			case <-fnCtx.Done():
-				s.log.Printf("extension: shutdown function did not return within %dms", p.TimeoutMillis)
-			}
-		}
-	})
-	return deferredResult{
-		result: ShutdownResult{Accepted: true},
-		after: func() {
-			// Orderly close: end in-flight calls, then close the read side so
-			// the read loop exits and the host sees EOF when the process
-			// exits. Serve returns nil.
-			s.conn.shutdown(nil)
-			if closer, ok := s.conn.r.(io.Closer); ok {
-				_ = closer.Close()
-			}
-		},
-	}, nil
-}
+// Orderly close: end in-flight calls, then close the read side so
+// the read loop exits and the host sees EOF when the process
+// exits. Serve returns nil.
 
 // Intercept and observation
 
-func (s *server) handleIntercept(ctx context.Context, raw json.RawMessage) (any, error) {
-	var p InterceptParams
-	if err := strictDecode(raw, &p); err != nil {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	if !validInterceptEvent(p.Event) || p.Seq < 1 || p.TimeoutMillis < 0 || !jsonKeyPresent(raw, "payload") {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	payload, err := s.rehydrate(ctx, p.Payload, p.Externalized, "/payload")
-	if err != nil {
-		return nil, err
-	}
-	fn := s.opts.Interceptors[string(p.Event)]
-	if fn == nil {
-		fn = s.opts.Interceptors["*"]
-	}
-	if fn == nil {
-		return Continue(), nil
-	}
-	if p.TimeoutMillis > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(p.TimeoutMillis)*time.Millisecond)
-		defer cancel()
-	}
-	result, err := fn(ctx, string(p.Event), payload)
-	if err != nil {
-		// The callback's advertised intercept budget expired. Return the
-		// frozen timeout reason rather than racing the host's identical timer
-		// with a generic internal error response.
-		if errors.Is(err, context.DeadlineExceeded) && errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return nil, MustProtocolError(ErrInterceptTimeout)
-		}
-		return nil, err
-	}
-	if result == nil {
-		return Continue(), nil
-	}
-	if !validInterceptDecision(result.Decision) {
-		return nil, fmt.Errorf("extension: interceptor for %q returned invalid decision %q", p.Event, result.Decision)
-	}
-	return result, nil
-}
-
-func (s *server) handleEvent(ctx context.Context, raw json.RawMessage) {
-	var p EventParams
-	if err := strictDecode(raw, &p); err != nil || !validInterceptEvent(p.Event) || !jsonKeyPresent(raw, "payload") {
-		s.log.Printf("extension: dropping malformed event notification")
-		return
-	}
-	payload, err := s.rehydrate(ctx, p.Payload, p.Externalized, "/payload")
-	if err != nil {
-		s.log.Printf("extension: dropping event %q: %v", p.Event, err)
-		return
-	}
-	if s.opts.Observer != nil {
-		s.opts.Observer(ctx, string(p.Event), payload)
-	}
-}
-
-func (s *server) handleResourcesChanged(ctx context.Context, raw json.RawMessage) {
-	var p ResourcesChangedParams
-	if err := strictDecode(raw, &p); err != nil || p.Paths == nil {
-		s.log.Printf("extension: dropping malformed resources/changed notification")
-		return
-	}
-	if s.opts.ResourcesChanged != nil {
-		s.opts.ResourcesChanged(ctx, p.Paths)
-	}
-}
+// The callback's advertised intercept budget expired. Return the
+// frozen timeout reason rather than racing the host's identical timer
+// with a generic internal error response.
 
 // Provider broker
 
-func (s *server) handleProviderCatalog(ctx context.Context, raw json.RawMessage) (any, error) {
-	if s.opts.Provider == nil {
-		return nil, MustProtocolError(ErrUnknownMethod)
-	}
-	if err := strictDecode(raw, &ProviderCatalogParams{}); err != nil {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	providers, err := s.opts.Provider.Catalog(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if providers == nil {
-		// The wire form requires an array; null fails the host's decoder.
-		providers = []ProviderDescriptor{}
-	}
-	return ProviderCatalogResult{Providers: providers}, nil
-}
-
-func (s *server) handleStreamOpen(ctx context.Context, raw json.RawMessage) (any, error) {
-	if s.opts.Provider == nil {
-		return nil, MustProtocolError(ErrUnknownMethod)
-	}
-	var p StreamOpenParams
-	if err := strictDecode(raw, &p); err != nil {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	if p.SeqBase < 0 {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	if err := p.Validate(); err != nil {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	streamCtx, cancel := context.WithCancel(ctx)
-	chunks, err := s.opts.Provider.Stream(streamCtx, StreamRequest{
-		StreamID:    p.StreamID,
-		ProviderRef: p.ProviderRef,
-		Model:       p.Model,
-		Effort:      p.Effort,
-		Request:     p.Request,
-	})
-	if err != nil {
-		cancel()
-		s.log.Printf("extension: provider stream %q failed to open: %v", p.StreamID, err)
-		return nil, MustProtocolError(ErrProviderFailed)
-	}
-	if chunks == nil {
-		cancel()
-		return nil, errors.New("extension: provider returned a nil chunk channel")
-	}
-	handle := &streamHandle{cancel: cancel, done: make(chan struct{})}
-	s.streamsMu.Lock()
-	if _, exists := s.streams[p.StreamID]; exists {
-		s.streamsMu.Unlock()
-		cancel()
-		return nil, &ProtocolError{Reason: ErrProtocolError, Message: "duplicate stream id " + p.StreamID}
-	}
-	s.streams[p.StreamID] = handle
-	s.streamsMu.Unlock()
-	return deferredResult{
-		result: StreamOpenResult{Accepted: true},
-		after:  func() { go s.pumpStream(streamCtx, p.StreamID, p.SeqBase, chunks, handle) },
-	}, nil
-}
-
-func (s *server) handleStreamCancel(_ context.Context, raw json.RawMessage) (any, error) {
-	var p StreamCancelParams
-	if err := strictDecode(raw, &p); err != nil || strings.TrimSpace(p.StreamID) == "" {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	s.streamsMu.Lock()
-	handle := s.streams[p.StreamID]
-	s.streamsMu.Unlock()
-	if handle == nil {
-		return StreamCancelResult{Cancelled: false}, nil
-	}
-	handle.cancel()
-	return StreamCancelResult{Cancelled: true}, nil
-}
+// The wire form requires an array; null fails the host's decoder.
 
 // pumpStream forwards one provider channel onto the wire: chunks become
 // stream/chunk notifications with contiguous 1-based seqs (from SeqBase),
 // and exactly one stream/end closes the stream — clean on channel close,
 // with error on an error chunk, interrupted on cancel. A cancel processed by
 // the SDK is never trailed by another chunk.
-func (s *server) pumpStream(ctx context.Context, streamID string, seqBase int, chunks <-chan StreamChunk, handle *streamHandle) {
-	defer close(handle.done)
-	defer func() {
-		s.streamsMu.Lock()
-		delete(s.streams, streamID)
-		s.streamsMu.Unlock()
-	}()
-	seq := int64(seqBase)
-	if seq < 1 {
-		seq = 1
-	}
-	var lastSeq int64
-	end := StreamEndParams{StreamID: streamID}
-	for {
-		// A cancel must never be trailed by one more chunk, so check before
-		// every receive and again before every send.
-		select {
-		case <-ctx.Done():
-			end.LastSeq, end.Interrupted = lastSeq, true
-			s.sendStreamEnd(&end)
-			return
-		default:
-		}
-		select {
-		case <-ctx.Done():
-			end.LastSeq, end.Interrupted = lastSeq, true
-			s.sendStreamEnd(&end)
-			return
-		case chunk, ok := <-chunks:
-			if !ok {
-				end.LastSeq = lastSeq
-				s.sendStreamEnd(&end)
-				return
-			}
-			if chunk.Type == ChunkError {
-				end.LastSeq = lastSeq
-				end.Error = frozenErrorSpecs[ErrProviderFailed].Message
-				if chunk.Error != nil && strings.TrimSpace(chunk.Error.Message) != "" {
-					end.Error = chunk.Error.Message
-				}
-				s.sendStreamEnd(&end)
-				return
-			}
-			if err := chunk.Validate(); err != nil {
-				s.log.Printf("extension: provider stream %q produced an invalid chunk: %v", streamID, err)
-				end.LastSeq = lastSeq
-				end.Error = "the extension provider produced an invalid chunk"
-				s.sendStreamEnd(&end)
-				return
-			}
-			if err := s.conn.notify(MethodExtensionProviderStreamChunk, StreamChunkParams{
-				StreamID: streamID, Seq: seq, Chunk: chunk,
-			}); err != nil {
-				s.log.Printf("extension: provider stream %q could not deliver chunk %d: %v", streamID, seq, err)
-				return
-			}
-			lastSeq = seq
-			seq++
-		}
-	}
-}
 
-func (s *server) sendStreamEnd(end *StreamEndParams) {
-	if err := s.conn.notify(MethodExtensionProviderStreamEnd, *end); err != nil {
-		s.log.Printf("extension: provider stream %q could not deliver stream end: %v", end.StreamID, err)
-	}
-}
+// A cancel must never be trailed by one more chunk, so check before
+// every receive and again before every send.
 
 // UI handlers (Host → Extension)
-
-func (s *server) handleUIAction(ctx context.Context, raw json.RawMessage) (any, error) {
-	if s.opts.UI.Action == nil {
-		return nil, MustProtocolError(ErrUnknownMethod)
-	}
-	var p UIActionParams
-	if err := strictDecode(raw, &p); err != nil || strings.TrimSpace(p.ActionID) == "" || strings.TrimSpace(p.SessionID) == "" {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	if err := s.opts.UI.Action(ctx, p.ActionID, p.Args); err != nil {
-		return UIActionResult{Accepted: false, Message: err.Error()}, nil
-	}
-	return UIActionResult{Accepted: true}, nil
-}
-
-func (s *server) handleUISubmit(ctx context.Context, raw json.RawMessage) (any, error) {
-	if s.opts.UI.Submit == nil {
-		return nil, MustProtocolError(ErrUnknownMethod)
-	}
-	var p UISubmitParams
-	if err := strictDecode(raw, &p); err != nil || strings.TrimSpace(p.SurfaceID) == "" ||
-		strings.TrimSpace(p.SessionID) == "" || p.Values == nil {
-		return nil, MustProtocolError(ErrInvalidParams)
-	}
-	if err := s.opts.UI.Submit(ctx, p.SurfaceID, p.Values); err != nil {
-		s.log.Printf("extension: UI submit for surface %q failed: %v", p.SurfaceID, err)
-		return UISubmitResult{Accepted: false}, nil
-	}
-	return UISubmitResult{Accepted: true}, nil
-}
 
 // HostUI: Extension → Host UI client
 
@@ -749,249 +421,38 @@ func (s *server) handleUISubmit(ctx context.Context, raw json.RawMessage) (any, 
 // ErrNoConnection otherwise, and with ErrNotReady before the handshake
 // barrier opens. Surfaces are structured-only by design: there is no way to
 // send HTML, CSS, JavaScript, or URLs.
-type HostUI struct{}
 
 // uiAnswerKey is the field key the host uses for single-field prompts.
-const uiAnswerKey = "value"
 
 // PublishStatus publishes or replaces a one-line status surface.
-func (HostUI) PublishStatus(ctx context.Context, sessionID string, generation uint64, surfaceID string, p UIStatusPayload) error {
-	if strings.TrimSpace(p.Label) == "" {
-		return errors.New("extension: status payload requires a label")
-	}
-	if !validUISeverity(p.Severity) {
-		return fmt.Errorf("extension: invalid severity %q", p.Severity)
-	}
-	return publishSurface(ctx, sessionID, generation, surfaceID, UISurfaceStatus, p)
-}
 
 // PublishCard publishes or replaces a rich read-only card surface.
-func (HostUI) PublishCard(ctx context.Context, sessionID string, generation uint64, surfaceID string, p UICardPayload) error {
-	for i, field := range p.Fields {
-		if strings.TrimSpace(field.Key) == "" {
-			return fmt.Errorf("extension: card field %d requires a key", i)
-		}
-	}
-	for i, action := range p.Actions {
-		if strings.TrimSpace(action.ActionID) == "" || strings.TrimSpace(action.Label) == "" {
-			return fmt.Errorf("extension: card action %d requires an actionId and label", i)
-		}
-	}
-	return publishSurface(ctx, sessionID, generation, surfaceID, UISurfaceCard, p)
-}
 
 // PublishForm publishes or replaces an editable form surface; submissions
 // return through the Options.UI.Submit callback.
-func (HostUI) PublishForm(ctx context.Context, sessionID string, generation uint64, surfaceID string, p UIFormPayload) error {
-	if err := validateFormPayload(p); err != nil {
-		return err
-	}
-	return publishSurface(ctx, sessionID, generation, surfaceID, UISurfaceForm, p)
-}
 
 // PublishNotification publishes a transient toast-style message.
-func (HostUI) PublishNotification(ctx context.Context, sessionID string, generation uint64, surfaceID string, p UINotificationPayload) error {
-	if strings.TrimSpace(p.Title) == "" {
-		return errors.New("extension: notification payload requires a title")
-	}
-	if !validUISeverity(p.Severity) {
-		return fmt.Errorf("extension: invalid severity %q", p.Severity)
-	}
-	return publishSurface(ctx, sessionID, generation, surfaceID, UISurfaceNotification, p)
-}
-
-func publishSurface(ctx context.Context, sessionID string, generation uint64, surfaceID string, kind UISurfaceKind, payload any) error {
-	s := serverFrom(ctx)
-	if s == nil {
-		return ErrNoConnection
-	}
-	if strings.TrimSpace(surfaceID) == "" || strings.TrimSpace(sessionID) == "" {
-		return errors.New("extension: surfaceId and sessionId are required")
-	}
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("extension: marshal %s payload: %w", kind, err)
-	}
-	resultRaw, err := s.callHost(ctx, MethodHostUIPublish, UIPublishParams{
-		SurfaceID: surfaceID, SessionID: sessionID, Generation: generation, Kind: kind, Payload: raw,
-	})
-	if err != nil {
-		return err
-	}
-	var result UIPublishResult
-	if err := strictDecode(resultRaw, &result); err != nil {
-		return &ProtocolError{Reason: ErrProtocolError, Message: "invalid host/ui/publish result"}
-	}
-	if !result.Accepted {
-		return fmt.Errorf("extension: host rejected the %s surface %q", kind, surfaceID)
-	}
-	return nil
-}
 
 // InputPrompt configures RequestInput.
-type InputPrompt struct {
-	Title    string
-	Message  string
-	Label    string
-	Default  string
-	Required bool
-}
 
 // SelectPrompt configures RequestSelect.
-type SelectPrompt struct {
-	Title    string
-	Message  string
-	Label    string
-	Options  []string
-	Default  string
-	Required bool
-}
 
 // MultiSelectPrompt configures RequestMultiSelect.
-type MultiSelectPrompt struct {
-	Title    string
-	Message  string
-	Label    string
-	Options  []string
-	Required bool
-}
 
 // RequestConfirm blocks on a yes/no prompt; the bool is the user's answer.
 // A dismissed prompt returns ErrUICancelled.
-func (h HostUI) RequestConfirm(ctx context.Context, sessionID string, generation uint64, surfaceID, message string) (bool, error) {
-	form := UIFormPayload{
-		Message: message,
-		Fields:  []UIFormField{{Key: uiAnswerKey, Label: message, Kind: UIFieldConfirm}},
-	}
-	values, err := h.requestPrompt(ctx, sessionID, generation, surfaceID, UIRequestConfirm, form)
-	if err != nil {
-		return false, err
-	}
-	answer, _ := values[uiAnswerKey].(bool)
-	return answer, nil
-}
 
 // RequestInput blocks on a free-text prompt and returns the entered text.
-func (h HostUI) RequestInput(ctx context.Context, sessionID string, generation uint64, surfaceID string, p InputPrompt) (string, error) {
-	field := UIFormField{Key: uiAnswerKey, Label: p.Label, Kind: UIFieldInput, Required: p.Required}
-	if p.Default != "" {
-		field.Default = p.Default
-	}
-	values, err := h.requestPrompt(ctx, sessionID, generation, surfaceID, UIRequestInput, UIFormPayload{
-		Title: p.Title, Message: p.Message, Fields: []UIFormField{field},
-	})
-	if err != nil {
-		return "", err
-	}
-	answer, _ := values[uiAnswerKey].(string)
-	return answer, nil
-}
 
 // RequestSelect blocks on a single-choice prompt and returns the picked
 // option.
-func (h HostUI) RequestSelect(ctx context.Context, sessionID string, generation uint64, surfaceID string, p SelectPrompt) (string, error) {
-	if len(p.Options) == 0 {
-		return "", errors.New("extension: select prompt requires options")
-	}
-	field := UIFormField{Key: uiAnswerKey, Label: p.Label, Kind: UIFieldSelect, Options: p.Options, Required: p.Required}
-	if p.Default != "" {
-		field.Default = p.Default
-	}
-	values, err := h.requestPrompt(ctx, sessionID, generation, surfaceID, UIRequestSelect, UIFormPayload{
-		Title: p.Title, Message: p.Message, Fields: []UIFormField{field},
-	})
-	if err != nil {
-		return "", err
-	}
-	answer, _ := values[uiAnswerKey].(string)
-	return answer, nil
-}
 
 // RequestMultiSelect blocks on a multi-choice prompt and returns the picked
 // options.
-func (h HostUI) RequestMultiSelect(ctx context.Context, sessionID string, generation uint64, surfaceID string, p MultiSelectPrompt) ([]string, error) {
-	if len(p.Options) == 0 {
-		return nil, errors.New("extension: multiselect prompt requires options")
-	}
-	field := UIFormField{Key: uiAnswerKey, Label: p.Label, Kind: UIFieldMultiselect, Options: p.Options, Required: p.Required}
-	values, err := h.requestPrompt(ctx, sessionID, generation, surfaceID, UIRequestMultiselect, UIFormPayload{
-		Title: p.Title, Message: p.Message, Fields: []UIFormField{field},
-	})
-	if err != nil {
-		return nil, err
-	}
-	switch answer := values[uiAnswerKey].(type) {
-	case []string:
-		return answer, nil
-	case []any:
-		out := make([]string, 0, len(answer))
-		for _, item := range answer {
-			text, ok := item.(string)
-			if !ok {
-				return nil, &ProtocolError{Reason: ErrProtocolError, Message: "host/ui/request multiselect answer is not a string list"}
-			}
-			out = append(out, text)
-		}
-		return out, nil
-	case nil:
-		return []string{}, nil
-	default:
-		return nil, &ProtocolError{Reason: ErrProtocolError, Message: "host/ui/request multiselect answer is not a string list"}
-	}
-}
 
 // RequestForm blocks on a fully custom form prompt and returns all values
 // keyed by field key. It is the structured escape hatch behind the typed
 // prompt helpers.
-func (h HostUI) RequestForm(ctx context.Context, sessionID string, generation uint64, surfaceID string, form UIFormPayload) (map[string]any, error) {
-	if err := validateFormPayload(form); err != nil {
-		return nil, err
-	}
-	return h.requestPrompt(ctx, sessionID, generation, surfaceID, UIRequestInput, form)
-}
-
-func (h HostUI) requestPrompt(ctx context.Context, sessionID string, generation uint64, surfaceID string, kind UIRequestKind, form UIFormPayload) (map[string]any, error) {
-	s := serverFrom(ctx)
-	if s == nil {
-		return nil, ErrNoConnection
-	}
-	if strings.TrimSpace(surfaceID) == "" || strings.TrimSpace(sessionID) == "" {
-		return nil, errors.New("extension: surfaceId and sessionId are required")
-	}
-	raw, err := json.Marshal(form)
-	if err != nil {
-		return nil, fmt.Errorf("extension: marshal %s payload: %w", kind, err)
-	}
-	resultRaw, err := s.callHost(ctx, MethodHostUIRequest, UIRequestParams{
-		SurfaceID: surfaceID, SessionID: sessionID, Generation: generation, Kind: kind, Payload: raw,
-	})
-	if err != nil {
-		return nil, err
-	}
-	var result UIRequestResult
-	if err := strictDecode(resultRaw, &result); err != nil {
-		return nil, &ProtocolError{Reason: ErrProtocolError, Message: "invalid host/ui/request result"}
-	}
-	if result.Cancelled {
-		return nil, ErrUICancelled
-	}
-	return result.Values, nil
-}
-
-func validateFormPayload(p UIFormPayload) error {
-	if p.Fields == nil {
-		return errors.New("extension: form payload requires a fields array (possibly empty)")
-	}
-	for i, field := range p.Fields {
-		if strings.TrimSpace(field.Key) == "" {
-			return fmt.Errorf("extension: form field %d requires a key", i)
-		}
-		if !validUIFieldKind(field.Kind) {
-			return fmt.Errorf("extension: form field %q has invalid kind %q", field.Key, field.Kind)
-		}
-	}
-	return nil
-}
 
 // Content refs (Extension → Host)
 
@@ -1000,60 +461,6 @@ func validateFormPayload(p UIFormPayload) error {
 // SHA-256 against the host's own report, and fails on any inconsistency. An
 // expired or unknown ref returns a *ProtocolError with Reason
 // ErrContentRefExpired.
-func ReadContentRef(ctx context.Context, ref string) ([]byte, error) {
-	s := serverFrom(ctx)
-	if s == nil {
-		return nil, ErrNoConnection
-	}
-	if strings.TrimSpace(ref) == "" {
-		return nil, errors.New("extension: content ref is required")
-	}
-	var out []byte
-	var offset int64
-	for {
-		raw, err := s.callHost(ctx, MethodHostContentRead, ContentReadParams{ContentRef: ref, Offset: offset})
-		if err != nil {
-			return nil, err
-		}
-		var result ContentReadResult
-		if err := strictDecode(raw, &result); err != nil {
-			return nil, &ProtocolError{Reason: ErrProtocolError, Message: "invalid host/content/read result"}
-		}
-		if result.ContentRef != ref || result.Offset != offset {
-			return nil, &ProtocolError{Reason: ErrProtocolError, Message: "host/content/read answered a different ref or offset"}
-		}
-		if result.Encoding != ContentUTF8 {
-			return nil, &ProtocolError{Reason: ErrProtocolError, Message: "host/content/read answered with an unknown encoding"}
-		}
-		if result.TotalBytes > ContentRefObjectBytes {
-			return nil, &ProtocolError{Reason: ErrFrameTooLarge, Message: fmt.Sprintf(
-				"content ref is %d bytes, above the %d byte object cap", result.TotalBytes, ContentRefObjectBytes)}
-		}
-		chunk, err := base64.StdEncoding.DecodeString(result.DataBase64)
-		if err != nil {
-			return nil, &ProtocolError{Reason: ErrProtocolError, Message: "host/content/read returned invalid base64"}
-		}
-		if len(chunk) > ContentRefChunkBytes {
-			return nil, &ProtocolError{Reason: ErrProtocolError, Message: "host/content/read returned an oversized chunk"}
-		}
-		out = append(out, chunk...)
-		if result.NextOffset == nil {
-			if int64(len(out)) != result.TotalBytes {
-				return nil, &ProtocolError{Reason: ErrProtocolError, Message: fmt.Sprintf(
-					"content ref reassembled to %d bytes, host reported %d", len(out), result.TotalBytes)}
-			}
-			sum := sha256.Sum256(out)
-			if !strings.EqualFold(hex.EncodeToString(sum[:]), result.SHA256) {
-				return nil, &ProtocolError{Reason: ErrProtocolError, Message: "content ref SHA-256 mismatch"}
-			}
-			return out, nil
-		}
-		if *result.NextOffset <= offset {
-			return nil, &ProtocolError{Reason: ErrProtocolError, Message: "host/content/read made no progress"}
-		}
-		offset = *result.NextOffset
-	}
-}
 
 // ResolveExternalized rehydrates one owner document's externalizable field.
 // raw is the field's inline value and externalized the owner's envelope, at
@@ -1067,101 +474,17 @@ func ReadContentRef(ctx context.Context, ref string) ([]byte, error) {
 //
 // Intercept and event payloads are resolved automatically before the
 // interceptor/observer runs; this helper remains for manual use.
-func ResolveExternalized(ctx context.Context, raw json.RawMessage, externalized []ExternalizedField, pointer string) (json.RawMessage, error) {
-	if serverFrom(ctx) == nil {
-		return nil, ErrNoConnection
-	}
-	return resolveExternalized(ctx, raw, externalized, pointer)
-}
-
-func (s *server) rehydrate(ctx context.Context, raw json.RawMessage, externalized []ExternalizedField, pointer string) (json.RawMessage, error) {
-	return resolveExternalized(ctx, raw, externalized, pointer)
-}
-
-func resolveExternalized(ctx context.Context, raw json.RawMessage, externalized []ExternalizedField, pointer string) (json.RawMessage, error) {
-	if len(externalized) == 0 {
-		return raw, nil
-	}
-	if inline := bytes.TrimSpace(raw); len(inline) > 0 && !bytes.Equal(inline, []byte("null")) {
-		return nil, &ProtocolError{Reason: ErrProtocolError, Message: "document carries both an inline value and an externalized envelope"}
-	}
-	if len(externalized) != 1 || externalized[0].JSONPointer != pointer {
-		return nil, &ProtocolError{Reason: ErrProtocolError, Message: fmt.Sprintf(
-			"externalized envelope must hold exactly the %s descriptor", pointer)}
-	}
-	descriptor := externalized[0]
-	if descriptor.TotalBytes > ContentRefObjectBytes {
-		return nil, &ProtocolError{Reason: ErrFrameTooLarge, Message: fmt.Sprintf(
-			"externalized value is %d bytes, above the %d byte object cap", descriptor.TotalBytes, ContentRefObjectBytes)}
-	}
-	data, err := ReadContentRef(ctx, descriptor.ContentRef)
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(data)) != descriptor.TotalBytes {
-		return nil, &ProtocolError{Reason: ErrProtocolError, Message: fmt.Sprintf(
-			"externalized value reassembled to %d bytes, want %d", len(data), descriptor.TotalBytes)}
-	}
-	sum := sha256.Sum256(data)
-	if !strings.EqualFold(hex.EncodeToString(sum[:]), descriptor.SHA256) {
-		return nil, &ProtocolError{Reason: ErrProtocolError, Message: "externalized value SHA-256 mismatch"}
-	}
-	return data, nil
-}
 
 // shared helpers
 
 // callHost issues one Extension → Host request behind the handshake barrier
 // and maps a structured wire error back to a *ProtocolError.
-func (s *server) callHost(ctx context.Context, method string, params any) (json.RawMessage, error) {
-	if err := s.checkReady(); err != nil {
-		return nil, err
-	}
-	raw, err := s.conn.call(ctx, method, params)
-	if err != nil {
-		return nil, mapCallError(err)
-	}
-	return raw, nil
-}
 
 // mapCallError converts a peer's JSON-RPC error into a *ProtocolError when it
 // carries a frozen reason.
-func mapCallError(err error) error {
-	var respErr *ResponseError
-	if errors.As(err, &respErr) {
-		var data ProtocolErrorData
-		if len(respErr.Data) > 0 && json.Unmarshal(respErr.Data, &data) == nil && data.Validate() == nil {
-			return &ProtocolError{Reason: data.Reason, Message: respErr.Message}
-		}
-	}
-	return err
-}
 
 // strictDecode decodes one params/result document rejecting unknown fields
 // and trailing JSON, mirroring the host's strict decoder envelope rules.
-func strictDecode(raw json.RawMessage, v any) error {
-	if len(bytes.TrimSpace(raw)) == 0 {
-		raw = json.RawMessage(`{}`)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(v); err != nil {
-		return err
-	}
-	var extra any
-	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return errors.New("trailing JSON")
-	}
-	return nil
-}
 
 // jsonKeyPresent reports whether raw is an object containing key, for
 // required-but-nullable fields such as the externalizable payload.
-func jsonKeyPresent(raw json.RawMessage, key string) bool {
-	var object map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &object); err != nil {
-		return false
-	}
-	_, ok := object[key]
-	return ok
-}

@@ -85,7 +85,7 @@ import {
   resolveTodoPanelTodos,
   scopedTodoBatchKey,
   scopedTodoDismissalKey,
-  shouldShowTodoPanel,
+  shouldShowTodoPanel, signedTodoStepsFromItems,
   todoBatchKey,
   todoDismissalKey,
   todoPanelScope,
@@ -2143,6 +2143,7 @@ export default function App() {
   const scopedTodoKey = useMemo(() => scopedTodoDismissalKey(todoScope, todoKey), [todoKey, todoScope]);
   const scopedTodoBatch = useMemo(() => scopedTodoBatchKey(todoScope, todoBatch), [todoBatch, todoScope]);
   const showTodos = shouldShowTodoPanel(todoKey, dismissedTodo, todos);
+  const [waivedTodoKey, setWaivedTodoKey] = useState<string | null>(null), signedSteps = signedTodoStepsFromItems(state.items);
   const dismissTodos = useCallback(() => {
     if (!scopedTodoKey) return;
     setDismissedTodoKeys((current) => {
@@ -4861,7 +4862,7 @@ export default function App() {
                   footerHeight={footerHeight}
                   onPrompt={handleTranscriptPrompt}
                   onDeliveryContinue={() => void handleDeliveryContinue()}
-                  onDeliveryWaive={() => { if (activeTabIdRef.current && controllerReady) void waiveDeliveryToTab(activeTabIdRef.current, t("notice.deliveryWaivePrompt")); }}
+                  onDeliveryWaive={() => { setWaivedTodoKey(todoKey); if (activeTabIdRef.current && controllerReady) void waiveDeliveryToTab(activeTabIdRef.current, `${t("notice.deliveryWaivePrompt")}\n${todos.map((td) => `- ${td.content} [${td.status}]`).join("\n")}`); }}
                   onOpenChanges={() => openRightDockMode("changed")}
                   onEditPrompt={handleEditPrompt}
                   onRewind={handleMessageAction}
@@ -4891,10 +4892,9 @@ export default function App() {
           <footer className={["footer", terminalPanelOpen && !sidebarCreation ? "footer--compact" : "", decisionSurface ? "footer--decision" : ""].filter(Boolean).join(" ")} ref={footerRef}>
             {showTodos && (
               <TodoPanel
-                key={scopedTodoBatch}
-                stateKey={scopedTodoBatch}
+                key={scopedTodoBatch} stateKey={scopedTodoBatch}
                 todos={todos}
-                onDismiss={dismissTodos}
+                onDismiss={dismissTodos} finished={waivedTodoKey === todoKey} signedSteps={signedSteps}
               />
             )}
             {rewindState && (

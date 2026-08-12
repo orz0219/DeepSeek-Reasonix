@@ -23,6 +23,23 @@ export function resolveTodoPanelTodos(
   return Array.isArray(canonical) ? canonical : [];
 }
 
+// signedTodoStepsFromItems collects the step texts of successful top-level
+// complete_step calls, the host-verifiable "done" evidence for a delivery
+// waiver's todo review.
+export function signedTodoStepsFromItems(items: readonly { kind: string; name?: string; parentId?: string | null; status?: string; error?: unknown; args?: string }[]): string[] {
+  const steps: string[] = [];
+  for (const it of items) {
+    if (it.kind !== "tool" || it.name !== "complete_step" || it.parentId || it.status !== "done" || it.error) continue;
+    try {
+      const step = String((JSON.parse(it.args ?? "") as { step?: unknown }).step ?? "").trim();
+      if (step) steps.push(step);
+    } catch {
+      // malformed args are not sign-off evidence
+    }
+  }
+  return steps;
+}
+
 export function sameTodoList(a: Todo[] | null | undefined, b: Todo[] | null | undefined): boolean {
   if (a === b) return true;
   if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;

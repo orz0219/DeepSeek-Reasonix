@@ -7,11 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -141,53 +137,10 @@ func newStdioTransport(ctx context.Context, s Spec) (*stdioTransport, error) {
 	return t, nil
 }
 
-func prepareMCPPrivateState(s Spec, processSandbox sandbox.Spec, env []string) (sandbox.Spec, []string, error) {
-	return prepareMCPPrivateStateForOS(s, processSandbox, env, runtime.GOOS)
-}
-
-func prepareMCPPrivateStateForOS(s Spec, processSandbox sandbox.Spec, env []string, goos string) (sandbox.Spec, []string, error) {
-	root := strings.TrimSpace(s.StateDir)
-	if root == "" {
-		return processSandbox, env, nil
-	}
-	if err := os.MkdirAll(root, 0o700); err != nil {
-		return processSandbox, env, err
-	}
-	privateRoot := root
-	cacheDir := filepath.Join(privateRoot, "cache")
-	stateDir := filepath.Join(privateRoot, "state")
-	dirs := []string{cacheDir, stateDir}
-	privateEnv := map[string]string{
-		"XDG_CACHE_HOME": cacheDir, "XDG_STATE_HOME": stateDir,
-		"npm_config_cache":      filepath.Join(cacheDir, "npm"),
-		"UV_CACHE_DIR":          filepath.Join(cacheDir, "uv"),
-		"BUN_INSTALL_CACHE_DIR": filepath.Join(cacheDir, "bun"),
-	}
-	if goos != "windows" {
-		tmpDir := filepath.Join(privateRoot, "tmp")
-		dirs = append(dirs, tmpDir)
-		privateEnv["TMP"] = tmpDir
-		privateEnv["TEMP"] = tmpDir
-		privateEnv["TMPDIR"] = tmpDir
-	}
-	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0o700); err != nil {
-			return processSandbox, env, err
-		}
-	}
-	// Windows stdio processes are currently unsandboxed and must keep the host's
-	// short temporary directory. Nesting TEMP below Reasonix's workspace-scoped
-	// state path can exceed the 108-byte Unix-domain-socket limit used by MCP
-	// servers such as MATLAB before their initialize response is written.
-	for key, value := range privateEnv {
-		env = setEnvValue(env, key, value)
-	}
-	processSandbox.WriteRoots = append(processSandbox.WriteRoots, root, privateRoot)
-	processSandbox.AppContainerWriteRoots = append(processSandbox.AppContainerWriteRoots, root, privateRoot)
-	return processSandbox, env, nil
-}
-
-var stdioShellPATH = cachedShellPATH(defaultStdioShellPATH)
+// Windows stdio processes are currently unsandboxed and must keep the host's
+// short temporary directory. Nesting TEMP below Reasonix's workspace-scoped
+// state path can exceed the 108-byte Unix-domain-socket limit used by MCP
+// servers such as MATLAB before their initialize response is written.
 
 // cachedShellPATH memoizes the first completed shell-PATH probe: the user's
 // interactive PATH is stable for the process, and resolveStdioExecutable now
@@ -199,350 +152,26 @@ var stdioShellPATH = cachedShellPATH(defaultStdioShellPATH)
 // except when the probe's context was cancelled, since that empty reflects the
 // aborted caller rather than the host, and caching it would pin "" for the
 // rest of the process.
-func cachedShellPATH(probe func(context.Context) string) func(context.Context) string {
-	var (
-		mu       sync.Mutex
-		cached   string
-		done     bool
-		inflight chan struct{} // non-nil while a probe runs; closed when it settles
-	)
-	return func(ctx context.Context) string {
-		for {
-			mu.Lock()
-			if done {
-				p := cached
-				mu.Unlock()
-				return p
-			}
-			if inflight != nil {
-				wait := inflight
-				mu.Unlock()
-				select {
-				case <-wait:
-					continue // re-check: the probe may not have cached (cancelled)
-				case <-ctx.Done():
-					return ""
-				}
-			}
-			ch := make(chan struct{})
-			inflight = ch
-			mu.Unlock()
 
-			p := probe(ctx)
+// non-nil while a probe runs; closed when it settles
 
-			mu.Lock()
-			inflight = nil
-			if p != "" || ctx.Err() == nil {
-				cached, done = p, true
-			}
-			mu.Unlock()
-			close(ch)
-			return p
-		}
-	}
-}
+// re-check: the probe may not have cached (cancelled)
 
-func resolveStdioExecutable(ctx context.Context, s Spec, env []string) (string, []string, error) {
-	// Unconditionally enrich PATH with the user's shell PATH so every
-	// subprocess—including wrapper scripts that invoke npx, uvx, etc.—
-	// inherits the expected tool locations even under a GUI launch.
-	env = enrichStdioShellPATH(ctx, env)
-
-	if hasPathSeparator(s.Command) {
-		exe := s.Command
-		if !filepath.IsAbs(exe) {
-			if dir := stdioWorkingDir(s); dir != "" {
-				exe = filepath.Join(dir, exe)
-			}
-			abs, err := filepath.Abs(exe)
-			if err != nil {
-				return "", env, fmt.Errorf("stdio plugin %q: resolve command %q: %w", s.Name, s.Command, err)
-			}
-			exe = abs
-		}
-		return exe, env, nil
-	}
-	if exe, ok := lookPathInEnv(s.Command, env); ok {
-		return exe, env, nil
-	}
-
-	currentPath, _ := envValue(env, "PATH")
-	if runtime.GOOS == "windows" {
-		fallbackPath := mergePathLists(windowsStdioFallbackPATH(env), currentPath)
-		if fallbackPath != currentPath {
-			fallbackEnv := setEnvValue(env, "PATH", fallbackPath)
-			if exe, ok := lookPathInEnv(s.Command, fallbackEnv); ok {
-				return exe, fallbackEnv, nil
-			}
-			env = fallbackEnv
-			currentPath = fallbackPath
-		}
-	}
-
-	return "", env, fmt.Errorf("stdio plugin %q: command %q not found on PATH; GUI launches and non-interactive sessions may not inherit your shell PATH. Use an absolute command path or set PATH in the MCP server env. PATH=%q",
-		s.Name, s.Command, currentPath)
-}
+// Unconditionally enrich PATH with the user's shell PATH so every
+// subprocess—including wrapper scripts that invoke npx, uvx, etc.—
+// inherits the expected tool locations even under a GUI launch.
 
 // stdioWorkingDir keeps WorkspaceRoot's roots/list role separate from process
 // execution for user-installed servers. Only repository-declared servers need
 // relative arguments to resolve against the project that supplied the config.
-func stdioWorkingDir(s Spec) string {
-	if s.Dir != "" {
-		return s.Dir
-	}
-	if s.RequireLaunchApproval {
-		return s.WorkspaceRoot
-	}
-	return ""
-}
 
 // enrichStdioShellPATH probes the user's interactive login shell for its PATH
 // and prepends those directories to the current environment. The result is the
 // subprocess environment with a PATH that matches what the user sees in their
 // terminal, even when Reasonix was launched from the Finder / Dock / open(1).
-func enrichStdioShellPATH(ctx context.Context, env []string) []string {
-	currentPath, _ := envValue(env, "PATH")
-	if shellPath := strings.TrimSpace(stdioShellPATH(ctx)); shellPath != "" {
-		if fallbackPath := mergePathLists(shellPath, currentPath); fallbackPath != currentPath {
-			env = setEnvValue(env, "PATH", fallbackPath)
-		}
-	}
-	return env
-}
 
-func hasPathSeparator(s string) bool {
-	return strings.ContainsAny(s, `/\`)
-}
-
-func lookPathInEnv(command string, env []string) (string, bool) {
-	path, _ := envValue(env, "PATH")
-	pathext, _ := envValue(env, "PATHEXT")
-	for _, dir := range filepath.SplitList(path) {
-		if dir == "" || !filepath.IsAbs(dir) {
-			continue
-		}
-		for _, name := range executableNames(command, pathext) {
-			candidate := filepath.Join(dir, name)
-			if isExecutableFile(candidate) {
-				return candidate, true
-			}
-		}
-	}
-	return "", false
-}
-
-func executableNames(command, pathext string) []string {
-	if runtime.GOOS != "windows" || filepath.Ext(command) != "" {
-		return []string{command}
-	}
-	if strings.TrimSpace(pathext) == "" {
-		pathext = ".COM;.EXE;.BAT;.CMD"
-	}
-	names := []string{command}
-	seen := map[string]bool{strings.ToLower(command): true}
-	for ext := range strings.SplitSeq(pathext, ";") {
-		ext = strings.TrimSpace(ext)
-		if ext == "" {
-			continue
-		}
-		if !strings.HasPrefix(ext, ".") {
-			ext = "." + ext
-		}
-		name := command + ext
-		key := strings.ToLower(name)
-		if !seen[key] {
-			seen[key] = true
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
-func isExecutableFile(path string) bool {
-	info, err := os.Stat(path)
-	if err != nil || info.IsDir() {
-		return false
-	}
-	if runtime.GOOS == "windows" {
-		return true
-	}
-	return info.Mode().Perm()&0o111 != 0
-}
-
-func windowsStdioFallbackPATH(env []string) string {
-	if runtime.GOOS != "windows" {
-		return ""
-	}
-	programFiles, _ := envValue(env, "ProgramFiles")
-	programFilesX86, _ := envValue(env, "ProgramFiles(x86)")
-	localAppData, _ := envValue(env, "LOCALAPPDATA")
-	appData, _ := envValue(env, "APPDATA")
-	userProfile, _ := envValue(env, "USERPROFILE")
-	chocolatey, _ := envValue(env, "ChocolateyInstall")
-	if localAppData == "" && userProfile != "" {
-		localAppData = filepath.Join(userProfile, "AppData", "Local")
-	}
-	if appData == "" && userProfile != "" {
-		appData = filepath.Join(userProfile, "AppData", "Roaming")
-	}
-	candidates := []string{
-		filepath.Join(programFiles, "nodejs"),
-		filepath.Join(programFilesX86, "nodejs"),
-		filepath.Join(localAppData, "Programs", "nodejs"),
-		filepath.Join(appData, "npm"),
-		filepath.Join(localAppData, "Microsoft", "WindowsApps"),
-		filepath.Join(userProfile, "scoop", "shims"),
-		filepath.Join(userProfile, ".bun", "bin"),
-		filepath.Join(userProfile, ".cargo", "bin"),
-		filepath.Join(chocolatey, "bin"),
-	}
-	var existing []string
-	for _, dir := range candidates {
-		if isDir(dir) {
-			existing = append(existing, dir)
-		}
-	}
-	return strings.Join(existing, string(os.PathListSeparator))
-}
-
-func isDir(path string) bool {
-	if path == "" {
-		return false
-	}
-	if !filepath.IsAbs(path) {
-		return false
-	}
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
-}
-
-func defaultStdioShellPATH(ctx context.Context) string {
-	if runtime.GOOS == "windows" {
-		return ""
-	}
-	shell := stdioShell()
-	if shell == "" {
-		return ""
-	}
-	const marker = "__REASONIX_PATH__="
-	script := "printf '\\n" + marker + "%s\\n' \"$PATH\""
-	for _, args := range [][]string{
-		{"-l", "-i", "-c", script},
-		{"-l", "-c", script},
-		{"-c", script},
-	} {
-		out := runShellPATHCommand(ctx, shell, args)
-		if path := parseShellPATH(out, marker); path != "" {
-			return path
-		}
-	}
-	return ""
-}
-
-func stdioShell() string {
-	if shell := strings.TrimSpace(os.Getenv("SHELL")); shell != "" {
-		if hasPathSeparator(shell) {
-			if isExecutableFile(shell) {
-				return shell
-			}
-		} else if exe, ok := lookPathInEnv(shell, secrets.ProcessEnv()); ok {
-			return exe
-		}
-	}
-	for _, shell := range []string{"/bin/zsh", "/bin/bash", "/bin/sh"} {
-		if isExecutableFile(shell) {
-			return shell
-		}
-	}
-	return ""
-}
-
-func runShellPATHCommand(parent context.Context, shell string, args []string) []byte {
-	ctx, cancel := context.WithTimeout(parent, 2*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, shell, args...)
-	// Explicit env so the login-shell probe honors [secrets]
-	// filter_subprocess_env instead of inheriting the full environment.
-	cmd.Env = secrets.ProcessEnv()
-	prepareStdioShellPATHProbe(cmd)
-	cmd.Stdin = strings.NewReader("")
-	out, _ := cmd.CombinedOutput()
-	return out
-}
-
-func prepareStdioShellPATHProbe(cmd *exec.Cmd) {
-	proc.PrepareShellPATHProbe(cmd)
-}
-
-func parseShellPATH(out []byte, marker string) string {
-	lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
-	for _, line := range slices.Backward(lines) {
-		if rest, ok := strings.CutPrefix(line, marker); ok {
-			return strings.TrimSpace(rest)
-		}
-	}
-	return ""
-}
-
-func mergeEnv(base []string, overrides map[string]string) []string {
-	out := append([]string(nil), base...)
-	for k, v := range overrides {
-		out = setEnvValue(out, k, v)
-	}
-	return out
-}
-
-func setEnvValue(env []string, key, value string) []string {
-	out := make([]string, 0, len(env)+1)
-	replaced := false
-	for _, kv := range env {
-		k, _, ok := strings.Cut(kv, "=")
-		if ok && envKeyEqual(k, key) {
-			if !replaced {
-				out = append(out, key+"="+value)
-				replaced = true
-			}
-			continue
-		}
-		out = append(out, kv)
-	}
-	if !replaced {
-		out = append(out, key+"="+value)
-	}
-	return out
-}
-
-func envValue(env []string, key string) (string, bool) {
-	for _, entry := range slices.Backward(env) {
-		k, v, ok := strings.Cut(entry, "=")
-		if ok && envKeyEqual(k, key) {
-			return v, true
-		}
-	}
-	return "", false
-}
-
-func envKeyEqual(a, b string) bool {
-	if runtime.GOOS == "windows" {
-		return strings.EqualFold(a, b)
-	}
-	return a == b
-}
-
-func mergePathLists(primary, secondary string) string {
-	var out []string
-	seen := map[string]bool{}
-	for _, path := range []string{primary, secondary} {
-		for _, dir := range filepath.SplitList(path) {
-			if dir == "" || seen[dir] {
-				continue
-			}
-			seen[dir] = true
-			out = append(out, dir)
-		}
-	}
-	return strings.Join(out, string(os.PathListSeparator))
-}
+// Explicit env so the login-shell probe honors [secrets]
+// filter_subprocess_env instead of inheriting the full environment.
 
 // stdioReplyQueueBound caps buffered server-request replies. The queue only
 // backs up while the reply writer is stuck behind a jammed stdin pipe, so a

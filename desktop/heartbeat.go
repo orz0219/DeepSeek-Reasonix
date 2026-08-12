@@ -545,541 +545,67 @@ func (e *HeartbeatEngine) executeTaskOwned(t HeartbeatTask) HeartbeatTask {
 }
 
 // ListTasks returns a copy of the current tasks (in-memory).
-func (e *HeartbeatEngine) ListTasks() []HeartbeatTask {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	out := make([]HeartbeatTask, len(e.tasks))
-	copy(out, e.tasks)
-	return out
-}
 
 // ReloadTasks reloads the task list from disk and replaces the in-memory copy.
-func (e *HeartbeatEngine) ReloadTasks() []HeartbeatTask {
-	return e.ReloadConfig().Tasks
-}
-
-func (e *HeartbeatEngine) ReloadConfig() HeartbeatConfigView {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	snapshot, err := e.readConfigSnapshot()
-	if err != nil {
-		log.Printf("[heartbeat] reload config: %v", err)
-		return heartbeatConfigSnapshot{cfg: heartbeatConfig{Tasks: []HeartbeatTask{}}}.view()
-	}
-	e.recordConfigSnapshotLocked(snapshot)
-	e.tasks = snapshot.cfg.Tasks
-	e.prunePendingTopicsLocked(e.tasks)
-	return snapshot.view()
-}
 
 // ReplaceTasks atomically replaces the task list and persists it.
-func (e *HeartbeatEngine) ReplaceTasks(tasks []HeartbeatTask) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	expected, err := e.readConfigSnapshot()
-	if err != nil {
-		return err
-	}
-	if e.cfgInitialized && (expected.exists != e.cfgKnown || expected.digest != e.cfgDigest || expected.cfg.Revision != e.cfgRevision) {
-		return ErrHeartbeatConfigConflict
-	}
-	if err := e.writeTasks(tasks, expected, true); err != nil {
-		return err
-	}
-	latest, err := e.readConfigSnapshot()
-	if err != nil {
-		return err
-	}
-	e.recordConfigSnapshotLocked(latest)
-	e.tasks = tasks
-	e.prunePendingTopicsLocked(tasks)
-	return nil
-}
 
 // ReplaceConfig applies a frontend edit only when its revision and ETag still
 // identify the exact config the user edited. This prevents a stale panel from
 // overwriting an external or second-process change.
-func (e *HeartbeatEngine) ReplaceConfig(update HeartbeatConfigUpdate) (HeartbeatConfigView, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	expected, err := e.readConfigSnapshot()
-	if err != nil {
-		return HeartbeatConfigView{}, err
-	}
-	if expected.cfg.Revision != update.Revision || expected.view().ETag != update.ETag {
-		return expected.view(), ErrHeartbeatConfigConflict
-	}
-	if err := e.writeTasks(update.Tasks, expected, true); err != nil {
-		return expected.view(), err
-	}
-	latest, err := e.readConfigSnapshot()
-	if err != nil {
-		return HeartbeatConfigView{}, err
-	}
-	e.recordConfigSnapshotLocked(latest)
-	e.tasks = latest.cfg.Tasks
-	e.prunePendingTopicsLocked(e.tasks)
-	return latest.view(), nil
-}
-
-func (e *HeartbeatEngine) prunePendingTopicsLocked(tasks []HeartbeatTask) {
-	if len(e.pendingTopics) == 0 {
-		return
-	}
-	keep := make(map[string]bool, len(tasks))
-	for _, task := range tasks {
-		if task.NewConversationEachRun {
-			keep[task.ID] = true
-		}
-	}
-	for id := range e.pendingTopics {
-		if !keep[id] {
-			delete(e.pendingTopics, id)
-		}
-	}
-}
 
 // TriggerNow runs a single task immediately by ID.
-func (e *HeartbeatEngine) TriggerNow(id string) {
-	e.mu.Lock()
-	tasks := append([]HeartbeatTask(nil), e.tasks...)
-	e.mu.Unlock()
-	updates := make(map[string]HeartbeatTask, 1)
-	for i, t := range tasks {
-		if t.ID == id {
-			tasks[i] = e.executeTask(t)
-			updates[id] = tasks[i]
-			break
-		}
-	}
-	if len(updates) == 0 {
-		return
-	}
-	e.mu.Lock()
-	e.mergeRunUpdatesLocked(updates)
-	e.mu.Unlock()
-}
 
-func (e *HeartbeatEngine) mergeRunUpdatesLocked(updates map[string]HeartbeatTask) {
-	if len(updates) == 0 {
-		return
-	}
-	// Rebase onto the on-disk list before the full-list save: the config file
-	// is documented as human- and AI-editable, so an external edit may have
-	// landed after the in-memory snapshot this tick ran from. The engine owns
-	// only the run-state fields (TopicID, LastRunAt, CreatedAt backfill);
-	// task definitions added, edited, or deleted externally are adopted from
-	// disk, so the save below can never silently roll an external edit back.
-	for range 3 {
-		expected, err := e.readConfigSnapshot()
-		if err != nil {
-			log.Printf("[heartbeat] cannot read config before run-state merge: %v", err)
-			return
-		}
-		tasks := expected.cfg.Tasks
-		if !expected.exists {
-			switch {
-			case e.cfgDeleted || (e.cfgInitialized && e.cfgKnown):
-				// Observe deletion in this CAS loop too. A run can finish before the
-				// next scheduler tick adopts external edits; relying only on tick
-				// would let that completion recreate a file the user just removed.
-				e.tasks = nil
-				e.pendingTopics = make(map[string]heartbeatPendingTopic)
-				e.cfgDeleted = true
-				e.recordConfigSnapshotLocked(expected)
-				return
-			case !e.cfgInitialized:
-				// Only an engine that has never observed disk may bootstrap from an
-				// in-memory list. Once a config existed, deletion is authoritative.
-				tasks = append([]HeartbeatTask(nil), e.tasks...)
-			}
-		}
-		mergeHeartbeatRunUpdates(tasks, updates)
-		if err := e.writeTasks(tasks, expected, true); err != nil {
-			if errors.Is(err, ErrHeartbeatConfigConflict) {
-				continue
-			}
-			log.Printf("[heartbeat] run-state merge failed: %v", err)
-			return
-		}
-		latest, err := e.readConfigSnapshot()
-		if err != nil {
-			log.Printf("[heartbeat] reload after run-state merge: %v", err)
-			return
-		}
-		e.recordConfigSnapshotLocked(latest)
-		e.tasks = tasks
-		e.prunePendingTopicsLocked(tasks)
-		return
-	}
-	log.Printf("[heartbeat] run-state merge lost repeated config races; next tick will retry")
-}
+// Rebase onto the on-disk list before the full-list save: the config file
+// is documented as human- and AI-editable, so an external edit may have
+// landed after the in-memory snapshot this tick ran from. The engine owns
+// only the run-state fields (TopicID, LastRunAt, CreatedAt backfill);
+// task definitions added, edited, or deleted externally are adopted from
+// disk, so the save below can never silently roll an external edit back.
 
-func mergeHeartbeatRunUpdates(tasks []HeartbeatTask, updates map[string]HeartbeatTask) {
-	for i := range tasks {
-		update, ok := updates[tasks[i].ID]
-		if !ok {
-			continue
-		}
-		// Run state is monotonic. A runtime that lost the cross-process task
-		// lease returns the task snapshot it started with; if its later config
-		// merge lands after the owner, that stale completion must not roll back
-		// the owner's timestamp or fresh-conversation topic.
-		newerRun := update.LastRunAt > tasks[i].LastRunAt
-		if update.TopicID != "" && (tasks[i].TopicID == "" || newerRun) {
-			tasks[i].TopicID = update.TopicID
-		}
-		if newerRun {
-			tasks[i].LastRunAt = update.LastRunAt
-		}
-		if tasks[i].CreatedAt == 0 && update.CreatedAt != 0 {
-			tasks[i].CreatedAt = update.CreatedAt
-		}
-	}
-}
+// Observe deletion in this CAS loop too. A run can finish before the
+// next scheduler tick adopts external edits; relying only on tick
+// would let that completion recreate a file the user just removed.
+
+// Only an engine that has never observed disk may bootstrap from an
+// in-memory list. Once a config existed, deletion is authoritative.
+
+// Run state is monotonic. A runtime that lost the cross-process task
+// lease returns the task snapshot it started with; if its later config
+// merge lands after the owner, that stale completion must not roll back
+// the owner's timestamp or fresh-conversation topic.
 
 // parseInterval converts a string like "5m", "1h", "30s" to time.Duration.
 // Suffix after '|' is stripped (e.g. "24h|daily@09:00" -> "24h").
 // Empty or invalid strings return 0, nil (task will be skipped).
-func parseInterval(s string) (time.Duration, error) {
-	if idx := strings.Index(s, "|"); idx >= 0 {
-		s = s[:idx]
-	}
-	if len(s) == 0 {
-		return 0, nil
-	}
-	// Support common suffixed intervals
-	switch s[len(s)-1] {
-	case 's', 'm', 'h':
-		return time.ParseDuration(s)
-	default:
-		// Try "Xm" as default assumption
-		return time.ParseDuration(s + "m")
-	}
-}
 
-func heartbeatTaskDueAt(t HeartbeatTask, now time.Time) bool {
-	if scheduled, ok := previousHeartbeatScheduleAt(t, now); ok {
-		if t.CreatedAt != 0 && scheduled.Before(time.UnixMilli(t.CreatedAt)) {
-			return false
-		}
-		if t.LastRunAt != 0 && !time.UnixMilli(t.LastRunAt).Before(scheduled) {
-			return false
-		}
-		return !scheduled.After(now)
-	}
+// Support common suffixed intervals
 
-	d, err := parseInterval(t.Interval)
-	if err != nil || d <= 0 {
-		return false
-	}
-	baseMillis := t.LastRunAt
-	if baseMillis == 0 {
-		baseMillis = t.CreatedAt
-	}
-	hasTimeWindow := t.TimeWindowStart != "" || t.TimeWindowEnd != ""
-	if baseMillis == 0 {
-		if hasTimeWindow {
-			return heartbeatWithinTimeWindow(t, now)
-		}
-		return true
-	}
-	if now.Sub(time.UnixMilli(baseMillis)) < d {
-		return false
-	}
+// Try "Xm" as default assumption
 
-	// For interval-based tasks with a time window, check if current time
-	// falls within the configured window. If outside, defer until the next
-	// tick that falls within the window.
-	if hasTimeWindow {
-		return heartbeatWithinTimeWindow(t, now)
-	}
-
-	return true
-}
+// For interval-based tasks with a time window, check if current time
+// falls within the configured window. If outside, defer until the next
+// tick that falls within the window.
 
 // heartbeatWithinTimeWindow returns true when now falls within the task's
 // configured time window. If the window is empty it returns true.
 // Format: "HH:MM" in 24-hour clock; start inclusive, end exclusive.
-func heartbeatWithinTimeWindow(t HeartbeatTask, now time.Time) bool {
-	startH, startM, startOK := parseHeartbeatClock(t.TimeWindowStart)
-	endH, endM, endOK := parseHeartbeatClock(t.TimeWindowEnd)
 
-	if !startOK && !endOK {
-		return true // no window configured
-	}
+// no window configured
 
-	minutes := now.Hour()*60 + now.Minute()
+// If only start is set: allow from start to end of day
 
-	// If only start is set: allow from start to end of day
-	if startOK && !endOK {
-		return minutes >= startH*60+startM
-	}
+// If only end is set: allow from midnight to end
 
-	// If only end is set: allow from midnight to end
-	if !startOK && endOK {
-		return minutes < endH*60+endM
-	}
+// Normal window: 09:00-17:00
 
-	startMin := startH*60 + startM
-	endMin := endH*60 + endM
-
-	if startMin < endMin {
-		// Normal window: 09:00-17:00
-		return minutes >= startMin && minutes < endMin
-	}
-	// Cross-midnight window: 22:00-06:00
-	return minutes >= startMin || minutes < endMin
-}
-
-type heartbeatSchedule struct {
-	kind     string
-	days     []time.Weekday
-	month    int
-	day      int
-	hour     int
-	minute   int
-	hasRules bool
-}
-
-func parseHeartbeatSchedule(interval string) (heartbeatSchedule, bool) {
-	_, after, ok0 := strings.Cut(interval, "|")
-	if !ok0 {
-		return heartbeatSchedule{}, false
-	}
-	raw := strings.TrimSpace(after)
-	if raw == "" {
-		return heartbeatSchedule{}, false
-	}
-	at := "09:00"
-	if parts := strings.SplitN(raw, "@", 2); len(parts) == 2 {
-		raw = parts[0]
-		at = parts[1]
-	}
-	hour, minute, ok := parseHeartbeatClock(at)
-	if !ok {
-		return heartbeatSchedule{}, false
-	}
-	kind := raw
-	rule := ""
-	if parts := strings.SplitN(raw, ":", 2); len(parts) == 2 {
-		kind = parts[0]
-		rule = parts[1]
-	}
-	s := heartbeatSchedule{kind: kind, hour: hour, minute: minute, hasRules: true}
-	switch kind {
-	case "daily":
-		return s, true
-	case "weekly", "biweekly":
-		for part := range strings.SplitSeq(rule, ",") {
-			if wd, ok := parseHeartbeatWeekday(part); ok {
-				s.days = append(s.days, wd)
-			}
-		}
-		return s, len(s.days) > 0
-	case "monthly":
-		s.day = parsePositiveInt(rule, 1)
-		return s, true
-	case "yearly":
-		parts := strings.SplitN(rule, "-", 2)
-		s.month = parsePositiveInt(firstString(parts), 1)
-		s.day = 1
-		if len(parts) == 2 {
-			s.day = parsePositiveInt(parts[1], 1)
-		}
-		if s.month < 1 {
-			s.month = 1
-		}
-		if s.month > 12 {
-			s.month = 12
-		}
-		return s, true
-	default:
-		return heartbeatSchedule{}, false
-	}
-}
-
-func previousHeartbeatScheduleAt(t HeartbeatTask, now time.Time) (time.Time, bool) {
-	s, ok := parseHeartbeatSchedule(t.Interval)
-	if !ok || !s.hasRules {
-		return time.Time{}, false
-	}
-	switch s.kind {
-	case "daily":
-		candidate := dateAt(now.Year(), now.Month(), now.Day(), s.hour, s.minute, now.Location())
-		if candidate.After(now) {
-			candidate = candidate.AddDate(0, 0, -1)
-		}
-		return candidate, true
-	case "weekly":
-		return previousHeartbeatWeeklyAt(s, now, 7, time.Time{})
-	case "biweekly":
-		anchor := heartbeatScheduleAnchor(t, now)
-		return previousHeartbeatWeeklyAt(s, now, 14, anchor)
-	case "monthly":
-		return previousHeartbeatMonthlyAt(s, now), true
-	case "yearly":
-		return previousHeartbeatYearlyAt(s, now), true
-	default:
-		return time.Time{}, false
-	}
-}
-
-func previousHeartbeatWeeklyAt(s heartbeatSchedule, now time.Time, windowDays int, anchor time.Time) (time.Time, bool) {
-	var best time.Time
-	for offset := range windowDays {
-		day := now.AddDate(0, 0, -offset)
-		for _, wd := range s.days {
-			if day.Weekday() != wd {
-				continue
-			}
-			candidate := dateAt(day.Year(), day.Month(), day.Day(), s.hour, s.minute, now.Location())
-			if candidate.After(now) {
-				continue
-			}
-			if !anchor.IsZero() && weeksBetween(weekStart(anchor), weekStart(candidate))%2 != 0 {
-				continue
-			}
-			if best.IsZero() || candidate.After(best) {
-				best = candidate
-			}
-		}
-	}
-	return best, !best.IsZero()
-}
-
-func previousHeartbeatMonthlyAt(s heartbeatSchedule, now time.Time) time.Time {
-	candidate := monthlyCandidate(now.Year(), now.Month(), s.day, s.hour, s.minute, now.Location())
-	if candidate.After(now) {
-		prev := now.AddDate(0, -1, 0)
-		candidate = monthlyCandidate(prev.Year(), prev.Month(), s.day, s.hour, s.minute, now.Location())
-	}
-	return candidate
-}
-
-func previousHeartbeatYearlyAt(s heartbeatSchedule, now time.Time) time.Time {
-	month := time.Month(s.month)
-	candidate := monthlyCandidate(now.Year(), month, s.day, s.hour, s.minute, now.Location())
-	if candidate.After(now) {
-		candidate = monthlyCandidate(now.Year()-1, month, s.day, s.hour, s.minute, now.Location())
-	}
-	return candidate
-}
-
-func heartbeatScheduleAnchor(t HeartbeatTask, now time.Time) time.Time {
-	if t.CreatedAt != 0 {
-		return time.UnixMilli(t.CreatedAt)
-	}
-	if t.LastRunAt != 0 {
-		return time.UnixMilli(t.LastRunAt)
-	}
-	return now
-}
-
-func parseHeartbeatClock(s string) (int, int, bool) {
-	parts := strings.SplitN(strings.TrimSpace(s), ":", 2)
-	if len(parts) != 2 {
-		return 0, 0, false
-	}
-	hour := parsePositiveInt(parts[0], -1)
-	minute := parsePositiveInt(parts[1], -1)
-	if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
-		return 0, 0, false
-	}
-	return hour, minute, true
-}
-
-func parseHeartbeatWeekday(s string) (time.Weekday, bool) {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "sun":
-		return time.Sunday, true
-	case "mon":
-		return time.Monday, true
-	case "tue":
-		return time.Tuesday, true
-	case "wed":
-		return time.Wednesday, true
-	case "thu":
-		return time.Thursday, true
-	case "fri":
-		return time.Friday, true
-	case "sat":
-		return time.Saturday, true
-	default:
-		return time.Sunday, false
-	}
-}
-
-func parsePositiveInt(s string, fallback int) int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return fallback
-	}
-	n := 0
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return fallback
-		}
-		n = n*10 + int(r-'0')
-	}
-	return n
-}
-
-func firstString(values []string) string {
-	if len(values) == 0 {
-		return ""
-	}
-	return values[0]
-}
-
-func dateAt(year int, month time.Month, day, hour, minute int, loc *time.Location) time.Time {
-	return time.Date(year, month, day, hour, minute, 0, 0, loc)
-}
-
-func monthlyCandidate(year int, month time.Month, day, hour, minute int, loc *time.Location) time.Time {
-	if day < 1 {
-		day = 1
-	}
-	if max := daysInMonth(year, month, loc); day > max {
-		day = max
-	}
-	return dateAt(year, month, day, hour, minute, loc)
-}
-
-func daysInMonth(year int, month time.Month, loc *time.Location) int {
-	return time.Date(year, month+1, 0, 0, 0, 0, 0, loc).Day()
-}
-
-func weekStart(t time.Time) time.Time {
-	dayOffset := (int(t.Weekday()) + 6) % 7
-	base := dateAt(t.Year(), t.Month(), t.Day(), 0, 0, t.Location())
-	return base.AddDate(0, 0, -dayOffset)
-}
-
-func weeksBetween(a, b time.Time) int {
-	if b.Before(a) {
-		a, b = b, a
-	}
-	return int(b.Sub(a).Hours() / 24 / 7)
-}
+// Cross-midnight window: 22:00-06:00
 
 // ── Wails bindings on App ───────────────────────────────────────────────────
 
 // HeartbeatListTasks returns all heartbeat tasks.
-func (a *App) HeartbeatListTasks() []HeartbeatTask {
-	if a.heartbeat == nil {
-		return []HeartbeatTask{}
-	}
-	return a.heartbeat.ListTasks()
-}
 
 // HeartbeatReloadTasks reloads tasks from disk and returns them.
-func (a *App) HeartbeatReloadTasks() []HeartbeatTask {
-	if a.heartbeat == nil {
-		return []HeartbeatTask{}
-	}
-	return a.heartbeat.ReloadTasks()
-}
 
 // HeartbeatReloadConfig returns tasks with the CAS token used by current UIs.
 func (a *App) HeartbeatReloadConfig() HeartbeatConfigView {

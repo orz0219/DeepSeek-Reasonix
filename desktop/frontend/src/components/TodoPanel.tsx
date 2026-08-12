@@ -48,10 +48,14 @@ export function TodoPanel({
   stateKey,
   todos,
   onDismiss,
+  finished = false,
+  signedSteps = [],
 }: {
   stateKey: string;
   todos: Todo[];
   onDismiss: () => void;
+  finished?: boolean;
+  signedSteps?: string[];
 }) {
   const t = useT();
   const currentRef = useRef<HTMLLIElement | null>(null);
@@ -96,7 +100,7 @@ export function TodoPanel({
           >
             {open ? t("common.collapse") : t("common.expand")}
           </PromptHeaderAction>
-          {allDone && (
+          {(allDone || finished) && (
             <PromptHeaderAction onClick={onDismiss}>
               {t("common.close")}
             </PromptHeaderAction>
@@ -108,17 +112,19 @@ export function TodoPanel({
         <ul className="todobar__list">
           {todos.map((todo, index) => {
             const status = normalizeTodoStatus(todo.status);
+            const signed = finished && signedSteps.some((s) => stepMatchesTodo(s, todo));
+            const done = status === "completed" || signed;
             return (
               <li
                 key={index}
                 ref={status === "in_progress" ? currentRef : undefined}
-                className={`todobar__item todobar__item--${status}${todo.level ? " todobar__item--sub" : ""}`}
+                className={`todobar__item ${finished ? (done ? "todobar__item--completed" : "todobar__item--stale") : `todobar__item--${status}`}${todo.level ? " todobar__item--sub" : ""}`}
               >
-                <span className={`todobar__status todobar__status--${status}`}>
-                  {t(todoStatusLabelKey(status))}
+                <span className={`todobar__status ${finished ? (done ? "todobar__status--completed" : "todobar__status--stale") : `todobar__status--${status}`}`}>
+                  {t(todoStatusLabelKey(done ? "completed" : status))}
                 </span>
                 <span className="todobar__text">
-                  {status === "in_progress" && todo.activeForm ? todo.activeForm : todo.content}
+                  {status === "in_progress" && !done && todo.activeForm ? todo.activeForm : todo.content}
                 </span>
               </li>
             );
@@ -149,4 +155,12 @@ function todoStatusLabelKey(status: "pending" | "in_progress" | "completed"): "t
     default:
       return "todo.pending";
   }
+}
+
+// stepMatchesTodo resolves a complete_step citation to a todo the same way the
+// host evidence matcher does: exact content/activeForm, or mutual containment.
+function stepMatchesTodo(step: string, todo: Todo): boolean {
+  if (!step || !todo.content) return false;
+  if (step === todo.content || (todo.activeForm ? step === todo.activeForm : false)) return true;
+  return step.includes(todo.content) || todo.content.includes(step);
 }

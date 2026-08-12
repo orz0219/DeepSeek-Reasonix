@@ -15,10 +15,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"runtime"
-	"slices"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -2050,202 +2047,14 @@ func build(ctx context.Context, opts Options) (*BuildResult, error) {
 // applyUnifiedProviderToolSurface restricts Schemas/ContractEntries to the
 // shared core + host-control tools. use_capability can still Get every
 // registered tool, including those hidden from the provider schema.
-func applyUnifiedProviderToolSurface(reg *tool.Registry) {
-	if reg == nil {
-		return
-	}
-	allow := make([]string, 0, 16)
-	for _, name := range UnifiedProviderToolNames() {
-		if _, ok := reg.Get(name); ok {
-			allow = append(allow, name)
-		}
-	}
-	// Always keep use_capability if somehow only that remains.
-	if len(allow) == 0 {
-		if _, ok := reg.Get("use_capability"); ok {
-			allow = []string{"use_capability"}
-		}
-	}
-	reg.SetProviderVisibleTools(allow)
-}
+
+// Always keep use_capability if somehow only that remains.
 
 // effectivePlannerModel centralizes planner precedence. Every role setting
 // builds the configured planner so later in-place switches retain the same
 // runtime; the per-turn TaskPolicy decides whether it is invoked.
-func effectivePlannerModel(cfg *config.Config, opts Options) string {
-	if cfg == nil || opts.Ablation.Off(ablation.Planner) {
-		return ""
-	}
-	return strings.TrimSpace(cfg.Agent.PlannerModel)
-}
 
-func rememberPermissionRule(workspaceRoot, rule string) control.RememberResult {
-	path := rememberPermissionConfigPath(workspaceRoot)
-	result := control.RememberResult{Rule: strings.TrimSpace(rule), Path: path}
-	unlock, err := config.LockConfigFileEdits(path)
-	if err != nil {
-		slog.Warn("lock config for permission rule", "path", path, "err", err)
-		result.Err = err
-		return result
-	}
-	defer unlock()
-
-	edit, err := config.LoadForEditReadOnlyStrict(path)
-	if err != nil {
-		slog.Warn("load config for permission rule", "path", path, "err", err)
-		result.Err = err
-		return result
-	}
-	if coveredBy := coveredPermissionRule(edit.Permissions.Allow, result.Rule); coveredBy != "" {
-		result.CoveredBy = coveredBy
-		return result
-	}
-	edit.Permissions.Allow = pruneCoveredPermissionRules(edit.Permissions.Allow, result.Rule)
-	if err := edit.AddPermissionRule("allow", rule); err != nil {
-		slog.Warn("persist permission rule", "rule", rule, "err", err)
-		result.Err = err
-		return result
-	}
-	if err := config.WritePermissionsAllow(path, edit.Permissions.Allow); err != nil {
-		slog.Warn("save config after permission rule", "err", err)
-		result.Err = err
-		return result
-	}
-	result.Saved = true
-	return result
-}
-
-func rememberPermissionConfigPath(workspaceRoot string) string {
-	workspaceRoot = strings.TrimSpace(workspaceRoot)
-	if workspaceRoot != "" {
-		return filepath.Join(workspaceRoot, "reasonix.toml")
-	}
-	path := config.SourcePath()
-	if path == "" {
-		path = "reasonix.toml" // match Config.Save() fallback
-	}
-	return path
-}
-
-func rememberPlanModeReadOnlyCommand(workspaceRoot, prefix string) control.PlanModeReadOnlyCommandTrustResult {
-	prefix = strings.TrimSpace(prefix)
-	path := rememberPermissionConfigPath(workspaceRoot)
-	result := control.PlanModeReadOnlyCommandTrustResult{Prefix: prefix, Path: path}
-	if prefix == "" {
-		result.Err = fmt.Errorf("empty plan-mode read-only command prefix")
-		return result
-	}
-	unlock, err := config.LockConfigFileEdits(path)
-	if err != nil {
-		result.Err = err
-		return result
-	}
-	defer unlock()
-	edit, err := config.LoadForEditReadOnlyStrict(path)
-	if err != nil {
-		result.Err = err
-		return result
-	}
-	if coveredBy := coveredPlanModeReadOnlyCommand(edit.Agent.PlanModeReadOnlyCommands, prefix); coveredBy != "" {
-		result.CoveredBy = coveredBy
-		return result
-	}
-	edit.Agent.PlanModeReadOnlyCommands = append(edit.Agent.PlanModeReadOnlyCommands, prefix)
-	if err := edit.SaveTo(path); err != nil {
-		slog.Warn("persist plan-mode read-only command trust", "prefix", prefix, "err", err)
-		result.Err = err
-		return result
-	}
-	result.Saved = true
-	return result
-}
-
-func coveredPlanModeReadOnlyCommand(existing []string, candidate string) string {
-	candidateFields := strings.Fields(strings.TrimSpace(candidate))
-	if len(candidateFields) == 0 {
-		return ""
-	}
-	for _, item := range existing {
-		itemFields := strings.Fields(strings.TrimSpace(item))
-		if len(itemFields) == 0 || len(itemFields) > len(candidateFields) {
-			continue
-		}
-		matches := true
-		for i, field := range itemFields {
-			if candidateFields[i] != field {
-				matches = false
-				break
-			}
-		}
-		if matches {
-			return strings.Join(itemFields, " ")
-		}
-	}
-	return ""
-}
-
-func coveredPermissionRule(rules []string, rule string) string {
-	for _, existing := range rules {
-		if permission.RuleCoversString(existing, rule) {
-			return strings.TrimSpace(existing)
-		}
-	}
-	return ""
-}
-
-func pruneCoveredPermissionRules(rules []string, rule string) []string {
-	out := rules[:0]
-	for _, existing := range rules {
-		if strings.TrimSpace(existing) == "" || permission.RuleCoversString(rule, existing) {
-			continue
-		}
-		out = append(out, existing)
-	}
-	return out
-}
-
-func firstNonEmpty(vals ...string) string {
-	for _, v := range vals {
-		if strings.TrimSpace(v) != "" {
-			return strings.TrimSpace(v)
-		}
-	}
-	return ""
-}
-
-func subagentModelRef(cfg *config.Config, sk skill.Skill) string {
-	if cfg != nil {
-		for _, key := range SubagentModelKeys(sk.Name) {
-			if m := strings.TrimSpace(cfg.Agent.SubagentModels[key]); m != "" {
-				return m
-			}
-		}
-	}
-	if m := strings.TrimSpace(sk.Model); m != "" {
-		return m
-	}
-	if cfg == nil {
-		return ""
-	}
-	return strings.TrimSpace(cfg.Agent.SubagentModel)
-}
-
-func subagentEffortRef(cfg *config.Config, sk skill.Skill) string {
-	if cfg != nil {
-		for _, key := range SubagentModelKeys(sk.Name) {
-			if e := strings.TrimSpace(cfg.Agent.SubagentEfforts[key]); e != "" {
-				return e
-			}
-		}
-	}
-	if e := strings.TrimSpace(sk.Effort); e != "" {
-		return e
-	}
-	if cfg == nil {
-		return ""
-	}
-	return strings.TrimSpace(cfg.Agent.SubagentEffort)
-}
+// match Config.Save() fallback
 
 // SubagentModelKeys returns the cfg.Agent.SubagentModels/SubagentEfforts map
 // keys that resolve for a subagent name, in precedence order: the exact name
@@ -2254,110 +2063,6 @@ func subagentEffortRef(cfg *config.Config, sk skill.Skill) string {
 // config must reach it). Any surface that reads OR clears these maps must
 // iterate this same key set — an exact-key delete leaves an alias entry
 // silently active.
-func SubagentModelKeys(name string) []string {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return nil
-	}
-	keys := []string{name}
-	for _, alias := range []string{
-		strings.ReplaceAll(name, "-", "_"),
-		strings.ReplaceAll(name, "_", "-"),
-	} {
-		if alias == "" {
-			continue
-		}
-		seen := slices.Contains(keys, alias)
-		if !seen {
-			keys = append(keys, alias)
-		}
-	}
-	return keys
-}
-
-func currentWorkspacePromptLine(root string) string {
-	if root == "" {
-		return ""
-	}
-	return "Current workspace: " + strconv.Quote(root)
-}
-
-func resolveWorkspaceRoot(explicit string) string {
-	if explicit != "" {
-		return explicit
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return ""
-	}
-	if root, ok := nearestGitRoot(wd); ok {
-		return root
-	}
-	return wd
-}
-
-func normalizeAdditionalDirs(root string, dirs []string) ([]string, error) {
-	if len(dirs) == 0 {
-		return nil, nil
-	}
-	base := strings.TrimSpace(root)
-	if base == "" {
-		base = "."
-	}
-	if !filepath.IsAbs(base) {
-		abs, err := filepath.Abs(base)
-		if err != nil {
-			return nil, fmt.Errorf("resolve workspace root: %w", err)
-		}
-		base = abs
-	}
-
-	var out []string
-	for _, raw := range dirs {
-		dir := strings.TrimSpace(raw)
-		if dir == "" {
-			continue
-		}
-		if !filepath.IsAbs(dir) {
-			dir = filepath.Join(base, dir)
-		}
-		dir, err := filepath.Abs(filepath.Clean(dir))
-		if err != nil {
-			return nil, fmt.Errorf("resolve additional directory %q: %w", raw, err)
-		}
-		real, err := filepath.EvalSymlinks(dir)
-		if err != nil {
-			return nil, fmt.Errorf("resolve additional directory %q: %w", raw, err)
-		}
-		info, err := os.Stat(real)
-		if err != nil {
-			return nil, fmt.Errorf("inspect additional directory %q: %w", raw, err)
-		}
-		if !info.IsDir() {
-			return nil, fmt.Errorf("additional path %q is not a directory", raw)
-		}
-		out = appendUniquePaths(out, filepath.Clean(real))
-	}
-	return out, nil
-}
-
-func appendUniquePaths(base []string, extra ...string) []string {
-	out := append([]string(nil), base...)
-	seen := make(map[string]struct{}, len(out)+len(extra))
-	for _, path := range out {
-		seen[pathComparisonKey(path)] = struct{}{}
-	}
-	for _, path := range extra {
-		path = filepath.Clean(path)
-		key := pathComparisonKey(path)
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		out = append(out, path)
-	}
-	return out
-}
 
 // RuntimeForbidReadRoots returns the configured deny roots plus Reasonix's
 // global credential FILE when it exists. It also registers the corresponding
@@ -2369,168 +2074,20 @@ func appendUniquePaths(base []string, extra ...string) []string {
 // file, so readers, shell commands, and MCP servers must not be able to recover
 // them even when the optional broad sensitive-file denylist is off. Project
 // .env files retain their existing behavior.
-func RuntimeForbidReadRoots(cfg *config.Config, root string) []string {
-	if cfg == nil {
-		return nil
-	}
-	secrets.RegisterCredentialEnvKeys(cfg.CredentialEnvNames())
-	base := cfg.ForbidReadRootsForRoot(root)
-	credentialPath := strings.TrimSpace(config.UserCredentialsPath())
-	if credentialPath == "" {
-		return append([]string(nil), base...)
-	}
-	info, err := os.Stat(credentialPath)
-	if err != nil || info.IsDir() {
-		return append([]string(nil), base...)
-	}
-	if real, err := filepath.EvalSymlinks(credentialPath); err == nil {
-		credentialPath = real
-	}
-	return appendUniquePaths(base, credentialPath)
-}
-
-func pathComparisonKey(path string) string {
-	path = filepath.Clean(path)
-	if abs, err := filepath.Abs(path); err == nil {
-		path = abs
-	}
-	if real, err := filepath.EvalSymlinks(path); err == nil {
-		path = real
-	}
-	if runtime.GOOS == "windows" {
-		return strings.ToLower(path)
-	}
-	return path
-}
-
-func nearestGitRoot(start string) (string, bool) {
-	dir, err := filepath.Abs(start)
-	if err != nil {
-		dir = filepath.Clean(start)
-	}
-	for {
-		if isGitMarker(filepath.Join(dir, ".git")) {
-			return dir, true
-		}
-		next := filepath.Dir(dir)
-		if next == dir {
-			return "", false
-		}
-		dir = next
-	}
-}
-
-func isGitMarker(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && (fi.IsDir() || fi.Mode().IsRegular())
-}
-
-func newSubagentStore(sessionDir string, parentLive func(sessionPath string) bool) (*agent.SubagentStore, error) {
-	sessionDir = strings.TrimSpace(sessionDir)
-	if sessionDir == "" {
-		return nil, nil
-	}
-	store := agent.NewSubagentStore(filepath.Join(sessionDir, "subagents")).WithParentSessionProbe(parentLive)
-	if _, err := store.CleanupStaleRunning(); err != nil {
-		return nil, fmt.Errorf("cleanup stale subagents: %w", err)
-	}
-	return store, nil
-}
-
-func subagentEffectiveIdentity(cfg *config.Config, resolver provider.Resolver, baseModelRef string, base *config.ProviderEntry, modelRef, effort string) (string, string) {
-	var entry config.ProviderEntry
-	if base != nil {
-		entry = *base
-	}
-	ref := strings.TrimSpace(modelRef)
-	explicit := ref != ""
-	if !explicit {
-		ref = strings.TrimSpace(baseModelRef)
-	}
-	if explicit && cfg != nil && ref != "" {
-		if resolved, ok := cfg.ResolveModel(ref); ok {
-			entry = *resolved
-		} else if resolved := syntheticEntryFromResolver(resolver, ref); strings.TrimSpace(resolved.Name) != "" {
-			entry = *resolved
-		} else {
-			entry.Model = ref
-		}
-	} else if explicit {
-		if resolved := syntheticEntryFromResolver(resolver, ref); strings.TrimSpace(resolved.Name) != "" {
-			entry = *resolved
-		} else {
-			entry.Model = ref
-		}
-	} else if base == nil && ref != "" {
-		if resolved := syntheticEntryFromResolver(resolver, ref); strings.TrimSpace(resolved.Name) != "" {
-			entry = *resolved
-		} else if cfg != nil {
-			if resolved, ok := cfg.ResolveModel(ref); ok {
-				entry = *resolved
-			}
-		}
-	}
-	if rawEffort := strings.TrimSpace(effort); rawEffort != "" {
-		if normalized, err := config.NormalizeEffort(&entry, rawEffort); err == nil {
-			entry.Effort = normalized
-		} else {
-			entry.Effort = rawEffort
-		}
-	}
-	modelID := strings.TrimSpace(entry.Name)
-	model := strings.TrimSpace(entry.Model)
-	if modelID != "" && model != "" {
-		modelID += "/" + model
-	} else if model != "" {
-		modelID = model
-	} else if modelID == "" {
-		modelID = ref
-	}
-	return modelID, strings.TrimSpace(config.EffectiveEffort(&entry))
-}
 
 // NewProvider builds a provider.Provider from a configured entry. Exported so
 // custom assemblers (e.g. the ACP per-session factory) can reuse it without
 // going through the full Build.
-func NewProvider(e *config.ProviderEntry) (provider.Provider, error) {
-	return NewProviderWithProxy(e, netclient.ProxySpec{Mode: netclient.ModeAuto})
-}
 
 // NewProviderWithProxy builds a provider.Provider with the configured ordinary
 // network proxy settings.
-func NewProviderWithProxy(e *config.ProviderEntry, proxy netclient.ProxySpec) (provider.Provider, error) {
-	return provider.New(e.Kind, provider.Config{
-		Name:    e.Name,
-		BaseURL: e.BaseURL,
-		Model:   e.Model,
-		APIKey:  e.APIKey(),
-		// Pass the key's env var so auth failures can name where to fix it, plus
-		// provider-kind-specific knobs. EffectiveEffort applies a configured
-		// default_effort when the user has not explicitly selected /effort.
-		Extra: map[string]any{
-			"api_key_env":        e.APIKeyEnv,
-			"api_key_source":     e.APIKeySourceLabel(),
-			"thinking":           e.Thinking,
-			"effort":             config.EffectiveEffort(e),
-			"supported_efforts":  e.SupportedEfforts,
-			"reasoning_protocol": config.ReasoningProtocolForEntry(e),
-			"max_output_tokens":  e.MaxOutputTokens,
-			"chat_url":           e.ChatURL,
-			"request_url":        e.RequestURL,
-			"headers":            e.Headers,
-			"extra_body":         e.ExtraBody,
-			"auth_header":        e.AuthHeader,
-			"proxy_spec":         proxy,
-			"vision":             config.EffectiveVision(e),
-			"vision_detail":      e.VisionDetail,
-			"web_search":         config.EffectiveWebSearch(e),
-			"mode":               e.ResponsesMode,
-			// Keep nil as nil so the responses provider can vendor-detect its
-			// default instead of accidentally treating every endpoint as stateful.
-			"stateful": e.ResponsesStateful,
-		},
-	})
-}
+
+// Pass the key's env var so auth failures can name where to fix it, plus
+// provider-kind-specific knobs. EffectiveEffort applies a configured
+// default_effort when the user has not explicitly selected /effort.
+
+// Keep nil as nil so the responses provider can vendor-detect its
+// default instead of accidentally treating every endpoint as stateful.
 
 // addBuiltins adds enabled built-in tools to reg. An empty list means all of
 // them. writeRoots confines the file-writing built-ins to the workspace: after
@@ -2544,350 +2101,50 @@ func NewProviderWithProxy(e *config.ProviderEntry, proxy netclient.ProxySpec) (p
 // and makes bash warn when a command references them. managedConfig names the
 // Reasonix-owned config files writable outside writeRoots after a fresh
 // per-write human approval.
-func addBuiltins(reg *tool.Registry, enabled, writeRoots []string, bashSpec sandbox.Spec, bashTimeout time.Duration, searchSpec builtin.SearchSpec, stderr io.Writer, workDir string, proxySpec netclient.ProxySpec, forbidReadRoots []string, readPathResolver *builtin.PathResolver, sessionGuard builtin.SessionDataGuard, managedConfig builtin.ManagedConfigPaths, overlay builtin.FileOverlay, terminal builtin.TerminalRunner, sessionTemp *sessiontemp.Manager, fileWriteReceipt func(path string, hadPrior bool, prior []byte)) {
-	// If a workspace directory is set, use workspace-bound tools that resolve
-	// paths relative to that directory. Otherwise fall back to the process-cwd
-	// compile-time builtins.
-	if workDir != "" {
-		ws := builtin.Workspace{Dir: workDir, WriteRoots: writeRoots, ForbidReadRoots: forbidReadRoots, Bash: bashSpec, BashTimeout: bashTimeout, Search: searchSpec, ProxySpec: proxySpec, ReadPaths: readPathResolver, SessionGuard: sessionGuard, ManagedConfig: managedConfig, FileOverlay: overlay, Terminal: terminal, SessionTemp: sessionTemp, FileWriteReceipt: fileWriteReceipt}
-		for _, t := range ws.Tools(enabled...) {
-			reg.Add(t)
-		}
-		return
-	}
 
-	if len(enabled) == 0 {
-		for _, t := range tool.Builtins() {
-			reg.Add(t)
-		}
-	} else {
-		for _, name := range enabled {
-			if t, ok := tool.LookupBuiltin(name); ok {
-				reg.Add(t)
-			} else {
-				fmt.Fprintf(stderr, "warning: unknown built-in tool %q\n", name)
-			}
-		}
-	}
-	// Replace the unconfined defaults with confined instances (registry order is
-	// preserved on replace): file-writers bound to the workspace, read tools
-	// bound to forbid-read roots, bash to the OS sandbox, web_fetch to the proxy.
-	// Only replace tools actually enabled/present.
-	bashTool := builtin.ConfineBash(bashSpec, sessionGuard, bashTimeout)
-	if rebound, ok := builtin.BindSessionTemp(bashTool, sessionTemp); ok {
-		bashTool = rebound
-	}
-	searchTool := builtin.ConfineSearch(searchSpec, bashSpec, forbidReadRoots)
-	if rebound, ok := builtin.BindSessionTemp(searchTool, sessionTemp); ok {
-		searchTool = rebound
-	}
-	writers := builtin.ConfineWriters(writeRoots, sessionGuard, managedConfig)
-	for i, writer := range writers {
-		writers[i] = builtin.BindFileWriteReceipt(writer, fileWriteReceipt)
-	}
-	confined := append(writers,
-		bashTool,
-		searchTool,
-		builtin.ConfineWebFetch(proxySpec))
-	confined = append(confined, builtin.ConfineReaders(forbidReadRoots)...)
-	for _, t := range confined {
-		if _, ok := reg.Get(t.Name()); ok {
-			reg.Add(t)
-		}
-	}
-}
+// If a workspace directory is set, use workspace-bound tools that resolve
+// paths relative to that directory. Otherwise fall back to the process-cwd
+// compile-time builtins.
+
+// Replace the unconfined defaults with confined instances (registry order is
+// preserved on replace): file-writers bound to the workspace, read tools
+// bound to forbid-read roots, bash to the OS sandbox, web_fetch to the proxy.
+// Only replace tools actually enabled/present.
 
 // partitionByTier splits configured plugin entries into eager (block boot until
 // ready) and background (placeholder + start spawn now). Entries with an empty,
 // legacy lazy, or unrecognised tier land in background.
-func partitionByTier(entries []config.PluginEntry) (eager, bg []config.PluginEntry) {
-	for _, e := range entries {
-		switch e.ResolvedTier() {
-		case "eager":
-			eager = append(eager, e)
-		default:
-			bg = append(bg, e)
-		}
-	}
-	return eager, bg
-}
 
 // PluginSpecs maps configured plugin entries to plugin.Spec, expanding ${VAR}
 // references. Exported so custom assemblers can connect the config's plugins
 // alongside their own (e.g. ACP's per-session MCP servers).
-func PluginSpecs(entries []config.PluginEntry) []plugin.Spec {
-	return PluginSpecsForRoot(entries, "")
-}
 
 // PluginSpecsForRoot maps configured plugin entries to plugin.Spec and applies
 // workspace-aware compatibility overrides for known cwd-sensitive servers.
-func PluginSpecsForRoot(entries []config.PluginEntry, workspaceRoot string) []plugin.Spec {
-	return PluginSpecsForRootWithOptions(entries, workspaceRoot, PluginSpecOptions{})
-}
 
 // PluginSpecsForRootWithOptions maps configured plugin entries to plugin.Spec
 // and injects runtime policy such as the global MCP call timeout.
-func PluginSpecsForRootWithOptions(entries []config.PluginEntry, workspaceRoot string, opts PluginSpecOptions) []plugin.Spec {
-	specs := make([]plugin.Spec, len(entries))
-	for i, e := range entries {
-		specs[i] = pluginSpecFromEntryWithOptions(e, workspaceRoot, opts)
-	}
-	return specs
-}
 
-func pluginSpecFromEntryWithOptions(e config.PluginEntry, workspaceRoot string, opts PluginSpecOptions) plugin.Spec {
-	e = e.ExpandedPlugin() // resolve ${VAR} / ${VAR:-default} from the environment
-	configSource := strings.TrimSpace(string(e.Source))
-	if configSource == "" {
-		configSource = opts.ConfigSource
-	}
-	spec := plugin.ApplyKnownOverrides(plugin.Spec{
-		Name:                  e.Name,
-		Package:               strings.TrimSpace(opts.PackageOwners[e.Name]),
-		Type:                  e.Type,
-		Command:               e.Command,
-		Args:                  e.Args,
-		Env:                   e.Env,
-		URL:                   e.URL,
-		Headers:               e.Headers,
-		DefaultStartupTimeout: opts.DefaultStartupTimeout,
-		StartupTimeout:        secondsDuration(e.StartupTimeoutSeconds),
-		DefaultCallTimeout:    opts.DefaultCallTimeout,
-		CallTimeout:           secondsDuration(e.CallTimeoutSeconds),
-		ToolTimeouts:          toolTimeoutDurations(e.ToolTimeoutSeconds),
-		WorkspaceRoot:         strings.TrimSpace(workspaceRoot),
-		LaunchManager:         opts.LaunchManager,
-		ConfigSource:          configSource,
-		Authorized:            e.Source.UserAuthorized(),
-		OAuthHTTPClient:       opts.OAuthHTTPClient,
-	}, workspaceRoot)
-	if e.Source.ProjectScoped() && strings.TrimSpace(spec.Dir) == "" {
-		spec.Dir = workspaceRoot
-	}
-	applyMCPIsolation(&spec, workspaceRoot, opts)
-	return spec
-}
+// resolve ${VAR} / ${VAR:-default} from the environment
 
-func pluginPackageOwners(cfg *config.Config) map[string]string {
-	out := map[string]string{}
-	if cfg == nil {
-		return out
-	}
-	for _, configured := range cfg.Plugins {
-		if owner, ok := cfg.PluginPackageOwner(configured.Name); ok {
-			out[configured.Name] = owner
-		}
-	}
-	return out
-}
+// A valid cached schema also supplies stable bindings for an on-demand
+// package server before it is connected. The skill can then route through
+// use_capability without inventing Reasonix's canonical name.
 
-func skillMCPBindings(sk skill.Skill, reg *tool.Registry, specs []plugin.Spec, cachedTools map[string][]plugin.CachedTool, cacheKeyOK map[string]bool) []tool.MCPBinding {
-	var out []tool.MCPBinding
-	liveServers := map[string]bool{}
-	if reg != nil {
-		bindings := reg.MCPBindings()
-		out = make([]tool.MCPBinding, 0, len(bindings))
-		for _, binding := range bindings {
-			liveServers[binding.Server] = true
-			if binding.Package == sk.Plugin {
-				out = append(out, binding)
-			}
-		}
-	}
-	// A valid cached schema also supplies stable bindings for an on-demand
-	// package server before it is connected. The skill can then route through
-	// use_capability without inventing Reasonix's canonical name.
-	for _, spec := range specs {
-		if spec.Package != sk.Plugin || liveServers[spec.Name] || !cacheKeyOK[spec.Name] {
-			continue
-		}
-		for _, cached := range cachedTools[spec.Name] {
-			visible := cached.Name
-			if spec.StripRawPrefix != "" {
-				visible = strings.TrimPrefix(visible, spec.StripRawPrefix)
-			}
-			out = append(out, tool.MCPBinding{
-				Package:      spec.Package,
-				Server:       spec.Name,
-				RawName:      cached.Name,
-				VisibleName:  visible,
-				CallableName: plugin.ModelToolName(spec.Name, visible),
-				CapabilityID: "mcp-tool:" + spec.Name + "/" + cached.Name,
-			})
-		}
-	}
-	return out
-}
+// Authorized user MCP defaults to trusted host process mode. Confined mode
+// is opt-in for internal managed deployments/tests and is never selected by
+// ordinary install paths.
 
-func applyMCPIsolation(spec *plugin.Spec, workspaceRoot string, opts PluginSpecOptions) {
-	if spec == nil {
-		return
-	}
-	// Authorized user MCP defaults to trusted host process mode. Confined mode
-	// is opt-in for internal managed deployments/tests and is never selected by
-	// ordinary install paths.
-	if spec.ProcessMode == "" {
-		spec.ProcessMode = plugin.MCPProcessHost
-	}
-	if strings.TrimSpace(opts.StateHome) == "" {
-		return
-	}
-	stateDir := plugin.MCPStateDir(opts.StateHome, workspaceRoot, spec.Name)
-	spec.StateDir = stateDir
-	if spec.ResolvedProcessMode() != plugin.MCPProcessConfined {
-		// Host mode still gets a private state/cache/temp tree; only the OS
-		// command sandbox is omitted so local app integrations keep working.
-		return
-	}
-	writerRoots := appendUniquePaths([]string{stateDir}, opts.WriterRoots...)
-	readerRoots := []string{workspaceRoot}
-	if home, err := os.UserHomeDir(); err == nil {
-		readerRoots = appendUniquePaths(readerRoots, home)
-	}
-	spec.Sandbox = sandbox.Spec{
-		Mode: "enforce", WriteRoots: writerRoots,
-		ReadRoots:              readerRoots,
-		AppContainerWriteRoots: append([]string(nil), writerRoots...),
-		ForbidReadRoots:        append([]string(nil), opts.ForbidReadRoots...),
-		Network:                opts.Network, MinimalWrites: true,
-	}
-}
-
-func secondsDuration(seconds int) time.Duration {
-	if seconds <= 0 {
-		return 0
-	}
-	return time.Duration(seconds) * time.Second
-}
-
-func toolTimeoutDurations(seconds map[string]int) map[string]time.Duration {
-	if len(seconds) == 0 {
-		return nil
-	}
-	out := make(map[string]time.Duration, len(seconds))
-	for name, sec := range seconds {
-		name = strings.TrimSpace(name)
-		if name == "" || sec <= 0 {
-			continue
-		}
-		out[name] = time.Duration(sec) * time.Second
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-func applyKnownPluginOverrides(specs []plugin.Spec, workspaceRoot string) []plugin.Spec {
-	out := make([]plugin.Spec, len(specs))
-	for i, spec := range specs {
-		out[i] = plugin.ApplyKnownOverrides(spec, workspaceRoot)
-	}
-	return out
-}
-
-func applyDefaultMCPCallTimeout(specs []plugin.Spec, timeout time.Duration) []plugin.Spec {
-	if len(specs) == 0 || timeout <= 0 {
-		return specs
-	}
-	out := make([]plugin.Spec, len(specs))
-	for i, spec := range specs {
-		out[i] = spec
-		if out[i].DefaultCallTimeout <= 0 {
-			out[i].DefaultCallTimeout = timeout
-		}
-	}
-	return out
-}
-
-func applyDefaultMCPStartupTimeout(specs []plugin.Spec, timeout time.Duration) []plugin.Spec {
-	if len(specs) == 0 || timeout <= 0 {
-		return specs
-	}
-	out := make([]plugin.Spec, len(specs))
-	for i, spec := range specs {
-		out[i] = spec
-		if out[i].DefaultStartupTimeout <= 0 {
-			out[i].DefaultStartupTimeout = timeout
-		}
-	}
-	return out
-}
+// Host mode still gets a private state/cache/temp tree; only the OS
+// command sandbox is omitted so local app integrations keep working.
 
 // autoShellPrefer reports whether [tools.shell] left the interpreter to
 // auto-detection, so the "fell back to PowerShell" hint is suppressed once the
 // user has explicitly chosen a shell.
-func autoShellPrefer(prefer string) bool {
-	p := strings.ToLower(strings.TrimSpace(prefer))
-	return p == "" || p == "auto"
-}
 
 // MCPStartupNotice formats the warning shown when configured MCP servers failed
 // to connect, naming the first few; ok is false when none failed.
-func MCPStartupNotice(failures []plugin.Failure) (text, detail string, ok bool) {
-	if len(failures) == 0 {
-		return "", "", false
-	}
-	names := make([]string, 0, min(len(failures), 3))
-	details := make([]string, 0, len(failures))
-	for i, f := range failures {
-		if i >= 3 {
-			continue
-		}
-		names = append(names, f.Name)
-	}
-	for _, f := range failures {
-		line := f.Name
-		if strings.TrimSpace(f.Error) != "" {
-			line += ": " + strings.TrimSpace(f.Error)
-		}
-		details = append(details, line)
-	}
-	more := ""
-	if len(failures) > len(names) {
-		more = fmt.Sprintf(" (+%d more)", len(failures)-len(names))
-	}
-	return "Some MCP servers failed to start; run /mcp for details.", fmt.Sprintf("%d MCP server(s) failed to start: %s%s\n%s",
-		len(failures), strings.Join(names, ", "), more, strings.Join(details, "\n")), true
-}
 
 // LSPSpecs returns the language → server map: the built-in defaults overlaid with
 // any user overrides. A user entry may set only the fields it wants to change;
 // empty fields keep the default for that language.
-func LSPSpecs(cfg config.LSPConfig) map[string]lsp.ServerSpec {
-	specs := lsp.DefaultSpecs()
-	for lang, s := range cfg.Servers {
-		spec := specs[lang]
-		if s.Command != "" {
-			spec.Command = s.Command
-		}
-		if s.Args != nil {
-			spec.Args = s.Args
-		}
-		if s.Env != nil {
-			spec.Env = s.Env
-		}
-		if s.LanguageID != "" {
-			spec.LanguageID = s.LanguageID
-		}
-		if s.Extensions != nil {
-			spec.Extensions = s.Extensions
-		}
-		if s.InstallHint != "" {
-			spec.InstallHint = s.InstallHint
-		}
-		if spec.LanguageID == "" {
-			spec.LanguageID = lang
-		}
-		specs[lang] = spec
-	}
-	return specs
-}
-
-func providerNames(cfg *config.Config) string {
-	names := make([]string, len(cfg.Providers))
-	for i, p := range cfg.Providers {
-		names[i] = p.Name
-	}
-	return strings.Join(names, "/")
-}

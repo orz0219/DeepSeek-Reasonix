@@ -398,619 +398,65 @@ func commandFieldsHighRisk(fields []string) bool {
 	return false
 }
 
-func gitCommandHighRisk(args []string) bool {
-	if containsAny(args, "push", "clean", "prune", "filter-branch", "filter-repo") {
-		return true
-	}
-	if containsAny(args, "gc") {
-		return true
-	}
-	if containsAny(args, "reset") && containsAny(args, "--hard", "--merge", "--keep") {
-		return true
-	}
-	if containsAny(args, "checkout") {
-		// `git checkout .` and `git checkout path` discard worktree contents even
-		// without -f/--. Prefer the unambiguous switch command for safe branch
-		// changes; keep all checkout forms behind confirmation.
-		return true
-	}
-	if containsAny(args, "switch") && containsAny(args, "--discard-changes") {
-		return true
-	}
-	if containsAny(args, "restore") && (!containsAny(args, "--staged") || containsAny(args, "--worktree")) {
-		// Restoring only the index is reversible from the worktree; restoring the
-		// worktree can discard the user's uncommitted contents.
-		return true
-	}
-	if containsAny(args, "branch") && containsAny(args, "-d", "--delete", "-f", "--force") {
-		return true
-	}
-	if containsAny(args, "tag") && containsAny(args, "-d", "--delete", "-f", "--force") {
-		return true
-	}
-	if containsAny(args, "stash") && containsAny(args, "clear", "drop") {
-		return true
-	}
-	if containsAny(args, "reflog") && containsAny(args, "expire", "delete") {
-		return true
-	}
-	if containsAny(args, "worktree") && containsAny(args, "remove", "prune") {
-		return true
-	}
-	if containsAny(args, "update-ref") && containsAny(args, "-d", "--delete", "--stdin") {
-		return true
-	}
-	if containsAny(args, "remote") && containsAny(args, "add", "remove", "rm", "rename", "set-url", "set-head", "set-branches", "prune", "update") {
-		return true
-	}
-	// Repository-local git config is not version-controlled workspace config and
-	// can redirect hooks, credentials, or future pushes. Read-only config probes
-	// are the only fast path.
-	if containsAny(args, "config") {
-		if containsAny(args, "--unset", "--unset-all", "--add", "--replace-all", "--rename-section", "--remove-section", "--edit", "-e") {
-			return true
-		}
-		return !containsAny(args, "--get", "--get-all", "--get-regexp", "--get-urlmatch", "--list", "-l", "--name-only")
-	}
-	return false
-}
+// `git checkout .` and `git checkout path` discard worktree contents even
+// without -f/--. Prefer the unambiguous switch command for safe branch
+// changes; keep all checkout forms behind confirmation.
 
-func curlCommandHighRisk(args []string) bool {
-	method := ""
-	for i, arg := range args {
-		lower := strings.ToLower(arg)
-		switch {
-		case arg == "-X" || lower == "--request":
-			if i+1 >= len(args) {
-				return true
-			}
-			method = strings.ToUpper(args[i+1])
-		case strings.HasPrefix(arg, "-X") && len(arg) > 2:
-			method = strings.ToUpper(arg[2:])
-		case strings.HasPrefix(lower, "--request="):
-			method = strings.ToUpper(arg[len("--request="):])
-		case arg == "-d" || lower == "--data" || lower == "--data-ascii" || lower == "--data-binary" ||
-			lower == "--data-raw" || lower == "--data-urlencode" || lower == "--json" ||
-			arg == "-F" || lower == "--form" || lower == "--form-string" ||
-			arg == "-T" || lower == "--upload-file":
-			return true
-		case strings.HasPrefix(arg, "-d") && len(arg) > 2,
-			strings.HasPrefix(arg, "-F") && len(arg) > 2,
-			strings.HasPrefix(arg, "-T") && len(arg) > 2,
-			strings.HasPrefix(lower, "--data="), strings.HasPrefix(lower, "--data-ascii="),
-			strings.HasPrefix(lower, "--data-binary="), strings.HasPrefix(lower, "--data-raw="),
-			strings.HasPrefix(lower, "--data-urlencode="), strings.HasPrefix(lower, "--json="),
-			strings.HasPrefix(lower, "--form="), strings.HasPrefix(lower, "--form-string="),
-			strings.HasPrefix(lower, "--upload-file="):
-			return true
-		}
-	}
-	return method != "" && method != "GET" && method != "HEAD" && method != "OPTIONS"
-}
+// Restoring only the index is reversible from the worktree; restoring the
+// worktree can discard the user's uncommitted contents.
 
-func wgetCommandHighRisk(args []string) bool {
-	for i, arg := range args {
-		switch {
-		case arg == "--post-data" || arg == "--post-file" || strings.HasPrefix(arg, "--post-data=") || strings.HasPrefix(arg, "--post-file="):
-			return true
-		case arg == "--method":
-			if i+1 >= len(args) {
-				return true
-			}
-			method := strings.ToUpper(args[i+1])
-			return method != "GET" && method != "HEAD" && method != "OPTIONS"
-		case strings.HasPrefix(arg, "--method="):
-			method := strings.ToUpper(strings.TrimPrefix(arg, "--method="))
-			return method != "GET" && method != "HEAD" && method != "OPTIONS"
-		}
-	}
-	return false
-}
+// Repository-local git config is not version-controlled workspace config and
+// can redirect hooks, credentials, or future pushes. Read-only config probes
+// are the only fast path.
 
-func ghCommandHighRisk(args []string) bool {
-	group, rest := ghCommandGroup(args)
-	switch group {
-	case "api":
-		return ghAPICommandHighRisk(rest)
-	case "pr":
-		return containsAny(rest, "create", "close", "comment", "edit", "merge", "ready", "reopen", "review")
-	case "issue":
-		return containsAny(rest, "create", "close", "comment", "delete", "edit", "reopen", "transfer", "pin", "unpin", "lock", "unlock")
-	case "repo":
-		return containsAny(rest, "create", "delete", "archive", "edit", "fork", "rename", "sync")
-	case "release":
-		return containsAny(rest, "create", "delete", "edit", "upload")
-	case "workflow":
-		return containsAny(rest, "run", "enable", "disable")
-	case "run":
-		return containsAny(rest, "cancel", "delete", "rerun")
-	case "secret", "variable":
-		return containsAny(rest, "set", "delete")
-	case "label":
-		return containsAny(rest, "create", "delete", "edit", "clone")
-	case "gist":
-		return containsAny(rest, "create", "delete", "edit")
-	case "ssh-key", "gpg-key":
-		return containsAny(rest, "add", "delete")
-	case "cache":
-		return containsAny(rest, "delete")
-	case "auth":
-		return containsAny(rest, "login", "logout", "refresh", "setup-git", "switch")
-	case "alias":
-		return containsAny(rest, "set", "delete")
-	case "config":
-		return containsAny(rest, "set", "clear")
-	case "extension":
-		return containsAny(rest, "install", "remove", "upgrade", "create")
-	case "project", "codespace":
-		return !containsAny(rest, "list", "view", "status", "logs")
-	}
-	return false
-}
+// gh api switches its default from GET to POST when fields/input are supplied.
 
-func ghCommandGroup(args []string) (string, []string) {
-	groups := map[string]struct{}{
-		"api": {}, "pr": {}, "issue": {}, "repo": {}, "release": {}, "workflow": {}, "run": {},
-		"secret": {}, "variable": {}, "label": {}, "gist": {}, "ssh-key": {}, "gpg-key": {},
-		"cache": {}, "auth": {}, "alias": {}, "config": {}, "extension": {}, "project": {}, "codespace": {},
-	}
-	for i, arg := range args {
-		if _, ok := groups[arg]; ok {
-			return arg, args[i+1:]
-		}
-	}
-	return "", nil
-}
+// These are deterministic workspace-editing families. The ordinary
+// permission/sandbox layer still owns path confinement.
 
-func ghAPICommandHighRisk(args []string) bool {
-	method := ""
-	hasBody := false
-	for i, arg := range args {
-		switch {
-		case arg == "-x" || arg == "--method":
-			if i+1 >= len(args) {
-				return true
-			}
-			method = strings.ToUpper(args[i+1])
-		case strings.HasPrefix(arg, "-x") && len(arg) > 2:
-			method = strings.ToUpper(arg[2:])
-		case strings.HasPrefix(arg, "--method="):
-			method = strings.ToUpper(strings.TrimPrefix(arg, "--method="))
-		case arg == "-f" || arg == "--raw-field" || arg == "--field" || arg == "--input":
-			hasBody = true
-		case strings.HasPrefix(arg, "-f") && len(arg) > 2:
-			hasBody = true
-		case strings.HasPrefix(arg, "--raw-field=") || strings.HasPrefix(arg, "--field=") || strings.HasPrefix(arg, "--input="):
-			hasBody = true
-		}
-	}
-	if method == "" {
-		return hasBody // gh api switches its default from GET to POST when fields/input are supplied.
-	}
-	return method != "GET" && method != "HEAD" && method != "OPTIONS"
-}
+// A coarse host mutation bit must not turn a statically proven read-only
+// diagnostic into a confirmation. Destructive argument forms were rejected
+// before reaching this point.
 
-func commandFieldsKnownSafeMutation(fields []string) bool {
-	if len(fields) == 0 || commandFieldsHighRisk(fields) {
-		return false
-	}
-	base := strings.ToLower(filepath.Base(fields[0]))
-	rawArgs := fields[1:]
-	args := lowerFields(rawArgs)
-	switch base {
-	case "env":
-		wrapped, ok := unwrapEnvCommand(rawArgs)
-		return ok && commandFieldsKnownSafeMutation(wrapped)
-	case "command":
-		wrapped, ok := unwrapCommandBuiltin(rawArgs)
-		return ok && (len(wrapped) == 0 || commandFieldsKnownSafeMutation(wrapped))
-	case "nohup":
-		wrapped := trimLeadingOptions(rawArgs)
-		return len(wrapped) > 0 && commandFieldsKnownSafeMutation(wrapped)
-	case "git":
-		return gitCommandKnownSafe(args)
-	case "curl":
-		return !curlCommandHighRisk(rawArgs)
-	case "wget":
-		return !wgetCommandHighRisk(args)
-	case "gh":
-		return !ghCommandHighRisk(args)
-	case "http", "https", "xh":
-		return !httpCommandHighRisk(args)
-	case "sed", "gofmt", "goimports", "rustfmt", "prettier", "biome", "eslint", "black", "ruff",
-		"cp", "mv", "mkdir", "touch", "ln":
-		// These are deterministic workspace-editing families. The ordinary
-		// permission/sandbox layer still owns path confinement.
-		return true
-	case "npm":
-		return containsAny(args, "install", "add", "remove", "uninstall", "update", "dedupe") && !hasGlobalFlag(args)
-	case "pnpm":
-		return containsAny(args, "install", "add", "remove", "update", "dedupe", "import") && !hasGlobalFlag(args)
-	case "yarn":
-		return containsAny(args, "install", "add", "remove", "up", "upgrade", "dedupe") && !hasGlobalFlag(args) && !containsAny(args, "global")
-	case "go":
-		return containsAny(args, "get", "mod", "work", "fmt", "build", "test") && !containsAny(args, "install", "clean")
-	case "cargo":
-		return containsAny(args, "add", "remove", "update", "build", "check", "test", "fmt", "fix", "clippy")
-	case "composer":
-		return containsAny(args, "require", "remove", "update", "install", "dump-autoload") && !hasGlobalFlag(args) && !containsAny(args, "global")
-	case "poetry":
-		return containsAny(args, "add", "remove", "install", "update", "lock", "sync")
-	case "uv":
-		return containsAny(args, "add", "remove", "sync", "lock")
-	case "dotnet":
-		return containsAny(args, "add", "remove", "restore", "build", "test", "format") && !hasGlobalFlag(args)
-	}
-	// A coarse host mutation bit must not turn a statically proven read-only
-	// diagnostic into a confirmation. Destructive argument forms were rejected
-	// before reaching this point.
-	if _, _, readOnly := shellsafe.CommandIsReadOnly(strings.Join(fields, " ")); readOnly {
-		return true
-	}
-	return false
-}
+// Global options such as -C/--git-dir can redirect an otherwise identical
+// command to another repository. Keep those forms one-shot because the
+// displayed remote alias would no longer identify the same target context.
 
-func gitCommandKnownSafe(args []string) bool {
-	sub := gitSubcommand(args)
-	switch sub {
-	case "add", "commit", "status", "diff", "log", "show", "rev-parse", "rev-list", "describe",
-		"blame", "grep", "ls-files", "ls-tree", "cat-file", "for-each-ref", "name-rev", "shortlog",
-		"whatchanged", "cherry", "fetch", "pull", "clone", "init", "merge", "rebase", "cherry-pick",
-		"revert", "apply", "am", "switch", "reset", "branch", "tag", "stash", "restore", "worktree",
-		"remote", "config", "reflog":
-		return true
-	default:
-		return false
-	}
-}
+// Behavior-changing and unknown push options are deliberately one-shot.
+// In particular, push-option/receive-pack/no-verify must not inherit a
+// grant issued for an ordinary push to the same ref.
 
-func gitSubcommand(args []string) string {
-	for i := 0; i < len(args); i++ {
-		arg := args[i]
-		switch {
-		case arg == "-c" || arg == "--git-dir" || arg == "--work-tree" || arg == "--namespace":
-			i++
-		case strings.HasPrefix(arg, "-"):
-			continue
-		default:
-			return strings.ToLower(arg)
-		}
-	}
-	return ""
-}
+// A reusable grant needs both an explicit remote and exactly one explicit
+// refspec. Bare `git push` depends on mutable branch/upstream configuration.
 
-type taskGrantBoundary struct {
-	key     string
-	display string
-}
+// Options before a positional target are legal in gh. Avoid guessing
+// through their values; a form the host cannot scope exactly stays
+// one-shot rather than sharing an accidentally broad "current" grant.
 
-func commandFieldsTaskGrantBoundary(fields []string) taskGrantBoundary {
-	if len(fields) == 0 {
-		return taskGrantBoundary{}
-	}
-	base := strings.ToLower(filepath.Base(fields[0]))
-	rawArgs := fields[1:]
-	switch base {
-	case "env":
-		wrapped, ok := unwrapEnvCommand(rawArgs)
-		if ok {
-			return commandFieldsTaskGrantBoundary(wrapped)
-		}
-	case "command":
-		wrapped, ok := unwrapCommandBuiltin(rawArgs)
-		if ok {
-			return commandFieldsTaskGrantBoundary(wrapped)
-		}
-	case "git":
-		return gitPushTaskGrantBoundary(rawArgs)
-	case "gh":
-		return ghTaskGrantBoundary(rawArgs)
-	}
-	return taskGrantBoundary{}
-}
+// "current" can change after a checkout or branch switch. Require an
+// explicit PR/issue target before offering a reusable external-write grant.
 
-func gitPushTaskGrantBoundary(args []string) taskGrantBoundary {
-	lower := lowerFields(args)
-	if gitSubcommand(lower) != "push" || containsAny(lower,
-		"-f", "--force", "--mirror", "--delete", "--prune", "--all", "--tags", "--follow-tags",
-	) {
-		return taskGrantBoundary{}
-	}
-	for _, arg := range lower {
-		if strings.HasPrefix(arg, "--force") || strings.HasPrefix(arg, ":") || strings.HasPrefix(arg, "+") {
-			return taskGrantBoundary{}
-		}
-	}
-	pushAt := -1
-	for i, arg := range lower {
-		if arg == "push" {
-			pushAt = i
-			break
-		}
-	}
-	if pushAt != 0 {
-		// Global options such as -C/--git-dir can redirect an otherwise identical
-		// command to another repository. Keep those forms one-shot because the
-		// displayed remote alias would no longer identify the same target context.
-		return taskGrantBoundary{}
-	}
-	var positionals []string
-	for i := pushAt + 1; i < len(args); i++ {
-		arg := lower[i]
-		switch arg {
-		case "-u", "--set-upstream", "-q", "--quiet", "-v", "--verbose", "--progress", "--no-progress":
-			continue
-		}
-		if strings.HasPrefix(arg, "-") {
-			// Behavior-changing and unknown push options are deliberately one-shot.
-			// In particular, push-option/receive-pack/no-verify must not inherit a
-			// grant issued for an ordinary push to the same ref.
-			return taskGrantBoundary{}
-		}
-		positionals = append(positionals, strings.TrimSpace(args[i]))
-	}
-	// A reusable grant needs both an explicit remote and exactly one explicit
-	// refspec. Bare `git push` depends on mutable branch/upstream configuration.
-	if len(positionals) != 2 {
-		return taskGrantBoundary{}
-	}
-	remote, refspec := positionals[0], positionals[1]
-	if remote == "" || refspec == "" || strings.Contains(refspec, "*") {
-		return taskGrantBoundary{}
-	}
-	target := refspec
-	if before, after, ok := strings.Cut(refspec, ":"); ok {
-		if strings.TrimSpace(before) == "" || strings.TrimSpace(after) == "" {
-			return taskGrantBoundary{}
-		}
-		target = strings.TrimSpace(after)
-	}
-	if target == "HEAD" || target == "@" {
-		return taskGrantBoundary{}
-	}
-	return taskGrantBoundary{
-		key:     "bash:git.push:" + CallFingerprint("git.push", remote, target, nil),
-		display: "git push " + remote + " → " + target,
-	}
-}
+// HTTPie query-string item; remains a GET by default.
 
-func ghTaskGrantBoundary(args []string) taskGrantBoundary {
-	lower := lowerFields(args)
-	group, rest := ghCommandGroup(lower)
-	if len(rest) == 0 {
-		return taskGrantBoundary{}
-	}
-	verb := rest[0]
-	if (group != "pr" && group != "issue") || verb != "comment" {
-		return taskGrantBoundary{}
-	}
-	if containsAny(lower, "--edit-last", "--delete-last") {
-		return taskGrantBoundary{}
-	}
-	repo := "current"
-	for i, arg := range lower {
-		switch {
-		case (arg == "--repo" || arg == "-r") && i+1 < len(args):
-			repo = args[i+1]
-		case strings.HasPrefix(arg, "--repo="):
-			repo = strings.TrimSpace(args[i][len("--repo="):])
-		case strings.HasPrefix(arg, "-r") && len(arg) > 2:
-			repo = strings.TrimSpace(args[i][2:])
-		}
-	}
-	target := "current"
-	if len(rest) > 1 && !strings.HasPrefix(rest[1], "-") {
-		target = rest[1]
-	} else if len(rest) > 1 {
-		// Options before a positional target are legal in gh. Avoid guessing
-		// through their values; a form the host cannot scope exactly stays
-		// one-shot rather than sharing an accidentally broad "current" grant.
-		return taskGrantBoundary{}
-	}
-	// "current" can change after a checkout or branch switch. Require an
-	// explicit PR/issue target before offering a reusable external-write grant.
-	if target == "current" {
-		return taskGrantBoundary{}
-	}
-	repo = strings.TrimSpace(repo)
-	target = strings.TrimSpace(target)
-	display := "gh " + group + " comment " + target
-	if repo != "current" {
-		display += " --repo " + repo
-	}
-	return taskGrantBoundary{
-		key:     "bash:gh." + group + ".comment:" + CallFingerprint("gh."+group+".comment", repo, target, nil),
-		display: display,
-	}
-}
+// HTTPie-style request items with a value or file body implicitly switch
+// the default method from GET to a mutating request.
 
-func httpCommandHighRisk(args []string) bool {
-	for _, arg := range args {
-		upper := strings.ToUpper(arg)
-		switch upper {
-		case "POST", "PUT", "PATCH", "DELETE", "CONNECT", "PURGE", "LOCK", "UNLOCK":
-			return true
-		}
-		lower := strings.ToLower(arg)
-		if lower == "--raw" || lower == "--form" || strings.HasPrefix(lower, "--raw=") {
-			return true
-		}
-		if strings.HasPrefix(arg, "-") || strings.Contains(arg, "://") {
-			continue
-		}
-		if strings.Contains(arg, "==") && !strings.Contains(arg, ":=") && !strings.Contains(arg, "@") {
-			continue // HTTPie query-string item; remains a GET by default.
-		}
-		// HTTPie-style request items with a value or file body implicitly switch
-		// the default method from GET to a mutating request.
-		if strings.Contains(arg, "=") || strings.Contains(arg, "@") {
-			return true
-		}
-	}
-	return false
-}
+// Split-string and unknown options can change the command shape.
 
-func hasGlobalFlag(fields []string) bool {
-	return containsAny(fields, "-g", "--global", "--system", "--user")
-}
-
-func unwrapEnvCommand(args []string) ([]string, bool) {
-	for len(args) > 0 {
-		arg := args[0]
-		lower := strings.ToLower(arg)
-		switch {
-		case lower == "-i" || lower == "--ignore-environment" || lower == "-0" || lower == "--null":
-			args = args[1:]
-		case lower == "-u" || lower == "--unset" || lower == "-c" || lower == "--chdir":
-			if len(args) < 2 {
-				return nil, false
-			}
-			args = args[2:]
-		case strings.HasPrefix(lower, "--unset=") || strings.HasPrefix(lower, "--chdir="):
-			args = args[1:]
-		case strings.HasPrefix(arg, "-"):
-			// Split-string and unknown options can change the command shape.
-			return nil, false
-		case strings.Contains(arg, "="):
-			args = args[1:]
-		default:
-			return args, true
-		}
-	}
-	return nil, false
-}
-
-func unwrapCommandBuiltin(args []string) ([]string, bool) {
-	for len(args) > 0 {
-		switch strings.ToLower(args[0]) {
-		case "-p":
-			args = args[1:]
-		case "-v":
-			// Inspection-only command lookup; there is no wrapped execution.
-			return nil, true
-		default:
-			if strings.HasPrefix(args[0], "-") {
-				return nil, false
-			}
-			return args, true
-		}
-	}
-	return nil, false
-}
-
-func trimLeadingOptions(args []string) []string {
-	for len(args) > 0 && strings.HasPrefix(args[0], "-") {
-		args = args[1:]
-	}
-	return args
-}
-
-func lowerFields(fields []string) []string {
-	out := make([]string, len(fields))
-	for i, field := range fields {
-		out[i] = strings.ToLower(strings.TrimSpace(field))
-	}
-	return out
-}
-
-func containsAny(fields []string, values ...string) bool {
-	wanted := make(map[string]struct{}, len(values))
-	for _, value := range values {
-		wanted[value] = struct{}{}
-	}
-	for _, field := range fields {
-		if _, ok := wanted[field]; ok {
-			return true
-		}
-	}
-	return false
-}
+// Inspection-only command lookup; there is no wrapped execution.
 
 // WriteScopePaths extracts path-like targets from mutation args for scope compare.
-func WriteScopePaths(tool string, args json.RawMessage) []string {
-	tool = strings.TrimSpace(tool)
-	paths := pathsFromArgs(args)
-	for i := range paths {
-		paths[i] = filepath.Clean(paths[i])
-	}
-	if tool == "multi_edit" || tool == "multi-edit" {
-		var payload struct {
-			Edits []struct {
-				Path string `json:"path"`
-			} `json:"edits"`
-		}
-		if err := json.Unmarshal(args, &payload); err == nil {
-			for _, e := range payload.Edits {
-				if strings.TrimSpace(e.Path) != "" {
-					paths = append(paths, filepath.Clean(e.Path))
-				}
-			}
-		}
-	}
-	if tool == "bash" {
-		// Best-effort: do not invent paths from free-form shell.
-		return paths
-	}
-	return uniqueStrings(paths)
-}
+
+// Best-effort: do not invent paths from free-form shell.
 
 // ScopeExpanded reports whether the proposal writes outside the failure's
 // recorded path set (when both sides have path info).
-func ScopeExpanded(failure *FailureEvent, proposal Proposal) bool {
-	if proposal.ExpandedScope {
-		return true
-	}
-	if failure == nil {
-		return false
-	}
-	failedPaths := WriteScopePaths(failure.Tool, failure.Args)
-	nextPaths := WriteScopePaths(proposal.Tool, proposal.Args)
-	if len(failedPaths) == 0 || len(nextPaths) == 0 {
-		return false
-	}
-	allowed := map[string]struct{}{}
-	for _, p := range failedPaths {
-		allowed[filepath.Clean(p)] = struct{}{}
-		// Allow writes under the same directory as a failed file target.
-		allowed[filepath.Clean(filepath.Dir(p))] = struct{}{}
-	}
-	for _, p := range nextPaths {
-		p = filepath.Clean(p)
-		if _, ok := allowed[p]; ok {
-			continue
-		}
-		parent := filepath.Clean(filepath.Dir(p))
-		if _, ok := allowed[parent]; ok {
-			continue
-		}
-		// Outside all known failed paths.
-		return true
-	}
-	return false
-}
+
+// Allow writes under the same directory as a failed file target.
+
+// Outside all known failed paths.
 
 // StrategyChanged reports an explicit semantic method change. A tool-name
 // transition is not enough: the normal recovery flow after a failing verifier
 // is to inspect the evidence and edit the diagnosed code. Risk and scope have
 // deterministic classifiers; ambiguous method changes are left to the reviewer.
-func StrategyChanged(failure *FailureEvent, proposal Proposal) bool {
-	_ = failure
-	return proposal.StrategyChanged
-}
-
-func uniqueStrings(in []string) []string {
-	seen := map[string]struct{}{}
-	out := make([]string, 0, len(in))
-	for _, s := range in {
-		s = strings.TrimSpace(s)
-		if s == "" {
-			continue
-		}
-		if _, ok := seen[s]; ok {
-			continue
-		}
-		seen[s] = struct{}{}
-		out = append(out, s)
-	}
-	return out
-}

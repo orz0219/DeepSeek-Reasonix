@@ -20884,6 +20884,13 @@ body > .mermaid-diagram--fullscreen {
 .todobar__item--pending .todobar__text {
   color: var(--fg-dim);
 }
+.todobar__status--stale {
+  border-color: color-mix(in srgb, var(--warn) 30%, var(--border-soft));
+  color: var(--warn);
+}
+.todobar__item--stale .todobar__text {
+  color: var(--warn);
+}
 .todobar__item--sub {
   padding-left: 18px;
 }
