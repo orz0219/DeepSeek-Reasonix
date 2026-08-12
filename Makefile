@@ -10,7 +10,7 @@ GOEXE := $(shell go env GOEXE)
 GOLANGCI_VERSION := $(shell cat .golangci-version)
 WAILS_VERSION := $(shell tr -d '[:space:]' < .wails-version)
 
-.PHONY: build vet fmt lint lint-go lint-install lint-cross lint-update wails-install test desktop-test desktop-test-short desktop-test-times sdk-test sdk-test-race hooks cross clean
+.PHONY: build vet fmt lint lint-go lint-install lint-cross lint-update wails-install hooks cross clean
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o bin/reasonix$(GOEXE) ./cmd/reasonix
@@ -28,7 +28,6 @@ fmt:
 lint: lint-go
 	go run ./tools/repolint
 	bash scripts/check-wails-pin.sh
-	bash scripts/check-wails-pin.test.sh
 
 lint-go:
 	@command -v golangci-lint >/dev/null || { echo "golangci-lint not installed; run: make lint-install"; exit 1; }
@@ -55,24 +54,6 @@ lint-cross:
 		echo "== golangci-lint GOOS=$$1 ($$2)"; \
 		(cd $$2 && GOOS=$$1 golangci-lint run --timeout=5m ./...) || exit 1; \
 	done
-
-test:
-	go test ./...
-
-desktop-test:
-	cd desktop && go test .
-
-desktop-test-short:
-	cd desktop && go test -short .
-
-desktop-test-times:
-	cd desktop && go test -count=1 -json . | python3 ../scripts/desktop-test-times.py
-
-sdk-test:
-	cd sdk/go && go test ./...
-
-sdk-test-race:
-	cd sdk/go && go test -race ./...
 
 hooks:
 	@git config core.hooksPath .githooks

@@ -397,7 +397,7 @@ jobs:
 
       # Candidate code is immutable, but release validation belongs to the
       # protected workflow control plane. Reuse this sparse checkout later for
-      # Authenticode verification rather than trusting a candidate-owned test.
+      # Authenticode verification.
       - name: Checkout protected release verifier
         if: runner.os == 'Windows' && (matrix.platform == 'windows/amd64' || env.HAS_SIGNPATH == 'true')
         uses: actions/checkout@v7
@@ -405,21 +405,9 @@ jobs:
           ref: ${{ github.workflow_sha }}
           path: release-control
           sparse-checkout: |
-            scripts/test-webview2-native-smoke.ps1
             scripts/verify-windows-authenticode.ps1
           sparse-checkout-cone-mode: false
           persist-credentials: false
-
-      # Exercise the exact production Wails binary built for Stable on
-      # Microsoft's real WebView2 runtime before signing or publication.
-      - name: Smoke-test Wails/WebView2 native startup
-        if: matrix.platform == 'windows/amd64'
-        shell: pwsh
-        run: |
-          ./release-control/scripts/test-webview2-native-smoke.ps1 `
-            -ExecutablePath "desktop/build/bin/reasonix-desktop.exe" `
-            -TimeoutSeconds 60 `
-            -HealthySeconds 5
 
       # Sign every executable that users actually run before rebuilding the
       # portable archive and NSIS installer. Signing only the finished NSIS

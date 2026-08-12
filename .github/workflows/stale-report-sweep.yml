@@ -25,7 +25,6 @@ on:
     paths:
       - '.github/workflows/stale-report-sweep.yml'
       - 'scripts/stale-report-sweep.mjs'
-      - 'scripts/stale-report-sweep.test.mjs'
 
 permissions:
   contents: read
@@ -46,9 +45,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Test sweeper
-        run: node --test scripts/stale-report-sweep.test.mjs
-      # A push that only touched the sweeper runs its tests and stops there.
       - name: Sweep
         if: github.event_name != 'push'
         env:

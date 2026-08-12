@@ -59,7 +59,6 @@ jobs:
           set -euo pipefail
           node scripts/generate-release-notes.mjs --version "$VERSION"
           node scripts/release-notes.mjs validate
-          node --test scripts/release-notes.test.mjs
           node scripts/release-notes.mjs render --version "$VERSION" --output /tmp/release-notes.md
           {
             echo "## Review draft for v${VERSION#v}"

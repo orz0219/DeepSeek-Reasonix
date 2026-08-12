@@ -26,3 +26,6 @@
 *.yml text eol=lf
 .githooks/** text eol=lf
 benchmarks/**/*.sh text eol=lf
+prod_test text eol=lf
+Makefile text eol=lf
+scripts/check-wails-pin.sh text eol=lf

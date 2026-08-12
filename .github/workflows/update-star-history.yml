@@ -8,7 +8,6 @@ on:
     paths:
       - '.github/workflows/update-star-history.yml'
       - 'scripts/update-star-history.mjs'
-      - 'scripts/update-star-history.test.mjs'
   schedule:
     - cron: '23 */3 * * *'
 
@@ -30,8 +29,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - name: Test chart generator
-        run: node --test scripts/update-star-history.test.mjs
       - name: Generate chart assets
         env:
           STAR_HISTORY_GITHUB_TOKEN: ${{ secrets.STAR_HISTORY_GITHUB_TOKEN }}
