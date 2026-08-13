@@ -15,6 +15,7 @@ import { ToolGroup } from "./ToolGroup";
 import { getProcessFoldPreference, onProcessFoldPreferenceChange, type ProcessFoldPreference } from "../lib/processFoldPreference";
 import { STEER_NOTICE_PREFIX, isSteerNoticeText } from "../lib/useController";
 import { useTranscriptEntranceAnimation } from "../lib/useEntranceAnimation";
+import { CSS_EASE_OUT, DUR_BASE, prefersReducedMotion } from "../lib/motion";
 import { useTranscriptSelectionRetention } from "../lib/useTranscriptSelectionRetention";
 import { compactQuestionText, lastQuestionTurn, questionAnchorId, questionTurnsById, scrollVersion, type QuestionAnchor } from "../lib/transcriptGrouping";
 import { buildTranscriptRows, buildTurnModels, foldMapWithReasoningOpen, foldMapWithToggle, foldSegmentStates, reconcileFoldEntries, estimateTranscriptRowSize, userRowKey, EMPTY_FOLDS, NO_LIVE, type FoldMap, type NoticeItem, type SegmentModel, type ToolItem, type TranscriptLiveFlags, type TranscriptRow } from "../lib/transcriptRows";
@@ -31,6 +32,15 @@ import { useTranscriptVirtuosoFirstItemIndex } from "../lib/transcriptVirtuosoIn
 import { OpenTurnAction, QUESTION_NAV_MIN_COUNT, EMPTY_CHECKPOINTS, EMPTY_INVOCATION_METADATA, VIRTUAL_OVERSCAN_ROWS, TranscriptVirtuosoContext, useTick, workStatusLabel, assistantAnswerOnly } from "./transcript_helpers";
 import { LiveAssistantMessage, TRANSCRIPT_VIRTUOSO_COMPONENTS, TRANSCRIPT_VIRTUOSO_COMPONENTS_WITH_HEADER } from "./transcript_virtuoso";
 // ── Transcript component ──────────────────────────────────────────────────────
+// Minimum spacing between streaming tail-follow scrolls. Keeps the pinned view
+// from jumping toward the bottom on every token frame (see the throttle effect
+// inside the component).
+const TAIL_FOLLOW_MIN_INTERVAL_MS = 150;
+// Session-switch reveal: the incoming transcript is hidden until the scroller
+// stays quiet (no scroll / list-height activity) for this long, then fades in.
+const TAB_REVEAL_QUIET_MS = 160;
+const TAB_REVEAL_POLL_MS = 40;
+const TAB_REVEAL_MAX_MS = 1500;
 export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeight = 0, onPrompt, onDeliveryContinue, onDeliveryWaive, onOpenChanges, onEditPrompt, onRewind, checkpoints = EMPTY_CHECKPOINTS, actionPending = false, rewindDisabled = false, running = false, questionNavigator = true, welcomeVariant = "default", creationMode = false, actionHoverMenus = false, rewindSignal = 0, revealSignal = 0, hydrating = false, hasOlderHistory = false, olderHistoryCount = 0, loadingOlderHistory = false, onLoadOlderHistory, turnStartAt, invocationMetadata = EMPTY_INVOCATION_METADATA, }: {
     items: Item[];
     live?: LiveStream;
@@ -69,6 +79,58 @@ export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeig
     const autoScrollFrame = useRef<number | null>(null);
     const virtuosoReadyRef = useRef(false);
     const entranceRef = useTranscriptEntranceAnimation<HTMLDivElement>(tabId, revealSignal, items);
+    // ── Session-switch reveal ───────────────────────────────────────────────
+    // Switching tabs remounts Virtuoso (keyed by tabId) and replays the
+    // incoming session's async layout work — row measurement, tail positioning,
+    // markdown rendering — which reads as up-and-down jitter for a second or
+    // two. Keep the fresh scroller hidden until that work goes quiet (no scroll
+    // events and no list-height changes for a short window), then fade it in so
+    // the jitter is never visible. Skipped on first mount and for reduced
+    // motion.
+    const layoutActivityAtRef = useRef(0);
+    const prevTabIdRef = useRef(tabId);
+    useEffect(() => {
+        if (prevTabIdRef.current === tabId) return;
+        prevTabIdRef.current = tabId;
+        const scroller = scrollRef.current;
+        if (!scroller || prefersReducedMotion() || typeof scroller.animate !== "function") return;
+        layoutActivityAtRef.current = performance.now();
+        scroller.style.opacity = "0";
+        let revealed = false;
+        const markActivity = () => {
+            layoutActivityAtRef.current = performance.now();
+        };
+        const reveal = () => {
+            if (revealed) return;
+            revealed = true;
+            window.clearInterval(interval);
+            window.clearTimeout(timeout);
+            scroller.removeEventListener("scroll", markActivity);
+            const animation = scroller.animate(
+                [{ opacity: 0 }, { opacity: 1 }],
+                { duration: DUR_BASE * 1000, easing: CSS_EASE_OUT },
+            );
+            // The inline opacity:0 must go once the fade completes, otherwise
+            // the scroller snaps back to hidden after the animation.
+            animation.onfinish = () => {
+                scroller.style.opacity = "";
+            };
+        };
+        scroller.addEventListener("scroll", markActivity);
+        // Quiet-window detection: reveal only after the scroller has been
+        // silent for TAB_REVEAL_QUIET_MS (no scroll, no height change).
+        const interval = window.setInterval(() => {
+            if (performance.now() - layoutActivityAtRef.current >= TAB_REVEAL_QUIET_MS) reveal();
+        }, TAB_REVEAL_POLL_MS);
+        // Safety net: never hide the incoming session for longer than this.
+        const timeout = window.setTimeout(reveal, TAB_REVEAL_MAX_MS);
+        return () => {
+            window.clearInterval(interval);
+            window.clearTimeout(timeout);
+            scroller.removeEventListener("scroll", markActivity);
+            if (scroller.style.opacity === "0") scroller.style.opacity = "";
+        };
+    }, [tabId, scrollRef]);
     // Lease the markdown parse worker for as long as a transcript surface is
     // mounted; the last release terminates the thread (it re-spawns lazily).
     useEffect(() => {
@@ -128,6 +190,28 @@ export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeig
     // Auto-scroll to bottom during streaming. Coalesce fast token/reasoning
     // updates into one layout read/write per animation frame.
     const contentVersion = useMemo(() => scrollVersion(items), [items]);
+    // Streaming tail-follow is throttled: with per-frame follow the view jumps
+    // toward the bottom after every token batch (≈60 Hz), which reads as heavy
+    // jitter while a long answer streams. Settling at most once per
+    // TAIL_FOLLOW_MIN_INTERVAL_MS keeps the output steady without losing the
+    // pinned-to-tail behavior. Both the live-delta effect below and Virtuoso's
+    // totalListHeightChanged (fired on every measured row-height growth) go
+    // through this throttle; explicit navigation (jump-to-bottom, composer
+    // height changes, new user turns) keeps calling followGrowingTail directly.
+    const lastTailFollowAtRef = useRef(0);
+    const throttledFollowGrowingTail = useCallback(() => {
+        if (performance.now() - lastTailFollowAtRef.current < TAIL_FOLLOW_MIN_INTERVAL_MS)
+            return;
+        lastTailFollowAtRef.current = performance.now();
+        followGrowingTail();
+    }, [followGrowingTail]);
+    // totalListHeightChanged also counts as layout activity for the
+    // session-switch reveal: async row measurement and markdown rendering keep
+    // firing it until the transcript settles.
+    const handleTotalHeightChanged = useCallback(() => {
+        layoutActivityAtRef.current = performance.now();
+        throttledFollowGrowingTail();
+    }, [throttledFollowGrowingTail]);
     useEffect(() => {
         if (items.length === 0)
             return;
@@ -141,9 +225,9 @@ export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeig
             autoScrollFrame.current = null;
             if (!stick.current)
                 return;
-            followGrowingTail();
+            throttledFollowGrowingTail();
         });
-    }, [contentVersion, followGrowingTail, live?.text?.length ?? 0, live?.reasoning?.length ?? 0, stick]);
+    }, [contentVersion, throttledFollowGrowingTail, live?.text?.length ?? 0, live?.reasoning?.length ?? 0, stick]);
     useEffect(() => {
         return () => {
             if (autoScrollFrame.current !== null) {
@@ -374,7 +458,7 @@ export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeig
       {empty ? (<div className={`transcript transcript--empty${creationMode ? " transcript--creation-scrollbar" : ""}`} ref={(node) => handleScrollerRef(node)}>
           {!hydrating && <Welcome onPrompt={onPrompt} variant={welcomeVariant}/>}
         </div>) : (<LiveStreamContext.Provider value={live}>
-          <Virtuoso<TranscriptRow, TranscriptVirtuosoContext> key={virtuosoResetKey} ref={virtuosoRef} className={`transcript${creationMode ? " transcript--creation-scrollbar" : ""}${creationMode && creationScrollbar.hot ? " transcript--scrollbar-hot" : ""}`} data-transcript-row-count={virtualRows.length} data={virtualRows} context={virtuosoContext} components={hasOlderHistory ? TRANSCRIPT_VIRTUOSO_COMPONENTS_WITH_HEADER : TRANSCRIPT_VIRTUOSO_COMPONENTS} computeItemKey={(_index, row) => `${tabId ?? ""}:${String(row.key)}`} firstItemIndex={firstItemIndex} alignToBottom followOutput={(atBottom) => atBottom ? "auto" : false} atBottomThreshold={TRANSCRIPT_AT_BOTTOM_THRESHOLD_PX} atBottomStateChange={atBottomStateChange} heightEstimates={heightEstimates} itemSize={itemSize} minOverscanItemCount={{ top: VIRTUAL_OVERSCAN_ROWS, bottom: VIRTUAL_OVERSCAN_ROWS }} increaseViewportBy={{ top: 480, bottom: 480 }} scrollerRef={handleScrollerRef} itemsRendered={handleItemsRendered} totalListHeightChanged={followGrowingTail} itemContent={(_index, row) => renderRow(row)} onScroll={creationMode ? handleCreationScroll : undefined} onWheelCapture={scrollInteractions.onWheelCapture} onTouchStartCapture={onTouchStartIntent} onTouchMoveCapture={scrollInteractions.onTouchMoveCapture} onKeyDownCapture={scrollInteractions.onKeyDownCapture} onPointerDownCapture={scrollInteractions.onPointerDownCapture}/>
+          <Virtuoso<TranscriptRow, TranscriptVirtuosoContext> key={virtuosoResetKey} ref={virtuosoRef} className={`transcript${creationMode ? " transcript--creation-scrollbar" : ""}${creationMode && creationScrollbar.hot ? " transcript--scrollbar-hot" : ""}`} data-transcript-row-count={virtualRows.length} data={virtualRows} context={virtuosoContext} components={hasOlderHistory ? TRANSCRIPT_VIRTUOSO_COMPONENTS_WITH_HEADER : TRANSCRIPT_VIRTUOSO_COMPONENTS} computeItemKey={(_index, row) => `${tabId ?? ""}:${String(row.key)}`} firstItemIndex={firstItemIndex} alignToBottom followOutput={(atBottom) => atBottom ? "auto" : false} atBottomThreshold={TRANSCRIPT_AT_BOTTOM_THRESHOLD_PX} atBottomStateChange={atBottomStateChange} heightEstimates={heightEstimates} itemSize={itemSize} minOverscanItemCount={{ top: VIRTUAL_OVERSCAN_ROWS, bottom: VIRTUAL_OVERSCAN_ROWS }} increaseViewportBy={{ top: 480, bottom: 480 }} scrollerRef={handleScrollerRef} itemsRendered={handleItemsRendered} totalListHeightChanged={handleTotalHeightChanged} itemContent={(_index, row) => renderRow(row)} onScroll={creationMode ? handleCreationScroll : undefined} onWheelCapture={scrollInteractions.onWheelCapture} onTouchStartCapture={onTouchStartIntent} onTouchMoveCapture={scrollInteractions.onTouchMoveCapture} onKeyDownCapture={scrollInteractions.onKeyDownCapture} onPointerDownCapture={scrollInteractions.onPointerDownCapture}/>
         </LiveStreamContext.Provider>)}
 
       {creationMode && creationScrollbar.visible && (<div className={`transcript__scrollbar${creationScrollbar.hot ? " transcript__scrollbar--hot" : ""}`} onPointerDown={handleCreationScrollbarRailPointerDown} aria-hidden="true">

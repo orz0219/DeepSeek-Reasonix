@@ -424,7 +424,15 @@ export function useController() {
                 addBreadcrumb("tab.hydrate", `history failed ${tabId} ms=${Date.now() - historyStartedAt}`);
                 return;
             }
-            if (!skipHistory && projection !== undefined && !foregroundTurnActive()) {
+            // The foreground-turn guard exists to keep a live turn's streamed
+            // items from being clobbered by a persisted snapshot that may lag
+            // behind it. When the target tab has NO visible items yet (fresh tab
+            // or a cache that could not be reused), there is nothing to protect:
+            // applying the history as the base is what keeps switching to a
+            // running session from rendering the Welcome page instead of the
+            // session's content. Later live events append on top via ensureAssistant.
+            const hasVisibleItems = (statesRef.current.get(tabId)?.items.length ?? 0) > 0;
+            if (!skipHistory && projection !== undefined && (!foregroundTurnActive() || !hasVisibleItems)) {
                 if (deferResetUntilHistory && stillCurrent())
                     dispatchTo(tabId, { type: "reset" });
                 dispatchTo(tabId, {
@@ -494,7 +502,11 @@ export function useController() {
                         return;
                     meta = reconciledMeta;
                     dispatchTo(tabId, { type: "meta", meta });
-                    if (!foregroundTurnActive() && historyFingerprintMatchesMeta(reconciledProjection, meta)) {
+                    // Re-evaluate items freshly: a turn may have started and
+                    // streamed content in between the async reconcile rounds, and
+                    // that live content must not be clobbered by the snapshot.
+                    const reconciledVisibleItems = (statesRef.current.get(tabId)?.items.length ?? 0) > 0;
+                    if ((!foregroundTurnActive() || !reconciledVisibleItems) && historyFingerprintMatchesMeta(reconciledProjection, meta)) {
                         projection = reconciledProjection;
                         dispatchTo(tabId, {
                             type: "history_replace",

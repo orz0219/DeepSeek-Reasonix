@@ -146,7 +146,16 @@ export function useTranscriptVirtuosoScroll() {
     if (isTranscriptSelectionMode(modeRef.current)) return;
     clearBottomRequest();
     pinnedRef.current = false;
-    setIsAtBottom(false);
+    // Releasing the tail pin and reporting "not at the bottom" are separate
+    // facts. A pointer-down that starts text selection (or a scrollbar press
+    // that never moves) must not surface the jump-to-bottom affordance while
+    // the scroller is still sitting on the bottom edge, so keep the visual
+    // at-bottom state truthful here and let any subsequent real scrolling flip
+    // it through Virtuoso's atBottomStateChange.
+    const element = scrollRef.current;
+    const atBottom = element != null
+      && element.scrollHeight - element.scrollTop - element.clientHeight <= TRANSCRIPT_AT_BOTTOM_THRESHOLD_PX;
+    if (!atBottom) setIsAtBottom(false);
     publishMode("manual");
   }, [clearBottomRequest, publishMode]);
 
