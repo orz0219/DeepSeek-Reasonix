@@ -2,10 +2,10 @@
   "limits": {
     "banner": 3,
     "commented-code": 0,
-    "complexity": 2081,
-    "essay": 4469,
-    "file-size": 37392,
-    "function-size": 8104,
+    "complexity": 1993,
+    "essay": 4446,
+    "file-size": 0,
+    "function-size": 7905,
     "layering": 1,
     "marker": 0,
     "narrative": 53,
@@ -80,75 +80,6 @@
     },
     "desktop/external_opener_windows_helpers.go": {
       "essay": 6
-    },
-    "desktop/frontend/src/App.tsx": {
-      "file-size": 4677
-    },
-    "desktop/frontend/src/components/ApprovalModal.tsx": {
-      "file-size": 238
-    },
-    "desktop/frontend/src/components/CapabilitiesPanel.tsx": {
-      "file-size": 2653
-    },
-    "desktop/frontend/src/components/Composer.tsx": {
-      "file-size": 4020
-    },
-    "desktop/frontend/src/components/ContextPanel.tsx": {
-      "file-size": 38
-    },
-    "desktop/frontend/src/components/HistoryPanel.tsx": {
-      "file-size": 65
-    },
-    "desktop/frontend/src/components/MemoryPanel.tsx": {
-      "file-size": 1088
-    },
-    "desktop/frontend/src/components/Message.tsx": {
-      "file-size": 95
-    },
-    "desktop/frontend/src/components/ProjectTree.tsx": {
-      "file-size": 1474
-    },
-    "desktop/frontend/src/components/RichComposerInput.tsx": {
-      "file-size": 141
-    },
-    "desktop/frontend/src/components/SettingsPanel.tsx": {
-      "file-size": 6719
-    },
-    "desktop/frontend/src/components/StatusBar.tsx": {
-      "file-size": 36
-    },
-    "desktop/frontend/src/components/ThemeGallery.tsx": {
-      "file-size": 489
-    },
-    "desktop/frontend/src/components/ThemeLibrary.tsx": {
-      "file-size": 158
-    },
-    "desktop/frontend/src/components/Transcript.tsx": {
-      "file-size": 274
-    },
-    "desktop/frontend/src/components/UsageStatsPanel.tsx": {
-      "file-size": 276
-    },
-    "desktop/frontend/src/components/WorkspacePanel.tsx": {
-      "file-size": 1390
-    },
-    "desktop/frontend/src/custom/features/heartbeat/HeartbeatPanel.tsx": {
-      "file-size": 415
-    },
-    "desktop/frontend/src/lib/bridge.ts": {
-      "file-size": 4780
-    },
-    "desktop/frontend/src/lib/crash.ts": {
-      "file-size": 225
-    },
-    "desktop/frontend/src/lib/transcriptStore.ts": {
-      "file-size": 269
-    },
-    "desktop/frontend/src/lib/types.ts": {
-      "file-size": 1578
-    },
-    "desktop/frontend/src/lib/useController.ts": {
-      "file-size": 3969
     },
     "desktop/heartbeat.go": {
       "essay": 20,
@@ -614,14 +545,32 @@
       "essay": 1
     },
     "internal/boot/boot.go": {
-      "complexity": 250,
-      "essay": 110,
-      "file-size": 1350,
-      "function-size": 1712,
-      "narrative": 3
+      "essay": 15
+    },
+    "internal/boot/boot_assemble.go": {
+      "complexity": 27,
+      "essay": 14,
+      "function-size": 400,
+      "narrative": 1
     },
     "internal/boot/boot_plugins.go": {
       "essay": 7
+    },
+    "internal/boot/boot_prepare.go": {
+      "complexity": 37,
+      "essay": 33,
+      "function-size": 311,
+      "narrative": 2
+    },
+    "internal/boot/boot_subagents.go": {
+      "complexity": 44,
+      "essay": 13,
+      "function-size": 370
+    },
+    "internal/boot/boot_tools.go": {
+      "complexity": 54,
+      "essay": 12,
+      "function-size": 432
     },
     "internal/boot/boot_workspace.go": {
       "essay": 7
@@ -1745,12 +1694,6 @@
     },
     "sdk/go/wire.go": {
       "essay": 1
-    },
-    "workers/crash-report/src/index.ts": {
-      "file-size": 899
-    },
-    "workers/crash-report/src/stats.ts": {
-      "file-size": 76
     }
   }
 }

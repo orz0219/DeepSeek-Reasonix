@@ -15,6 +15,10 @@ import (
 const (
 	summaryOutputReserve = summaryOutputMaxTokens // room reserved for the digest output
 	minSummarySpanTokens = 4000                   // below this a fold is too small to summarize usefully
+	// summaryInputBudgetCeiling caps one summarizer call's transcript so the
+	// request stays within summaryTimeout on the provider side: full-window
+	// inputs can take minutes to prefill, while a 64k ceiling clears in seconds.
+	summaryInputBudgetCeiling = 64 * 1024
 )
 
 const (
@@ -64,7 +68,7 @@ func (a *Agent) summaryInputBudget(instructions string) int {
 	if sharesContextWindow(a.svc.prov) && a.configuredOutputBudget(a.maxOutputTokens) > 0 {
 		reserve += outputBudgetReserve
 	}
-	budget := a.contextWindow - reserve - estimateTextTokens(summarySystemPrompt) - estimateTextTokens(instructions) - 256
+	budget := min(a.contextWindow-reserve-estimateTextTokens(summarySystemPrompt)-estimateTextTokens(instructions)-256, summaryInputBudgetCeiling)
 	if budget < minSummarySpanTokens {
 		return 0
 	}
