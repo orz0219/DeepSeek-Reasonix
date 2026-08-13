@@ -61,12 +61,15 @@ func recordFromOrder(target DirectoryTarget, info agent.SessionOrderInfo) Sessio
 	createdAt := unixMilli(info.CreatedAt)
 	lastActivityAt := unixMilli(info.LastActivityAt)
 
+	// File mtime only fills a missing activity time (migration can leave
+	// UpdatedAt zero); it must never override a real meta.UpdatedAt, since
+	// opening a session autosaves the transcript and refreshes the file mtime.
 	if st, err := os.Stat(info.Path); err == nil {
 		fileMS := st.ModTime().UnixMilli()
 		if createdAt <= 0 {
 			createdAt = fileMS
 		}
-		if lastActivityAt <= 0 || fileMS > lastActivityAt {
+		if lastActivityAt <= 0 {
 			lastActivityAt = fileMS
 		}
 	}
