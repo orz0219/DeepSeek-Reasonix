@@ -262,27 +262,6 @@ func validRecoveryTrashKey(key string) bool {
 		strings.HasSuffix(key, ".jsonl") && !strings.HasSuffix(key, ".events.jsonl")
 }
 
-func reserveRecoveryTrashItemDir(dir, key string) (string, string, error) {
-	root := filepath.Join(dir, recoveryTrashDir)
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		return "", "", err
-	}
-	stem := strings.TrimSuffix(key, filepath.Ext(key))
-	for i := range 1000 {
-		name := key
-		if i > 0 {
-			name = fmt.Sprintf("%s-recovery-%d-%d", stem, time.Now().UTC().UnixMilli(), i)
-		}
-		itemDir := filepath.Join(root, name)
-		if err := os.Mkdir(itemDir, 0o755); err == nil {
-			return name, itemDir, nil
-		} else if !os.IsExist(err) {
-			return "", "", err
-		}
-	}
-	return "", "", fmt.Errorf("could not reserve recovery trash target")
-}
-
 func finishRecoveryTrashMove(dir, path, key, itemDir string, guard *SessionRemovalGuard) error {
 	if err := os.MkdirAll(itemDir, 0o755); err != nil {
 		return err
@@ -307,13 +286,6 @@ func moveRecoveryTrashArtifacts(dir, path, itemDir string) error {
 		}
 	}
 	return moveRecoverySubagentArtifacts(dir, path, itemDir)
-}
-
-func prepareRecoveryTrashEntry(path, key, itemDir string) error {
-	if err := writeRecoveryTrashMeta(itemDir, key); err != nil {
-		return err
-	}
-	return moveRecoveryTrashPath(path, filepath.Join(itemDir, key))
 }
 
 func writeRecoveryTrashMeta(itemDir, key string) error {

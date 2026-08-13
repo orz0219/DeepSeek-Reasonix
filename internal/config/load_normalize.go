@@ -25,13 +25,6 @@ func normalizeLegacyProviderModels(c *Config) {
 	}
 }
 
-const (
-	legacyStepFunOpenAIBaseURL      = "https://api.stepfun.ai/step_plan/v1"
-	officialStepFunOpenAIBaseURL    = "https://api.stepfun.com/step_plan/v1"
-	legacyStepFunAnthropicBaseURL   = "https://api.stepfun.ai/step_plan"
-	officialStepFunAnthropicBaseURL = "https://api.stepfun.com/step_plan"
-)
-
 func normalizeLegacyStepFunBaseURLs(c *Config) bool {
 
 	return false

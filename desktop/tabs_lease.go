@@ -301,17 +301,6 @@ func cloneDetachedRuntimeTab(tab *WorkspaceTab, key, path string) *WorkspaceTab 
 	}
 }
 
-func (a *App) detachRuntimeForReplacement(tab *WorkspaceTab) bool {
-	if tab == nil {
-		return false
-	}
-
-	a.mu.Lock()
-	detached := a.detachRuntimeForReplacementLocked(tab)
-	a.mu.Unlock()
-	return detached
-}
-
 // detachRuntimeForReplacementLocked transfers a visible tab's live runtime to
 // the detached registry without closing its controller or releasing its lease.
 // Callers must hold App.mu. The transfer itself performs no file or host I/O.

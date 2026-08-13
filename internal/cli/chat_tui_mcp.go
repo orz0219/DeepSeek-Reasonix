@@ -206,9 +206,6 @@ func (m *chatTUI) runExtensionAction(name string, args map[string]string) tea.Cm
 // replaySectionsFor turns a loaded session into scrollback blocks. Normal tool
 // results remain quiet, while interrupted-turn reasoning and tool cards replay
 // from provider-excluded LocalOnly records so restart matches the live view.
-func replaySectionsFor(history []provider.Message, width int) []string {
-	return replaySectionsForWithAssistantRenderer(history, width, renderAssistantMarkdown)
-}
 
 func replaySectionsForWithAssistantRenderer(
 	history []provider.Message,

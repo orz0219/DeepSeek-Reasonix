@@ -123,9 +123,6 @@ export const MAX_HIGHLIGHT_LINES = 20_000;
 // highlight.js walk must not block the frame that mounts the block.
 export const IDLE_HIGHLIGHT_MIN_BYTES = 32 * 1024;
 
-export function shouldHighlightCode(sourceSize: number, lineCount: number): boolean {
-  return sourceSize <= MAX_HIGHLIGHT_BYTES && lineCount <= MAX_HIGHLIGHT_LINES;
-}
 
 // Apply one shared syntax-highlighting budget to chat blocks, tool output, and
 // workspace previews. Callers with an authoritative byte size or an existing

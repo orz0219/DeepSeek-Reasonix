@@ -71,11 +71,4 @@ export function registerTerminalExitListener(listener: (event: TerminalExitEvent
   return () => exitListeners.delete(listener);
 }
 
-export function __resetTerminalEventBus(): void {
-  sinks.clear();
-  history.clear();
-  historyBytes.clear();
-  stopBridge?.();
-}
 
-export const terminalEventBufferLimit = MAX_HISTORY_BYTES;

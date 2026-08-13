@@ -213,6 +213,3 @@ func parseFile(root, path string) (Command, error) {
 
 // splitFrontmatter is a thin wrapper kept for test compatibility; the real
 // parser lives in internal/frontmatter.
-func splitFrontmatter(s string) (map[string]string, string) {
-	return frontmatter.Split(s)
-}

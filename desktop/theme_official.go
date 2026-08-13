@@ -64,7 +64,6 @@ var (
 	officialOnce     sync.Once
 	officialRegistry map[string]*officialTheme
 	officialOrder    []string
-	officialLoadErr  error
 )
 
 // loadOfficialRegistry parses and validates every embedded official theme once.
@@ -75,7 +74,6 @@ func loadOfficialRegistry() {
 	officialOrder = nil
 	entries, err := officialThemesFS.ReadDir(officialThemeDirName)
 	if err != nil {
-		officialLoadErr = fmt.Errorf("read official themes: %w", err)
 		return
 	}
 	var total int64
@@ -123,7 +121,6 @@ func loadOfficialRegistry() {
 	}
 	sort.Strings(extras)
 	officialOrder = append(ordered, extras...)
-	officialLoadErr = firstErr
 }
 
 func loadOfficialTheme(dirID string) (*officialTheme, error) {
@@ -276,21 +273,5 @@ func readOfficialAsset(id, filename string) ([]byte, string, error) {
 
 // validateOfficialThemes gates the build: every embedded entry must parse and
 // pass the V1 validator plus image budgets, and the release set must be complete.
-func validateOfficialThemes() error {
-	officialOnce.Do(loadOfficialRegistry)
-	if officialLoadErr != nil {
-		return officialLoadErr
-	}
-	if len(officialOrder) != officialExpectedCount {
-		return fmt.Errorf("expected %d official themes, found %d", officialExpectedCount, len(officialOrder))
-	}
-	return nil
-}
 
 // resetOfficialRegistryForTest clears the cached registry (tests only).
-func resetOfficialRegistryForTest() {
-	officialOnce = sync.Once{}
-	officialRegistry = nil
-	officialOrder = nil
-	officialLoadErr = nil
-}

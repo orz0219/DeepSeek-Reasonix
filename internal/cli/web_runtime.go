@@ -9,7 +9,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -233,30 +232,6 @@ func (r *webInstanceRegistry) sweepStale() error {
 		}
 	}
 	return nil
-}
-
-func (r *webInstanceRegistry) listLive() ([]webInstanceRecord, error) {
-	if err := r.sweepStale(); err != nil {
-		return nil, err
-	}
-	entries, err := os.ReadDir(r.dir)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	live := make([]webInstanceRecord, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
-			continue
-		}
-		if record, ok := readWebInstanceRecord(filepath.Join(r.dir, entry.Name())); ok && r.processAlive(record.PID) {
-			live = append(live, record)
-		}
-	}
-	sort.Slice(live, func(i, j int) bool { return live[i].StartedAt < live[j].StartedAt })
-	return live, nil
 }
 
 func readWebInstanceRecord(path string) (webInstanceRecord, bool) {

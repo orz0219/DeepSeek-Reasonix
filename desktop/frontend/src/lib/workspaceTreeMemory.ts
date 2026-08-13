@@ -39,8 +39,3 @@ export function touchWorkspaceTreeVisit(memoryKey: string, visitId: number): voi
   });
 }
 
-export function resetWorkspaceTreeMemoryForTests(): void {
-  workspaceTreeMemory.clear();
-  activeWorkspaceTreeKey = "";
-  workspaceTreeVisitSequence = 0;
-}

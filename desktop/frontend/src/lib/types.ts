@@ -150,8 +150,6 @@ export type { GoalRuntime as GoalRuntime } from "./types_mode";
 export { normalizeCollaborationMode as normalizeCollaborationMode } from "./types_mode";
 export { normalizeToolApprovalMode as normalizeToolApprovalMode } from "./types_mode";
 export { normalizeTokenMode as normalizeTokenMode } from "./types_mode";
-export { normalizeAgentPreset as normalizeAgentPreset } from "./types_mode";
-export { tokenModeFromAgentPreset as tokenModeFromAgentPreset } from "./types_mode";
 export type { Mode as Mode } from "./types_mode";
 export { normalizeMode as normalizeMode } from "./types_mode";
 export { modeHasPlan as modeHasPlan } from "./types_mode";

@@ -154,17 +154,6 @@ func (f dotEnvFile) filtered(allow func(string) bool) map[string]string {
 	return out
 }
 
-func (f dotEnvFile) warnings() []string {
-	if len(f.Duplicates) == 0 {
-		return nil
-	}
-	warnings := make([]string, 0, len(f.Duplicates))
-	for _, key := range f.Duplicates {
-		warnings = append(warnings, "duplicate .env key "+key+" in "+f.Path+"; last parsed value wins")
-	}
-	return warnings
-}
-
 func detectDotEnvDuplicateKeys(path string) []string {
 	raw, err := fileencoding.ReadFileUTF8(path)
 	if err != nil {

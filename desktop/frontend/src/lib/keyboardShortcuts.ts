@@ -538,9 +538,6 @@ export function useShortcutComboLabel(action: ShortcutAction): string {
   return formatShortcutCombo(resolvedShortcutCombo(action, platform), platform);
 }
 
-export function isCloseTabShortcut(event: KeyboardShortcutEvent, platform: ShortcutPlatform): boolean {
-  return matchesShortcut(event, "tab.close", platform);
-}
 
 function normalizeCustomShortcuts(value: unknown): Partial<Record<ShortcutAction, ShortcutCombo>> {
   if (!value || typeof value !== "object") return {};

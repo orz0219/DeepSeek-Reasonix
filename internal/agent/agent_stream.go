@@ -11,18 +11,11 @@ import (
 	"reasonix/internal/provider"
 )
 
-// stream runs one completion, emitting reasoning and text deltas as typed
-// events and collecting complete tool calls. A Message event closes the text
-// stream so a sink can re-render the streamed raw text as styled markdown. The
-// accumulated text and reasoning are also returned so the caller can round-trip
-// reasoning on the next turn.
-//
-// When frozen is non-nil, the request is not rebuilt from session — retries
-// must replay the same provider-visible body.
-func (a *Agent) stream(ctx context.Context, turn int, sink event.Sink) streamedTurn {
-	return a.streamWithFrozen(ctx, turn, sink, nil, "")
-}
-
+// streamWithFrozen runs one completion, emitting reasoning and text deltas
+// as typed events and collecting complete tool calls. A Message event closes
+// the text stream so a sink can re-render the streamed raw text as styled
+// markdown. When frozen is non-nil the request is not rebuilt from session —
+// retries must replay the same provider-visible body.
 func (a *Agent) streamWithFrozen(ctx context.Context, turn int, sink event.Sink, frozen *samplingRequest, attemptID string) streamedTurn {
 	ctx = provider.WithRetryNotify(ctx, func(info provider.RetryInfo) {
 		sink.Emit(event.Event{Kind: event.Retrying, RetryAttempt: info.Attempt, RetryMax: info.Max, RetryScope: event.RetryScopeHeaders})

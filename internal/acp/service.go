@@ -575,7 +575,7 @@ const (
 // overlay, host terminal) a model/effort switch would otherwise drop.
 
 // The freshly built controller's own leading system message carries the
-// target profile's contract (see boot/token_profile.go); AdoptHistory below
+// target profile's contract; AdoptHistory below
 // replaces the whole history with carried, so splice that message in first
 // or the model keeps seeing the outgoing profile's contract after every
 // switch.

@@ -341,19 +341,6 @@ func isOpenAIProviderKind(e *ProviderEntry) bool {
 	return e != nil && strings.EqualFold(strings.TrimSpace(e.Kind), "openai")
 }
 
-func mergeCuratedModelsIntoProvider(e *ProviderEntry, models []string, fallback string) {
-
-	if len(e.Models) > 0 {
-		return
-	}
-	currentDefault := e.Default
-	if strings.TrimSpace(currentDefault) == "" {
-		currentDefault = e.Model
-	}
-	e.Models = mergeModelLists(models, e.ModelList())
-	e.Default = firstKnownModel(currentDefault, e.Models, fallback)
-}
-
 func backfillOfficialContextWindow(e *ProviderEntry, fallback int) {
 	if e != nil && e.ContextWindow <= 0 {
 		e.ContextWindow = fallback

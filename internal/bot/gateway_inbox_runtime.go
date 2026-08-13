@@ -148,10 +148,3 @@ func (gw *BotGateway) nextInboxTurn(key string, fallback InboundMessage) *botInb
 }
 
 // nextInboxMessage is retained for focused queue inspection tests.
-func (gw *BotGateway) nextInboxMessage(key string) *InboundMessage {
-	next := gw.nextInboxTurn(key, InboundMessage{ChatID: key})
-	if next == nil {
-		return nil
-	}
-	return &next.msg
-}

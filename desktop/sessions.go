@@ -150,13 +150,6 @@ func setSessionTitle(dir, sessionPath, title string) error {
 // deleteSessionFile moves a session's .jsonl and file sidecars into the local
 // trash. Title/display sidecars stay in place so trash previews and restores can
 // preserve the user's labels.
-func deleteSessionFile(dir, sessionPath string) error {
-	sessionPath, key, err := validateSessionPath(dir, sessionPath)
-	if err != nil {
-		return err
-	}
-	return trashSessionArtifacts(dir, sessionPath, key)
-}
 
 // errSessionBusyElsewhere is the sanitized error surfaced when a destructive
 // session operation is blocked by a live owner. It intentionally carries no
@@ -336,7 +329,3 @@ func validateTrashedSessionPath(dir, sessionPath string) (string, string, string
 
 // sessionDisplayResolver loads the sidecar once and returns a per-message
 // resolver, so a transcript of N messages doesn't re-read .display.json N times.
-
-func resolveSessionDisplay(dir, sessionPath, content string) string {
-	return sessionDisplayResolver(dir, sessionPath)(content)
-}

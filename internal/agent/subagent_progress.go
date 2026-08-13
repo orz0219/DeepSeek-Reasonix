@@ -654,12 +654,6 @@ func (t *subagentProgressTracker) emitStatusDirect(p subagentProgressPhase) {
 	t.merger.directStatus(t.childID, p)
 }
 
-func (t *subagentProgressTracker) setPhase(p subagentProgressPhase) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.setPhaseLocked(p)
-}
-
 // setPhaseLocked records a phase change and queues the status event; repeat
 // transitions of the same phase do not re-queue.
 func (t *subagentProgressTracker) setPhaseLocked(p subagentProgressPhase) {

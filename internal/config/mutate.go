@@ -231,14 +231,6 @@ func acquireConfigEditLockPath(ctx context.Context, lockPath string) (func(), er
 	return unlockFile, nil
 }
 
-func configFileEditLockPath(path string) (string, error) {
-	target, err := resolveConfigEditTarget(path)
-	if err != nil {
-		return "", err
-	}
-	return target.lockPath, nil
-}
-
 func resolveConfigEditTarget(path string) (configEditTarget, error) {
 	logicalKey, err := configEditPathKey(path)
 	if err != nil {

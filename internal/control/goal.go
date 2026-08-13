@@ -293,9 +293,6 @@ func (g *goalMachine) set(goal, preferredBudgetClass string, todos []evidence.To
 // setLegacyArchiveBlocked atomically installs and blocks an explicit legacy
 // archive goal. A concurrent Goal replacement cannot be blocked between two
 // separate FSM mutations.
-func (g *goalMachine) setLegacyArchiveBlocked(goal, preferredBudgetClass, reason string, todos []evidence.TodoItem) (string, []byte, bool) {
-	return g.setLegacyArchiveBlockedWithTaskID(goal, preferredBudgetClass, reason, "", todos)
-}
 
 func (g *goalMachine) setLegacyArchiveBlockedWithTaskID(goal, preferredBudgetClass, reason, taskID string, todos []evidence.TodoItem) (string, []byte, bool) {
 	goal = strings.TrimSpace(goal)

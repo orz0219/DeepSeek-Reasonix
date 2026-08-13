@@ -572,18 +572,6 @@ func mcpConnected(ctrl control.SessionAPI, name string) bool {
 	return false
 }
 
-func mcpFailed(ctrl control.SessionAPI, name string) bool {
-	if ctrl == nil || ctrl.Host() == nil {
-		return false
-	}
-	for _, f := range ctrl.Host().Failures() {
-		if f.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
 func recordMCPFailure(ctrl control.SessionAPI, e config.PluginEntry, err error) {
 	if ctrl == nil || ctrl.Host() == nil || err == nil {
 		return

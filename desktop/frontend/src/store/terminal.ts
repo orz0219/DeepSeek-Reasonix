@@ -166,7 +166,3 @@ registerTerminalExitListener((event) => {
   });
 });
 
-export function resetTerminalStoreForTests(): void {
-  inFlight = null;
-  useTerminalStore.setState({ tabId: "", generation: 0, workspace: null, loading: false, error: null, activeSessionId: null });
-}

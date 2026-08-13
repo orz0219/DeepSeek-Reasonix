@@ -139,13 +139,6 @@ func (e *HeartbeatEngine) configPath() string {
 }
 
 // loadTasks reads tasks from disk.
-func (e *HeartbeatEngine) loadTasks() []HeartbeatTask {
-	snapshot, err := e.readConfigSnapshot()
-	if err != nil {
-		return nil
-	}
-	return snapshot.cfg.Tasks
-}
 
 func (e *HeartbeatEngine) readConfigSnapshot() (heartbeatConfigSnapshot, error) {
 	path := e.configPath()
@@ -208,9 +201,6 @@ func (e *HeartbeatEngine) adoptExternalEditsLocked() {
 }
 
 // saveTasks writes tasks to disk atomically.
-func (e *HeartbeatEngine) saveTasks(tasks []HeartbeatTask) error {
-	return e.writeTasks(tasks, heartbeatConfigSnapshot{}, false)
-}
 
 func (e *HeartbeatEngine) writeTasks(tasks []HeartbeatTask, expected heartbeatConfigSnapshot, compare bool) error {
 	if tasks == nil {

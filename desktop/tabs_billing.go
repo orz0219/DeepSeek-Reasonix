@@ -5,7 +5,6 @@ import (
 
 	"reasonix/internal/billing"
 	"reasonix/internal/control"
-	"reasonix/internal/provider"
 )
 
 func (a *App) balanceRequestTarget(tabID string) (*WorkspaceTab, control.SessionAPI, uint64) {
@@ -96,14 +95,6 @@ func (t *WorkspaceTab) selectDisplayCurrency(display string) bool {
 
 // selectRuntimeDisplayCurrency applies an automatic wallet hint only to the
 // live tab/session. It never mutates the persisted telemetry or configuration.
-func (t *WorkspaceTab) selectRuntimeDisplayCurrency(display string) bool {
-	if t == nil {
-		return false
-	}
-	t.telemMu.Lock()
-	defer t.telemMu.Unlock()
-	return t.selectRuntimeDisplayCurrencyLocked(display)
-}
 
 // selectRuntimeDisplayCurrencyAtGeneration applies an asynchronous wallet
 // hint only if the tab/session display binding is still the one that started
@@ -162,11 +153,3 @@ func (t *WorkspaceTab) clearRuntimeDisplayCurrency() {
 }
 
 // repriceUsage preserves the legacy call shape as a display-only rebind.
-func (t *WorkspaceTab) repriceUsage(pricingBySource map[string]*provider.Pricing) bool {
-	_ = pricingBySource
-	display := ""
-	if t != nil {
-		display = billing.NormalizeCurrency(t.usageTelemetry.SessionCurrency)
-	}
-	return t.selectDisplayCurrency(display)
-}

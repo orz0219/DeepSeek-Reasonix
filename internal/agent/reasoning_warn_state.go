@@ -396,10 +396,6 @@ func (s *missingReasoningWarnState) claimAt(fingerprint string, observedAt time.
 	}
 }
 
-func (s *missingReasoningWarnState) claim(fingerprint string) bool {
-	return s.claimAt(fingerprint, time.Now())
-}
-
 type missingReasoningResolveResult struct {
 	Recorded bool
 	Resolved bool

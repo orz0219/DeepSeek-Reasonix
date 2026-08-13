@@ -12,7 +12,6 @@ import (
 
 	"reasonix/internal/filelock"
 	"reasonix/internal/fileutil"
-	"reasonix/internal/store"
 )
 
 type sessionDisplayMap map[string]map[string]string
@@ -167,20 +166,6 @@ func removeSessionPlannerDisplay(dir, sessionPath string) error {
 	})
 }
 
-func pruneSessionPlannerDisplays(dir string, protected map[string]struct{}) error {
-	return updateSessionPlannerDisplays(dir, true, func(m sessionPlannerDisplayMap) bool {
-		changed := false
-		for key := range m {
-			if sessionDisplayKeyStillOwned(dir, key, protected) {
-				continue
-			}
-			delete(m, key)
-			changed = true
-		}
-		return changed
-	})
-}
-
 func sessionPlannerDisplayTurns(dir, sessionPath string) []plannerDisplayTurn {
 	if strings.TrimSpace(dir) == "" || strings.TrimSpace(sessionPath) == "" {
 		return nil
@@ -269,51 +254,6 @@ func removeSessionDisplay(dir, sessionPath string) error {
 		return nil
 	}
 	return removeSessionDisplayKey(dir, filepath.Base(sessionPath))
-}
-
-func pruneSessionDisplays(dir string, protected map[string]struct{}) error {
-	return updateSessionDisplays(dir, func(m sessionDisplayMap) bool {
-		if len(m) == 0 {
-			return false
-		}
-		changed := false
-		for key := range m {
-			if sessionDisplayKeyStillOwned(dir, key, protected) {
-				continue
-			}
-			delete(m, key)
-			changed = true
-		}
-		return changed
-	})
-}
-
-func sessionDisplayKeyStillOwned(dir, key string, protected map[string]struct{}) bool {
-	key = strings.TrimSpace(key)
-	if key == "" || filepath.Base(key) != key || !store.IsSessionTranscriptName(key) {
-		return false
-	}
-	if protected != nil {
-		if _, ok := protected[key]; ok {
-			return true
-		}
-	}
-	sessionPath := filepath.Join(dir, key)
-	if info, err := os.Stat(sessionPath); err == nil && !info.IsDir() {
-		return true
-	}
-	trashPath := filepath.Join(sessionTrashPath(dir), key, key)
-	if info, err := os.Stat(trashPath); err == nil && !info.IsDir() {
-		return true
-	}
-	if paths, err := listTrashedSessionFiles(dir); err == nil {
-		for _, path := range paths {
-			if filepath.Base(path) == key {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func recordSessionDisplay(dir, sessionPath, content, display string) error {

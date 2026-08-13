@@ -105,14 +105,6 @@ func (a *App) promptHistoryTapeForLocked(dir, sessionPath string) (*promptHistor
 	return tape, nil
 }
 
-func (a *App) scanPromptHistoryFromDir(dir string) ([]PromptHistoryEntry, error) {
-	tape, err := newPromptHistoryTape(dir, "")
-	if err != nil {
-		return nil, err
-	}
-	return tape.readAll(), nil
-}
-
 func newPromptHistoryTape(dir, currentPath string) (*promptHistoryTape, error) {
 	tape := &promptHistoryTape{
 		nonce:       fmt.Sprintf("%d", time.Now().UnixNano()),
@@ -192,19 +184,6 @@ func (t *promptHistoryTape) readOlder(cursor string, limit int) PromptHistoryRes
 		olderCursor = encodePromptHistoryCursor(promptHistoryCursor{Nonce: t.nonce, Session: sessionIndex, Offset: offset})
 	}
 	return PromptHistoryResult{Entries: out, Nonce: t.nonce, OlderCursor: olderCursor, HasOlder: hasOlder}
-}
-
-func (t *promptHistoryTape) readAll() []PromptHistoryEntry {
-	out := []PromptHistoryEntry{}
-	cursor := ""
-	for {
-		page := t.readOlder(cursor, promptHistoryMaxPageLimit)
-		out = append(out, page.Entries...)
-		if !page.HasOlder || page.OlderCursor == "" {
-			return out
-		}
-		cursor = page.OlderCursor
-	}
 }
 
 func (t *promptHistoryTape) entriesForSession(index int) ([]PromptHistoryEntry, error) {

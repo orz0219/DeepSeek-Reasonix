@@ -12,7 +12,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 	"unicode/utf16"
 
 	"reasonix/internal/config"
@@ -92,11 +91,6 @@ func setupConfig(args []string) int {
 		return rc
 	}
 	return writeDefaultConfig(t.config)
-}
-
-func confirmReconfigureExistingConfig(path string, in *bufio.Scanner, w io.Writer) bool {
-	ans := ask(in, w, fmt.Sprintf(i18n.M.ConfirmReconfigureFmt, path), "y/N")
-	return ans == "y" || ans == "Y"
 }
 
 func writeDefaultConfig(path string) int {
@@ -214,59 +208,10 @@ func selectLanguage() (string, error) {
 	return tags[idx], nil
 }
 
-// familyStaticModels unions the preset model lists of every entry in the family,
-// preserving order and dropping duplicates. It is the fallback offered when the
-// live /models probe fails, so a family with separate flash/pro preset entries
-// still surfaces both rather than only the first member's model.
-func familyStaticModels(providers []config.ProviderEntry, idxs []int) []string {
-	var out []string
-	seen := map[string]bool{}
-	for _, i := range idxs {
-		for _, m := range providers[i].ModelList() {
-			if m != "" && !seen[m] {
-				seen[m] = true
-				out = append(out, m)
-			}
-		}
-	}
-	return out
-}
-
-// fetchOrFallback tries the OpenAI-compatible GET /models endpoint
-// (honoring the entry's ModelsURL when set) and returns the live model IDs.
-// On any failure — no base URL, no key set yet (the key is collected in a
-// later wizard step), network/auth error, or a vendor without /models — it
-// silently returns the preset's static model list so the wizard can always
-// present something. The fetch has a 10s timeout and is best-effort.
-func fetchOrFallback(probe *config.ProviderEntry, famName string) []string {
-	static := probe.ModelList()
-	if probe.BaseURL == "" {
-		return static
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	models, err := probe.FetchModels(ctx)
-	if err != nil || len(models) == 0 {
-		if len(static) > 0 {
-			fmt.Fprintf(os.Stderr, "  %s\n", dim(fmt.Sprintf(i18n.M.FetchModelsUsingPresetsFmt, famName)))
-		}
-		return static
-	}
-	fmt.Printf("  %s\n", green(fmt.Sprintf(i18n.M.FetchModelsSuccessFmt, len(models), famName)))
-	return models
-}
-
 // fetchModelListCompat walks the full set of model-list URL candidates a given
 // base URL can resolve to (root, /v1, known OpenAI/Anthropic compat suffixes)
-// and returns the first successful fetch. This is the wizard-time probe for a
-// *user-supplied* custom provider — its baseURL is whatever the user pasted,
-// and "whatever they pasted" might be https://x.com (root, probe /v1/models)
-// or https://x.com/v1 (versioned, probe /v1/models directly). Previously the
-// wizard hardcoded `baseURL + "/models"`, which works for OpenAI-shape URLs
-// but silently fails for Anthropic-shape roots and the reverse — so the
-// wizard's idea of "what models exist" diverged from the chat client's actual
-// endpoint. Returning the empty slice (not an error) on full miss lets the
-// wizard fall through to a manual text input without an error message.
+// and returns the first successful fetch. Returning the empty slice (not an
+// error) on full miss lets the wizard fall through to a manual text input.
 func fetchModelListCompat(ctx context.Context, baseURL, apiKey string) ([]string, error) {
 	candidates, err := config.BuildModelFetchURLs(baseURL, "")
 	if err != nil {
@@ -293,93 +238,15 @@ func fetchModelListCompat(ctx context.Context, baseURL, apiKey string) ([]string
 	return nil, nil
 }
 
-// buildFamilyEntry returns a single ProviderEntry exposing the user's
-// selected models under one entry. It preserves the preset's API key env,
-// base URL, kind, context window, pricing, and effort — the things that
-// vary per vendor but not per model. The Default pointer is reset to the
-// first selected model if it would otherwise reference a model the user
-// didn't pick (or was empty).
-// buildFamilyEntries splits the user's selection back across the family's preset
-// members so each model keeps its own entry — and therefore its own pricing,
-// context window, and balance URL. A family like DeepSeek ships flash and pro as
-// separate presets with different prices; collapsing them into one entry would
-// bill pro at flash's rate. Models the live /models list returned that match no
-// preset (a new SKU) fall under the probe entry. Member order is preserved;
-// within a member, selection order is preserved.
-func buildFamilyEntries(probe config.ProviderEntry, members []config.ProviderEntry, selected []string) []config.ProviderEntry {
-	tmpl := map[string]config.ProviderEntry{probe.Name: probe}
-	ownerName := map[string]string{}
-	for _, m := range members {
-		tmpl[m.Name] = m
-		for _, id := range m.ModelList() {
-			ownerName[id] = m.Name
-		}
-	}
-	var order []string
-	groups := map[string][]string{}
-	for _, sm := range selected {
-		name, ok := ownerName[sm]
-		if !ok {
-			name = probe.Name
-		}
-		if _, seen := groups[name]; !seen {
-			order = append(order, name)
-		}
-		groups[name] = append(groups[name], sm)
-	}
-	out := make([]config.ProviderEntry, 0, len(order))
-	for _, name := range order {
-		out = append(out, buildFamilyEntry(tmpl[name], groups[name]))
-	}
-	return out
-}
-
-func buildFamilyEntry(probe config.ProviderEntry, selected []string) config.ProviderEntry {
-	entry := probe
-	entry.Models = selected
-	entry.Model = selected[0]
-	if entry.Default == "" || !containsString(selected, entry.Default) {
-		entry.Default = selected[0]
-	}
-	return entry
-}
-
 func containsString(xs []string, v string) bool {
 	return slices.Contains(xs, v)
 }
 
-// filterStaleCustomEntries drops the wizard's own magic-name entries
-// (Name="custom" with Kind="openai" or Name="anthropic" with Kind="anthropic")
-// that older versions of the wizard wrote into reasonix.toml. They collide
-// with the wizard's "custom" / "anthropic" menu items on re-run, showing up
-// as duplicate broken entries. The new wizard writes host-derived slugs
-// (e.g. "custom-token-sensenova-cn") so a hit on the magic name is
-// unambiguously stale. The returned slice is the dropped set so the caller
-// can warn the user to clean up reasonix.toml by hand.
-func filterStaleCustomEntries(providers []config.ProviderEntry) (kept, dropped []config.ProviderEntry) {
-	for _, p := range providers {
-		if p.Name == "custom" && p.Kind == "openai" {
-			dropped = append(dropped, p)
-			continue
-		}
-		if p.Name == "anthropic" && p.Kind == "anthropic" {
-			dropped = append(dropped, p)
-			continue
-		}
-		kept = append(kept, p)
-	}
-	return
-}
-
 // providerSlug derives a stable, human-readable entry name for a custom
 // OpenAI / Anthropic-compatible provider from its base URL, e.g.
-// "custom-token-sensenova-cn" or "anthropic-api-anthropic-com". We can't
-// reuse the wizard's menu-item labels ("custom" / "anthropic") because
-// those would collide with the menu item itself and end up rendered as
-// duplicate provider entries on subsequent re-runs of `reasonix setup`.
-// The host-based slug also gives users a meaningful name to grep for in
-// reasonix.toml. Falls back to a short sha1 of the raw URL when the URL
-// doesn't parse, so even malformed input still produces a unique name.
+// "custom-token-sensenova-cn" or "anthropic-api-anthropic-com". It avoids the
+// wizard's menu-item labels (which would collide on re-run), falls back to a
+// short sha1 of the raw URL when the URL doesn't parse.
 func providerSlug(kind, baseURL string) string {
 	var host string
 	if u, err := url.Parse(baseURL); err == nil {

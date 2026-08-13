@@ -17,15 +17,6 @@ func firstLine(s string) string {
 	return s
 }
 
-// truncateToolOutput is the first-visible hard cap for a tool result. Under-cap
-// bodies are returned byte-identical. Over-cap bodies keep a tool-aware head and
-// tail under maxToolOutputBytes; the full original is stored separately as
-// RawContent by the session writer. The bounded form is stable for the message
-// lifetime and is never re-truncated by later maintenance.
-func truncateToolOutput(s string) (string, string) {
-	return truncateToolOutputFor(s, "", "")
-}
-
 // truncateToolOutputFor is the tool-aware first-visible limiter. toolName and
 // toolCallID populate the truncation marker so the model can re-fetch.
 func truncateToolOutputFor(s, toolName, toolCallID string) (string, string) {

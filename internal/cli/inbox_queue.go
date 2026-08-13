@@ -78,26 +78,8 @@ func (m *chatTUI) enqueueSteer(display, submit string) (sessioninbox.InboxReceip
 }
 
 // seedInbox is a test helper to push durable queue rows.
-func (m *chatTUI) seedInbox(texts ...string) {
-	for _, text := range texts {
-		_, _ = m.enqueueFollowup(text, text)
-	}
-}
 
 // inboxBodies returns full submit texts in queue order (tests only).
-func (m *chatTUI) inboxBodies() []string {
-	snap := m.inboxSnap()
-	out := make([]string, 0, len(snap.Items))
-	for _, it := range snap.Items {
-		_, env, err := m.ctrl.ReadInboxItem(it.ID)
-		if err != nil {
-			out = append(out, it.Preview)
-			continue
-		}
-		out = append(out, env.SubmitText)
-	}
-	return out
-}
 
 // handleQueueSlash runs /queue and /steer as local commands even while running.
 func (m *chatTUI) handleQueueSlash(line string) (handled bool, notice string) {

@@ -133,12 +133,6 @@ func lastKnownWindowState() (DesktopWindowState, bool) {
 }
 
 // resetLastKnownWindowStateForTest clears the process-local cache. Tests only.
-func resetLastKnownWindowStateForTest() {
-	windowStateMu.Lock()
-	defer windowStateMu.Unlock()
-	lastKnownWindow = DesktopWindowState{}
-	lastKnownWindowOK = false
-}
 
 // SaveWindowState is the bound method the frontend calls to persist the current
 // window geometry before quit and periodically during use. Go never queries the

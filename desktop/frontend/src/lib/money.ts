@@ -27,23 +27,7 @@ export function formatMoney(amount?: number, currency?: string, empty: "zero" | 
 }
 
 /** Format an estimated cost with the product-wide "≈" cue. */
-export function formatEstimatedCost(amount?: number, currency?: string, incomplete?: boolean): string {
-  if (incomplete || typeof amount !== "number" || amount <= 0) {
-    return "-";
-  }
-  return `≈${formatMoney(amount, currency, "dash")}`;
-}
 
-export function formatMoneyAmount(amount?: string, currency?: string, empty: "zero" | "dash" = "dash"): string {
-  if (!amount || amount === "0") {
-    return empty === "dash" ? "-" : formatMoney(0, currency, empty);
-  }
-  const n = Number(amount);
-  if (!Number.isFinite(n) || n <= 0) {
-    return empty === "dash" ? "-" : formatMoney(0, currency, empty);
-  }
-  return formatMoney(n, currency, empty);
-}
 
 interface MoneyFormatOptions {
   locale?: string;

@@ -574,11 +574,6 @@ func delayedDesktopSessionTrash(dir, sessionPath, key string, destroys []control
 	finishDestroyHandles(destroys)
 }
 
-func (a *App) closeRemovedSessionRuntimes(removed []removedSessionRuntime) {
-	defer a.lockRuntimeMutation("close-removed-session-runtimes")()
-	a.closeRemainingRemovedSessionRuntimesAdmissionHeld(removed, map[control.SessionAPI]bool{})
-}
-
 func (a *App) closeRemovedSessionRuntimesForSessionAfterDestroyAdmissionHeld(removed []removedSessionRuntime, dir, sessionPath string, closed map[control.SessionAPI]bool) {
 	releasedTabs := map[*WorkspaceTab]bool{}
 	for _, item := range removed {

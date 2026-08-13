@@ -35,9 +35,6 @@ func (s *Session) ownsWritableBaseline(path string, existingDigest, rawDigest [s
 // fixedWriterRecoverySessionPath is one fixed isolated path per writer identity
 // so depth-cap / shutdown isolation rewrites in place instead of forking a new
 // digest-keyed file on every conflict tick.
-func fixedWriterRecoverySessionPath(originalPath string) string {
-	return recoverySessionPathForLane(originalPath, SessionWriterID())
-}
 
 func recoverySessionPathForLane(originalPath, lane string) string {
 	writerDigest := sha256.Sum256([]byte(lane))

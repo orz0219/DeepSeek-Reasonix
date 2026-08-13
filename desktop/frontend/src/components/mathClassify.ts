@@ -98,6 +98,3 @@ export function classifyInlineMath(
   return /^[A-Za-z]$/.test(math) ? "math" : "literal";
 }
 
-export function isLikelyInlineMath(math: string): boolean {
-  return classifyInlineMath(math) === "math";
-}

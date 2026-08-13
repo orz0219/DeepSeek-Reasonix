@@ -51,14 +51,7 @@ let panZoomPromise: Promise<PanZoomFactory | null> | null = null;
 let renderAdapterForTest: MermaidRenderAdapter | null = null;
 let panZoomFactoryForTest: PanZoomFactory | null | undefined;
 
-export function __setMermaidRenderAdapterForTest(adapter: MermaidRenderAdapter | null): void {
-  renderAdapterForTest = adapter;
-  renderQueue = Promise.resolve();
-}
 
-export function __setMermaidPanZoomFactoryForTest(factory: PanZoomFactory | null | undefined): void {
-  panZoomFactoryForTest = factory;
-}
 
 function mermaidThemeVariables(theme: MermaidThemeName): Record<string, string | number | boolean> {
   if (theme === "dark") {

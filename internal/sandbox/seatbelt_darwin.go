@@ -84,12 +84,9 @@ func Available() bool {
 
 // seatbeltProfile builds an SBPL profile that allows everything, then denies
 // all file writes and re-allows them only under the write-roots (workspace +
-// temp + caches). Network is denied unless allowed. Forbid-read roots get
-// individual deny-read rules. Reads elsewhere are left open so the
-// toolchain (compilers reading GOROOT, git reading ~/.gitconfig, …) keeps
-// working — the boundary this draws is "can't write outside the configured
-// writable roots, and optionally can't talk to the network", which is the Phase
-// 0 blast-radius made to also cover arbitrary shell commands.
+// temp + caches). Network is denied unless allowed; forbid-read roots get
+// individual deny-read rules. Reads elsewhere stay open so the toolchain keeps
+// working — the boundary is "can't write outside the writable roots".
 func seatbeltProfile(spec Spec) string {
 	var b strings.Builder
 	b.WriteString("(version 1)\n(allow default)\n(deny file-write*)\n(allow file-write*\n")
@@ -109,14 +106,11 @@ func seatbeltProfile(spec Spec) string {
 	return b.String()
 }
 
-// writeAllowDirs is the deduplicated, symlink-resolved set of directories the
-// sandbox permits writes to: the caller's roots plus temp dirs, /dev, and the
-// common toolchain caches under $HOME. Symlinks are resolved because macOS's
-// /tmp and $TMPDIR live under /private, which is the path Seatbelt matches.
-func writeAllowDirs(roots []string) []string {
-	return writeAllowDirsForSpec(Spec{WriteRoots: roots})
-}
-
+// writeAllowDirsForSpec is the deduplicated, symlink-resolved set of
+// directories the sandbox permits writes to: the caller's roots plus temp
+// dirs, /dev, and the common toolchain caches under $HOME. Symlinks are
+// resolved because macOS's /tmp and $TMPDIR live under /private, which is the
+// path Seatbelt matches.
 func writeAllowDirsForSpec(spec Spec) []string {
 	roots := spec.WriteRoots
 	dirs := append([]string{}, roots...)

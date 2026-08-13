@@ -66,10 +66,3 @@ export type OpenTopicRequestInput = Omit<PendingOpenTopicRequest, "seq" | "resol
 
 export type OpenTopicCoalescingRefs = NavigationCoalescingRefs<OpenTopicRequestInput>;
 
-export function enqueueOpenTopicRequest(
-  refs: OpenTopicCoalescingRefs,
-  input: OpenTopicRequestInput,
-  run: (request: PendingOpenTopicRequest) => Promise<void>,
-): Promise<void> {
-  return enqueueNavigationRequest(refs, input, run);
-}

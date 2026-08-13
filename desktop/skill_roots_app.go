@@ -53,13 +53,6 @@ func (a *App) invalidateSkillRootsCache() {
 	a.skillRootsMu.Unlock()
 }
 
-func skillRootsView() []SkillRootView {
-	cwd, _ := os.Getwd()
-	cfg, _ := config.Load()
-	userCfg := config.LoadForEdit(config.UserConfigPath())
-	return skillRootsViewFrom(cwd, cfg, userCfg)
-}
-
 func skillRootsViewFrom(workspaceRoot string, cfg, userCfg *config.Config) []SkillRootView {
 	workspaceRoot = normalizeWorkspaceRoot(workspaceRoot)
 	var custom []string

@@ -40,18 +40,6 @@ func newTurnOrchestrator(c *Controller) *turnOrchestrator {
 	return &turnOrchestrator{c: c}
 }
 
-func (o *turnOrchestrator) runTurnWithRawDisplay(ctx context.Context, input, raw, display string) error {
-	return o.runOrchestratedTurn(ctx, orchestratedTurn{input: input, raw: raw, display: display})
-}
-
-func (o *turnOrchestrator) runTurnWithImageRefsRawDisplay(ctx context.Context, input, raw, imageRefs, display string) error {
-	return o.runOrchestratedTurn(ctx, orchestratedTurn{input: input, raw: raw, imageRefs: imageRefs, display: display})
-}
-
-func (o *turnOrchestrator) runSyntheticTurnWithRawDisplay(ctx context.Context, input, raw, display string) error {
-	return o.runOrchestratedTurn(ctx, orchestratedTurn{input: input, raw: raw, display: display, synthetic: true})
-}
-
 func (o *turnOrchestrator) runGoalContinuationTurnWithRawDisplay(
 	ctx context.Context,
 	input, raw, display string,

@@ -118,10 +118,6 @@ func (a *Agent) configuredOutputBudget(explicit int) int {
 	return a.sess.output.outputBudget
 }
 
-func requestCalibrationShapeOf(req provider.Request) requestCalibrationShape {
-	return requestCalibrationShapeWithPolicy(req, provider.SharedWindowInputPolicy{})
-}
-
 func (a *Agent) requestCalibrationShape(req provider.Request) requestCalibrationShape {
 	return requestCalibrationShapeWithPolicy(req, sharedWindowInputPolicyOf(a.svc.prov))
 }

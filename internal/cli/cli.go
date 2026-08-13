@@ -375,8 +375,8 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 
 // adoptCarriedHistoryPreservingProfileAndGrants resumes c on the carried
 // conversation the way buildController's callers expect: the freshly built
-// c already has its own leading system message for the target profile (see
-// boot/token_profile.go), but AdoptHistory below would otherwise replace the
+// c already has its own leading system message for the target profile, but
+// AdoptHistory below would otherwise replace the
 // whole history — including that message — with carry's outgoing one, so the
 // switch splices the new leading message in first. It also carries forward
 // oldCtrl's same-session "Allow for this session" tool grants and Plan-mode

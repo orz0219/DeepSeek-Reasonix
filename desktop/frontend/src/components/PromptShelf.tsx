@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 
-export { PromptAction, PromptDescriptionDisclosure, PromptDescriptionToggle } from "./PromptAction";
+export { PromptAction, PromptDescriptionDisclosure } from "./PromptAction";
 
 export function PromptShelf({
   className,

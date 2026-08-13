@@ -125,17 +125,6 @@ func (m *chatTUI) runPresetCommand(input string) tea.Cmd {
 
 // Compatibility wrappers keep existing work-mode call sites compiling.
 func runtimeProfileDisplay(profile string) string { return agentPresetDisplay(profile) }
-func parseWorkMode(value string) (string, bool) {
-	preset, ok := parseAgentPreset(value)
-	if !ok {
-		return "", false
-	}
-	return boot.TokenModeFromAgentPreset(preset), true
-}
-func renderWorkModes(width int, current string) string { return renderAgentPresets(width, current) }
-func (m *chatTUI) runWorkModeCommand(input string) tea.Cmd {
-	return m.runPresetCommand(input)
-}
 
 func (m *chatTUI) workModeArgItems(val string) ([]compItem, int, bool) {
 	cmdEnd := strings.IndexAny(val, " \t")

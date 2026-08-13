@@ -153,10 +153,6 @@ func (c *Controller) RunTurn(ctx context.Context, input string) error {
 	})
 }
 
-func (c *Controller) runTurnWithRaw(ctx context.Context, input, raw string) error {
-	return c.runTurnWithRawDisplay(ctx, input, raw, "")
-}
-
 func (c *Controller) runGoalLoopWithRaw(ctx context.Context, input, raw string) error {
 	return c.runGoalLoopWithRawDisplay(ctx, input, raw, "")
 }
@@ -178,10 +174,6 @@ func (c *Controller) runGoalLoopWithRawDisplay(ctx context.Context, input, raw, 
 
 func (c *Controller) runEditedGoalLoopWithRawDisplay(ctx context.Context, input, raw, display, original string) error {
 	return newTurnOrchestrator(c).runEditedGoalLoopWithRawDisplay(ctx, input, raw, display, original)
-}
-
-func (c *Controller) runTurnWithRawDisplay(ctx context.Context, input, raw, display string) error {
-	return newTurnOrchestrator(c).runTurnWithRawDisplay(ctx, input, raw, display)
 }
 
 func (c *Controller) runSubagentSkillSlash(sk skill.Skill, task, raw, display string) {

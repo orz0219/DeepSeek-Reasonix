@@ -111,6 +111,3 @@ export function invalidateSharedQuery(method: string, args: unknown[]): void {
 }
 
 /** Test seam: forget everything remembered so far. */
-export function resetQueryCoalescing(): void {
-  inflight.clear();
-}

@@ -442,10 +442,6 @@ func evaluateForChannel(current, selected string, m *update.Manifest) UpdateInfo
 	return evaluateWithProfileForChannel(current, selected, m, profileForManifest(detectInstallProfile(), m))
 }
 
-func evaluateWithProfile(current string, m *update.Manifest, profile installProfile) UpdateInfo {
-	return evaluateWithProfileForChannel(current, runningUpdateChannel(), m, profile)
-}
-
 // evaluateWithProfileForChannel is the pure comparison core once the install
 // profile and selected update channel are known.
 func evaluateWithProfileForChannel(current, selected string, m *update.Manifest, profile installProfile) UpdateInfo {

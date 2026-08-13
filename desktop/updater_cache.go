@@ -102,10 +102,6 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 	return nil
 }
 
-func saveCachedUpdate(version string, asset update.Asset, data []byte, kind string, signature []byte) (*cachedUpdate, error) {
-	return saveCachedUpdateForChannel(runningUpdateChannel(), version, asset, data, kind, signature)
-}
-
 func saveCachedUpdateForChannel(selected, version string, asset update.Asset, data []byte, kind string, signature []byte) (*cachedUpdate, error) {
 	selected = normalizeUpdateChannel(selected)
 	if err := checkSHA256(data, asset.SHA256); err != nil {
@@ -173,10 +169,6 @@ func loadCachedUpdate() (*cachedUpdate, error) {
 	return &meta, nil
 }
 
-func cachedUpdateMatches(version string, asset update.Asset, kind string) bool {
-	return cachedUpdateMatchesForChannel(runningUpdateChannel(), version, asset, kind)
-}
-
 func cachedUpdateMatchesForChannel(selected, version string, asset update.Asset, kind string) bool {
 	selected = normalizeUpdateChannel(selected)
 	meta, err := loadCachedUpdate()
@@ -215,10 +207,6 @@ func fileSHA256Matches(path, want string) bool {
 		return false
 	}
 	return strings.EqualFold(hex.EncodeToString(h.Sum(nil)), want)
-}
-
-func readVerifiedCachedUpdate() (*cachedUpdate, []byte, error) {
-	return readVerifiedCachedUpdateForChannel(runningUpdateChannel())
 }
 
 func readVerifiedCachedUpdateForChannel(selected string) (*cachedUpdate, []byte, error) {

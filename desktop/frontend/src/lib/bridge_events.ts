@@ -1,4 +1,4 @@
-import type { RemoteConnectionStatus, RemoteServerView, RemoteForwardsEvent, TabMetaRefreshEvent, TopicActivationEvent, SessionRecoveryFailedEvent, SessionRecoveryEvent, UpdateProgress, WireEvent } from "./types";
+import type { RemoteConnectionStatus, RemoteServerView, RemoteForwardsEvent, TabMetaRefreshEvent, TopicActivationEvent, SessionRecoveryEvent, UpdateProgress, WireEvent } from "./types";
 import { realApp, mockSubscribe, updaterListeners } from "./bridge";
 // Must match desktop/app.go's eventChannel constant.
 export const EVENT_CHANNEL = "agent:event";
@@ -227,18 +227,9 @@ const mockTabMetaListeners = new Set<(event: TabMetaRefreshEvent) => void>();
 export function __emitMockTopicActivation(event: TopicActivationEvent): void {
     mockTopicActivationListeners.forEach((listener) => listener(event));
 }
-export function __emitMockTabMeta(event: TabMetaRefreshEvent): void {
-    mockTabMetaListeners.forEach((listener) => listener(event));
-}
 export function onSessionRecovered(cb: (payload: SessionRecoveryEvent) => void): () => void {
     if (realApp() && typeof window !== "undefined" && window.runtime) {
         return window.runtime.EventsOn("session:recovered", (payload?: unknown) => cb((payload ?? {}) as SessionRecoveryEvent));
-    }
-    return () => { };
-}
-export function onSessionRecoveryFailed(cb: (payload: SessionRecoveryFailedEvent) => void): () => void {
-    if (realApp() && typeof window !== "undefined" && window.runtime) {
-        return window.runtime.EventsOn("session:recovery-failed", (payload?: unknown) => cb((payload ?? {}) as SessionRecoveryFailedEvent));
     }
     return () => { };
 }

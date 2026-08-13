@@ -369,10 +369,6 @@ func compactionTelemetryFromSummary(trigger, cacheState string, sourceTokens int
 }
 
 // compact writes a context projection; trigger stays "auto"/"manual" for UI cards.
-func (a *Agent) compact(ctx context.Context, trigger, instructions string, force bool) error {
-	_, err := a.compactToProjection(ctx, trigger, instructions, force, false)
-	return err
-}
 
 // compactToProjection installs one content-driven summary checkpoint:
 // stable prefix + one structured digest + recent verbatim tail.

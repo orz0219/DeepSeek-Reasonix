@@ -22,21 +22,6 @@ func newServerProxy(name string) *serverProxy {
 	return &serverProxy{name: name}
 }
 
-func (p *serverProxy) replace(ctx context.Context, next *Client, generation uint64) error {
-	prev, err := p.swap(next, generation)
-	if err != nil {
-		if next != nil {
-			next.close()
-		}
-		return err
-	}
-	if prev != nil && prev != next && prev.t != nil {
-		prev.close()
-	}
-	_ = ctx
-	return nil
-}
-
 func (p *serverProxy) swap(next *Client, generation uint64) (*Client, error) {
 	if p == nil {
 		return nil, fmt.Errorf("plugin: nil server proxy")

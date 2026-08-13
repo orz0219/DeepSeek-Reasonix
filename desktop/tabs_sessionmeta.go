@@ -459,47 +459,6 @@ type topicSessionDirIndex struct {
 
 // mergeSessionInfos merges one directory's session listing into the maps used by
 // ListProjectTree. The result collection loop calls it serially.
-func mergeSessionInfos(dir string, infos []agent.SessionInfo, titles map[string]string, sessionInfos map[string]agent.SessionInfo, sessionTitles map[string]string, topicSummaries map[string]topicSummary) {
-	for _, info := range infos {
-		sessionKey := sessionRuntimeKey(info.Path)
-		if sessionKey != "" {
-			sessionInfos[sessionKey] = info
-			title := strings.TrimSpace(info.CustomTitle)
-			if title == "" {
-				title = titles[filepath.Base(info.Path)]
-			}
-			sessionTitles[sessionKey] = title
-		}
-		if strings.TrimSpace(info.TopicID) == "" {
-			continue
-		}
-		key := topicSummaryKey(info.Scope, info.WorkspaceRoot, info.TopicID)
-		summary := topicSummaries[key]
-		lastActivityAt := info.LastActivityAt.UnixMilli()
-		if sessionInfoIsAutomaticRecovery(info) {
-
-			if sessionInfoIsUnmodifiedRecoveryCopy(info, dir) {
-				summary.hasRecoveryOnly = true
-			} else {
-				summary.hasAdoptedRecovery = true
-				if info.Turns > summary.adoptedRecoveryTurns {
-					summary.adoptedRecoveryTurns = info.Turns
-				}
-			}
-			if lastActivityAt > summary.lastActivityAt {
-				summary.lastActivityAt = lastActivityAt
-			}
-			topicSummaries[key] = summary
-			continue
-		}
-		summary.hasNormalSession = true
-		summary.turns += info.Turns
-		if lastActivityAt > summary.lastActivityAt {
-			summary.lastActivityAt = lastActivityAt
-		}
-		topicSummaries[key] = summary
-	}
-}
 
 var topicSessionIndexCache = struct {
 	sync.Mutex
@@ -685,17 +644,3 @@ func invalidateTopicSessionIndexForPath(path string) {
 
 // findTopicSession returns the most recently updated .jsonl file whose .meta
 // carries the given topicID, using a directory-level sidecar index cache.
-func findTopicSession(dir, topicID string) string {
-	if topicID == "" || dir == "" {
-		return ""
-	}
-	var bestPath string
-	var bestTime time.Time
-	for _, match := range topicSessionMatches(dir, topicID) {
-		if match.updatedAt.After(bestTime) {
-			bestTime = match.updatedAt
-			bestPath = match.path
-		}
-	}
-	return bestPath
-}

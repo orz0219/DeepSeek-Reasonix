@@ -74,10 +74,6 @@ var providerStateFingerprintKey = func() []byte {
 	return key
 }()
 
-func providerModelCatalogFingerprint(p config.ProviderEntry) string {
-	return providerModelCatalogFingerprintForCredentials(p, providerCredentialsRevision())
-}
-
 func providerModelCatalogFingerprintForCredentials(p config.ProviderEntry, credentialsRevision string) string {
 
 	h := hmac.New(sha256.New, providerStateFingerprintKey)
@@ -267,18 +263,6 @@ func removeProviderAccess(c *config.Config, names ...string) {
 		}
 	}
 	c.Desktop.ProviderAccess = out
-}
-
-func providerViewFromEntry(p config.ProviderEntry, builtIn, added bool) ProviderView {
-	return providerViewFromEntryForRoot(p, builtIn, added, ".")
-}
-
-func providerViewFromEntryForRoot(p config.ProviderEntry, builtIn, added bool, root string) ProviderView {
-	return providerViewFromEntryForRootWithResolver(p, builtIn, added, root, nil)
-}
-
-func providerViewFromEntryForRootWithResolver(p config.ProviderEntry, builtIn, added bool, root string, resolver *config.CredentialResolver) ProviderView {
-	return providerViewFromEntryForRootWithResolverAndCredentials(p, builtIn, added, root, resolver, providerCredentialsRevision())
 }
 
 func providerViewFromEntryForRootWithResolverAndCredentials(p config.ProviderEntry, builtIn, added bool, root string, resolver *config.CredentialResolver, credentialsRevision string) ProviderView {

@@ -56,15 +56,6 @@ func newRepairTransaction(now time.Time) *RepairTransaction {
 	}
 }
 
-func repairChangeForPrevious(scope, target, previous string) RepairChange {
-	return RepairChange{
-		Scope:           scope,
-		TargetPath:      target,
-		PreviousPath:    previous,
-		PreviousStateID: repairPlanReleaseNodeStateFor(previous, target),
-	}
-}
-
 func preparedRepairChangeForPrevious(scope, target, previous string) RepairChange {
 	return RepairChange{
 		Scope:           scope,

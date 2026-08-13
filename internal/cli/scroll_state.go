@@ -44,18 +44,6 @@ func (m chatTUI) shouldFollowTail() bool {
 
 // modalOpen is true while a panel that steals bottom rows (or the whole main
 // area) is active. Used so height-only layout changes never mark userScrolled.
-func (m chatTUI) modalOpen() bool {
-	if m.pendingApproval != nil || m.chooser != nil || m.rewind != nil {
-		return true
-	}
-	if m.mcp != nil || m.clearConfirm != nil || m.mcpImport != nil {
-		return true
-	}
-	if m.skillPick != nil || m.resumePick != nil || m.quickPick != nil || m.copyPick != nil {
-		return true
-	}
-	return false
-}
 
 // syncScrollModeAfterGesture updates follow state from the current viewport
 // position after an intentional scroll command. Landing on the bottom restores

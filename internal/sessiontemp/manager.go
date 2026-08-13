@@ -368,11 +368,6 @@ func canonicalTempRoot(root string) string {
 }
 
 // resetProcessCleanupForTest clears the process-level cleanup map (tests only).
-func resetProcessCleanupForTest() {
-	processCleanup.Lock()
-	processCleanup.done = nil
-	processCleanup.Unlock()
-}
 
 // cleanupStale removes reasonix-session-tmp-* direct children of root that are
 // older than 24h and whose owner lock is free. Failures are logged only.

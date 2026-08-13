@@ -87,20 +87,5 @@ export function useReasoningDisplayMode(): ResolvedReasoningDisplayMode {
 
 // Compatibility helpers for older frontend tests/extensions. They keep the
 // legacy localStorage key semantics without reintroducing the old settings UI.
-export function getReasoningSummaryEnabled(): boolean {
-  const mode = getReasoningDisplayMode();
-  return mode === "summary" || mode === "auto";
-}
 
-export function setReasoningSummaryEnabled(enabled: boolean): void {
-  if (typeof localStorage !== "undefined") localStorage.setItem(LEGACY_SUMMARY_KEY, enabled ? "1" : "0");
-  if (currentMode !== "summary" && currentMode !== "legacy-collapsed") return;
-  currentMode = enabled ? "summary" : "legacy-collapsed";
-  currentModeExplicit = false;
-  emit();
-}
 
-export function useReasoningSummaryEnabled(): boolean {
-  const mode = useReasoningDisplayMode();
-  return mode === "summary" || mode === "auto";
-}

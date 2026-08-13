@@ -51,24 +51,6 @@ export function normalizeTokenMode(mode?: string): TokenMode {
     return "full";
 }
 /** Canonical product id for the three Agent role settings. */
-export function normalizeAgentPreset(mode?: string): AgentPreset {
-    const wire = normalizeTokenMode(mode);
-    if (wire === "economy" || wire === "light")
-        return "light";
-    if (wire === "delivery")
-        return "delivery";
-    return "balanced";
-}
-export function tokenModeFromAgentPreset(preset: AgentPreset): TokenMode {
-    switch (preset) {
-        case "light":
-            return "economy";
-        case "delivery":
-            return "delivery";
-        default:
-            return "full";
-    }
-}
 // Mode is the compatibility string for two independent composer axes:
 // plan (plan-first workflow) and yolo (tool auto-approval).
 export type Mode = "normal" | "plan" | "yolo" | "plan-yolo";

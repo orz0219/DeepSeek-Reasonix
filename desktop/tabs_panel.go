@@ -29,13 +29,6 @@ type topicSummary struct {
 	hasAdoptedRecovery   bool
 }
 
-func (s topicSummary) displayTurns() int {
-	if s.adoptedRecoveryTurns > s.turns {
-		return s.adoptedRecoveryTurns
-	}
-	return s.turns
-}
-
 // runtimeSessionStatus is one open or detached runtime session, as shown in
 // the sidebar tree.
 type runtimeSessionStatus struct {
@@ -582,10 +575,6 @@ func globalTabWorkspaceRoot() string {
 		return globalWorkspaceRoot()
 	}
 	return root
-}
-
-func loadPinnedTabSession(dir, sessionPath string) (*agent.Session, string, bool, error) {
-	return loadPinnedTabSessionWithPreloadAndMigrationFallback(dir, sessionPath, loadedTabSession{}, true)
 }
 
 func loadPinnedTabSessionWithPreload(dir, sessionPath string, preloaded loadedTabSession) (*agent.Session, string, bool, error) {

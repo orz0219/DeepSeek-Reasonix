@@ -120,10 +120,6 @@ func run(args []string) int {
 	return 0
 }
 
-func migrate(installRoot, activeVersion string) error {
-	return migrateWithRelaunch(installRoot, activeVersion, true)
-}
-
 func migrateWithRelaunch(installRoot, activeVersion string, relaunch bool) error {
 	var err error
 	activeVersion, err = normalizeActiveVersion(activeVersion)

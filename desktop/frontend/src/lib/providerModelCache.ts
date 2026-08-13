@@ -117,15 +117,8 @@ export async function cachedFetchProviderModels(
 }
 
 /** Tell the caller whether this provider is still inside its retry window. */
-export function isBackingOff(provider: ProviderView): boolean {
-  const state = backoff.get(cacheKey(provider));
-  return Boolean(state && Date.now() < state.retryAt);
-}
 
 /** Clear cache/backoff for one exact provider request identity. */
-export function invalidateProviderCache(provider: ProviderView): void {
-  invalidateKey(cacheKey(provider));
-}
 
 /** Clear every provider identity that resolves credentials through this env. */
 export function invalidateProviderCacheByAPIKeyEnv(apiKeyEnv: string): void {
@@ -137,13 +130,6 @@ export function invalidateProviderCacheByAPIKeyEnv(apiKeyEnv: string): void {
 }
 
 /** Clear the entire model cache without allowing stale inflight writes back in. */
-export function clearModelCache(): void {
-  cacheEpoch += 1;
-  cache.clear();
-  inflight.clear();
-  backoff.clear();
-  generations.clear();
-}
 
 /** Return true when the network is too slow for background model discovery. */
 export function shouldSkipAutoRefresh(): boolean {

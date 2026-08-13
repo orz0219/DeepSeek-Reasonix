@@ -342,14 +342,6 @@ func verifyTodoStep(ctx context.Context, step string) (evidence.TodoStepMatch, b
 	}
 }
 
-func todoInventory(ledger *evidence.Ledger) string {
-	todos, ok := ledger.LatestTodos()
-	if !ok || len(todos) == 0 {
-		return "(no todos recorded this turn)"
-	}
-	return todoListInventory(todos)
-}
-
 func todoListInventory(todos []evidence.TodoItem) string {
 	parts := make([]string, 0, len(todos))
 	for i, t := range todos {

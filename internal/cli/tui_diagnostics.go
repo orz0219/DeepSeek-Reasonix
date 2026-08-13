@@ -537,18 +537,8 @@ func (d *tuiDiagnostics) logfLocked(format string, args ...any) {
 }
 
 // phaseForTest returns the current phase under lock (test helper).
-func (d *tuiDiagnostics) phaseForTest() tuiWatchdogPhase {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.phase
-}
 
 // generationForTest returns the current generation under lock (test helper).
-func (d *tuiDiagnostics) generationForTest() uint64 {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.generation
-}
 
 func (d *tuiDiagnostics) Close() {
 	if d == nil {

@@ -139,10 +139,6 @@ func configureCLIThemeWithStyle(mode, style string) {
 	refreshCLIStyles()
 }
 
-func resolveCLITheme(mode string) cliPalette {
-	return resolveCLIThemeWithStyle(mode, "")
-}
-
 func resolveCLIThemeWithStyle(mode, style string) cliPalette {
 	mode = strings.ToLower(strings.TrimSpace(mode))
 	if st, ok := cliThemeStyleByName(mode); ok {

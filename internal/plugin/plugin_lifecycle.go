@@ -88,10 +88,6 @@ func (h *Host) addWithLifecycle(lifeCtx, callCtx context.Context, s Spec, deferr
 	return tools, err
 }
 
-func (h *Host) addConnected(ctx context.Context, s Spec) ([]tool.Tool, error) {
-	return h.addConnectedWithLifecycle(ctx, ctx, s, 0)
-}
-
 func (h *Host) addConnectedWithLifecycle(lifeCtx, callCtx context.Context, s Spec, deferredGeneration uint64) ([]tool.Tool, error) {
 	startupStarted := time.Now()
 	h.mu.RLock()

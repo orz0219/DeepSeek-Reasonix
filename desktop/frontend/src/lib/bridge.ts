@@ -136,9 +136,6 @@ export function emitUpdater(p: UpdateProgress) {
 }
 // Test seam for the browser-dev updater state machine. Production Wails builds
 // receive the same payloads through runtime.EventsOn("updater:progress").
-export function __emitMockUpdater(p: UpdateProgress): void {
-    emitUpdater(p);
-}
 export function delay(ms: number): Promise<void> {
     return new Promise((r) => setTimeout(r, ms));
 }
@@ -233,9 +230,7 @@ export { onProjectTreeChanged as onProjectTreeChanged } from "./bridge_events";
 export { onTopicActivation as onTopicActivation } from "./bridge_events";
 export { onTabMeta as onTabMeta } from "./bridge_events";
 export { __emitMockTopicActivation as __emitMockTopicActivation } from "./bridge_events";
-export { __emitMockTabMeta as __emitMockTabMeta } from "./bridge_events";
 export { onSessionRecovered as onSessionRecovered } from "./bridge_events";
-export { onSessionRecoveryFailed as onSessionRecoveryFailed } from "./bridge_events";
 export { onRemoteStatus as onRemoteStatus } from "./bridge_events";
 export { onRemoteForwards as onRemoteForwards } from "./bridge_events";
 export { onRemoteServer as onRemoteServer } from "./bridge_events";

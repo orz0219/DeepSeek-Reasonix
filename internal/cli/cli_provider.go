@@ -6,15 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"reasonix/internal/agent"
 	"reasonix/internal/config"
 	"reasonix/internal/control"
-	fileencoding "reasonix/internal/fileutil/encoding"
 	"reasonix/internal/i18n"
 
 	"golang.org/x/term"
@@ -23,20 +20,6 @@ import (
 // providerFamily is a wizard-only grouping of provider SKUs by vendor; it does
 // not exist in config because users editing reasonix.toml deal with SKU names
 // directly.
-type providerFamily struct {
-	key  string
-	name string
-	desc string
-}
-
-func familyOf(name string) providerFamily {
-	switch {
-	case strings.HasPrefix(name, "deepseek"):
-		return providerFamily{key: "deepseek", name: "DeepSeek", desc: "fast & cheap, plus a stronger Pro SKU"}
-	default:
-		return providerFamily{key: name, name: name}
-	}
-}
 
 type providerPromptResult struct {
 	entries     []config.ProviderEntry
@@ -257,128 +240,6 @@ func promptAnthropicProviderFromURL() (providerPromptResult, error) {
 	return newProviderPromptResult([]config.ProviderEntry{entry}, keyEnv, apiKey), nil
 }
 
-func groupByFamily(providers []config.ProviderEntry) ([]string, map[string][]int, map[string]providerFamily) {
-	var order []string
-	members := map[string][]int{}
-	info := map[string]providerFamily{}
-	for i, p := range providers {
-		f := familyOf(p.Name)
-		if _, seen := members[f.key]; !seen {
-			order = append(order, f.key)
-			info[f.key] = f
-		}
-		members[f.key] = append(members[f.key], i)
-	}
-	return order, members, info
-}
-
-// withBuiltinFamilies guarantees the wizard always offers the built-in DeepSeek
-// family even when the loaded config replaced the defaults.
-// Built-in entries whose exact name already exists in the user's config are
-// kept as-is (preserving customizations); missing built-in entries within an
-// existing family are appended so the model picker always shows the full
-// catalogue rather than only the previously selected subset.
-func withBuiltinFamilies(providers []config.ProviderEntry) []config.ProviderEntry {
-	return withBuiltinFamiliesForLanguage(providers, "")
-}
-
-func withBuiltinFamiliesForLanguage(providers []config.ProviderEntry, pricingLanguage string) []config.ProviderEntry {
-	haveName := map[string]bool{}
-	for _, p := range providers {
-		haveName[p.Name] = true
-	}
-	defaults := config.Default()
-	defaults.Language = pricingLanguage
-	defaults.ApplyDeepSeekOfficialDefaultPricing()
-	for _, bp := range defaults.Providers {
-		if !haveName[bp.Name] {
-			providers = append(providers, bp)
-		}
-	}
-	return providers
-}
-
-// providersWithMissingKeys returns the providers the active configuration
-// actually references (default/planner/subagent models) whose api_key_env is
-// declared but not set. Merely-available providers stay silent; the chat banner
-// still warns if users later switch to a model whose key is missing.
-// configureKeys dedupes shared envs, so duplicates are fine to leave in.
-func providersWithMissingKeys(cfg *config.Config) []config.ProviderEntry {
-	if cfg == nil {
-		return nil
-	}
-	refs := []string{
-		cfg.DefaultModel,
-		cfg.Agent.PlannerModel,
-		cfg.Agent.SubagentModel,
-	}
-	if len(cfg.Agent.SubagentModels) > 0 {
-		keys := make([]string, 0, len(cfg.Agent.SubagentModels))
-		for key := range cfg.Agent.SubagentModels {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
-			refs = append(refs, cfg.Agent.SubagentModels[key])
-		}
-	}
-
-	var out []config.ProviderEntry
-	seen := map[string]bool{}
-	for _, ref := range refs {
-		ref = strings.TrimSpace(ref)
-		if ref == "" {
-			continue
-		}
-		p, ok := cfg.ResolveModel(ref)
-		if !ok || p.APIKeyEnv == "" || os.Getenv(p.APIKeyEnv) != "" || seen[p.APIKeyEnv] {
-			continue
-		}
-		seen[p.APIKeyEnv] = true
-		out = append(out, *p)
-	}
-	return out
-}
-
-// configureKeys reconciles each enabled provider's API key with the
-// environment. For every distinct api_key_env: if the variable is already set,
-// setup asks whether to re-enter it; Enter keeps and re-pins the existing value.
-// Otherwise the user is asked once per env var (deduped across providers that
-// share one, e.g. both DeepSeek models). Returns KEY=value lines for the
-// Reasonix global .env. Re-pinning keeps hand-edited or previously saved values
-// aligned with the user's latest setup choice.
-func configureKeys(selected []config.ProviderEntry, r io.Reader, w io.Writer) []string {
-	in := bufio.NewScanner(r)
-	fmt.Fprintln(w, "\n"+i18n.M.EnterAPIKeysHeader)
-
-	seen := map[string]bool{}
-	var envLines []string
-	for _, p := range selected {
-		if p.APIKeyEnv == "" || seen[p.APIKeyEnv] {
-			continue
-		}
-		seen[p.APIKeyEnv] = true
-
-		if cur := os.Getenv(p.APIKeyEnv); cur != "" {
-			reset := ask(in, w, "  "+fmt.Sprintf(i18n.M.APIKeyResetPromptFmt, p.APIKeyEnv), "y/N")
-			if reset == "y" || reset == "Y" {
-				if key := ask(in, w, "  "+p.APIKeyEnv, ""); key != "" {
-					envLines = append(envLines, p.APIKeyEnv+"="+key)
-					continue
-				}
-			}
-			fmt.Fprintf(w, "  %s %s\n", green("✓"), fmt.Sprintf(i18n.M.APIKeyAlreadySetFmt, p.APIKeyEnv))
-			envLines = append(envLines, p.APIKeyEnv+"="+cur)
-			continue
-		}
-
-		if key := ask(in, w, "  "+p.APIKeyEnv, ""); key != "" {
-			envLines = append(envLines, p.APIKeyEnv+"="+key)
-		}
-	}
-	return envLines
-}
-
 // ask prints a prompt to w and returns the entered line, or def if input is empty.
 func ask(in *bufio.Scanner, w io.Writer, label, def string) string {
 	if def != "" {
@@ -412,51 +273,6 @@ func isTTY(f *os.File) bool {
 // stale one instead of stacking duplicates. The new values are also
 // pinned into the current process env so a chat session started right after
 // init picks up the fresh keys without a restart.
-func appendEnv(path string, lines []string) error {
-	target := map[string]bool{}
-	for _, l := range lines {
-		if k, _, ok := strings.Cut(l, "="); ok {
-			target[strings.TrimSpace(k)] = true
-		}
-	}
-
-	var kept []string
-	if data, err := fileencoding.ReadFileUTF8(path); err == nil {
-		for raw := range strings.SplitSeq(string(data), "\n") {
-			trimmed := strings.TrimSpace(raw)
-			check := strings.TrimPrefix(trimmed, "export ")
-			if k, _, ok := strings.Cut(check, "="); ok && target[strings.TrimSpace(k)] {
-				continue
-			}
-			kept = append(kept, raw)
-		}
-
-		if n := len(kept); n > 0 && kept[n-1] == "" {
-			kept = kept[:n-1]
-		}
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-
-	var b strings.Builder
-	for _, l := range kept {
-		b.WriteString(l)
-		b.WriteByte('\n')
-	}
-	for _, l := range lines {
-		b.WriteString(l)
-		b.WriteByte('\n')
-		if k, v, ok := strings.Cut(l, "="); ok {
-			os.Setenv(strings.TrimSpace(k), v)
-		}
-	}
-	if dir := filepath.Dir(path); dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
-	}
-	return os.WriteFile(path, []byte(b.String()), 0o600)
-}
 
 // readStdin reads piped input if present; an interactive terminal yields "".
 func readStdin() string {

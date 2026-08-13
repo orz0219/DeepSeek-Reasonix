@@ -76,8 +76,3 @@ func (r *sessionRuntime) reset(s *Session) {
 
 // session returns the bound conversation under the lock that guards the
 // pointer against a concurrent SetSession.
-func (r *sessionRuntime) session() *Session {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.conversation
-}

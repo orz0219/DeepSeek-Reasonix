@@ -460,14 +460,6 @@ func sameCurrentProcessLease(err error) bool {
 	return strings.TrimSpace(leaseErr.Info.Hostname) == strings.TrimSpace(host)
 }
 
-// sessionParentLive reports whether a desktop tab or detached runtime in this
-// process currently owns, or is still building, the requested session. It is
-// intentionally checked before stale-subagent cleanup probes the durable lease:
-// a starting tab has published SessionPath but may not have bound that lease yet.
-func (a *App) sessionParentLive(sessionPath string) bool {
-	return a.sessionParentLiveForBuild(sessionPath, nil)
-}
-
 // subagentParentProbeForBuild excludes an initial build's own unbound tab: that
 // build can safely repair its crash leftovers before it binds the session lease.
 // Other live tabs remain protected from the sweep.

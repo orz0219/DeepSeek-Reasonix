@@ -217,10 +217,6 @@ func foldedPasteLineCount(label string) (int, bool) {
 // nextPasteIDForHistory prevents labels from being reused after resume or
 // restart. Older sessions may contain duplicate legacy IDs; starting above the
 // maximum keeps every newly created label unambiguous.
-func nextPasteIDForHistory(history []provider.Message) int {
-	next, _ := pasteIDStateForHistory(history)
-	return next
-}
 
 func pasteIDStateForHistory(history []provider.Message) (int, map[int]struct{}) {
 	next := 1
@@ -617,13 +613,6 @@ func isDataImage(src string) bool {
 
 // pastedImagePathForOS returns the preferred syntactic candidate with the OS
 // injected so platform-specific path handling is testable everywhere.
-func pastedImagePathForOS(src, goos string) (string, bool) {
-	candidates := pastedPathCandidates(src, goos, false)
-	if len(candidates) == 0 {
-		return "", false
-	}
-	return candidates[0], true
-}
 
 func hasUnescapedPathWhitespace(s string) bool {
 	escaped := false

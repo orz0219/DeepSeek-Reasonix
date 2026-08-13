@@ -209,9 +209,3 @@ func (a *Agent) RecordUnappliedSteer(text string, itemID ...string) {
 		ItemID: id,
 	})
 }
-
-func (a *Agent) steerQueueLen() int {
-	a.steerMu.Lock()
-	defer a.steerMu.Unlock()
-	return len(a.steerQueue)
-}

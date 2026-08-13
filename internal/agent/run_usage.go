@@ -236,9 +236,6 @@ func finalizeSamplingUsage(billable, latest *provider.Usage) *provider.Usage {
 
 // mergeStreamUsage remains for missing-reasoning style single-repair merges that
 // need a simple sum. Sampling recovery uses mergeSamplingUsage instead.
-func mergeStreamUsage(first, retry *provider.Usage) *provider.Usage {
-	return mergeSamplingUsage(first, retry)
-}
 
 func usageTotalTokens(u *provider.Usage) int {
 	if u == nil {

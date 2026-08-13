@@ -22,10 +22,6 @@ import (
 	"reasonix/internal/retrieval"
 )
 
-func loadCatalog(fsys fs.FS) (*catalog, error) {
-	return loadCatalogWithReleaseNotes(fsys, nil)
-}
-
 func loadCatalogWithReleaseNotes(docsFS, releaseNotesFS fs.FS) (*catalog, error) {
 	entries, err := fs.ReadDir(docsFS, ".")
 	if err != nil {
@@ -129,10 +125,6 @@ func (c *catalog) addDocument(doc *document) error {
 		c.byID[section.id] = section
 	}
 	return nil
-}
-
-func parseDocument(name, content string) *document {
-	return parseDocumentWithParser(name, content, goldmark.DefaultParser())
 }
 
 func parseDocumentWithParser(name, content string, markdownParser parser.Parser) *document {

@@ -381,19 +381,3 @@ function findMatchingBrace(s: string, cmdEnd: number, _envName: string): number 
 }
 
 /** Strip outer LaTeX math delimiters from already-identified math content. */
-export function stripMathDelimiters(source: string): string {
-  const trimmed = source.trim();
-  if (trimmed.startsWith("\\[") && trimmed.endsWith("\\]")) {
-    return trimmed.slice(2, -2).trim();
-  }
-  if (trimmed.startsWith("\\(") && trimmed.endsWith("\\)")) {
-    return trimmed.slice(2, -2).trim();
-  }
-  if (trimmed.startsWith("$$") && trimmed.endsWith("$$")) {
-    return trimmed.slice(2, -2).trim();
-  }
-  if (trimmed.startsWith("$") && trimmed.endsWith("$")) {
-    return trimmed.slice(1, -1).trim();
-  }
-  return trimmed;
-}

@@ -69,10 +69,6 @@ func (r *goalTurnRecorder) RecordGoalReport(report tool.GoalReport) (string, err
 	return fmt.Sprintf("update_goal: %s recorded for this turn.", wireStatus), nil
 }
 
-func (r *goalTurnRecorder) addUsage(tokens int) {
-	r.addUsageWithRequests(tokens, 0)
-}
-
 func (r *goalTurnRecorder) addUsageWithRequests(tokens, requests int) {
 	if tokens <= 0 && requests <= 0 {
 		return
@@ -87,12 +83,6 @@ func (r *goalTurnRecorder) addUsageWithRequests(tokens, requests int) {
 		}
 	}
 	r.mu.Unlock()
-}
-
-func (r *goalTurnRecorder) usageTokens() int {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.tokensUsed
 }
 
 func (r *goalTurnRecorder) addWorkDuration(durationMs int64) {

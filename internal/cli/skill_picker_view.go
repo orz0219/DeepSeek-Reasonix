@@ -355,16 +355,6 @@ func skillSourceSummary(roots []skillRootLine) string {
 	return fmt.Sprintf(i18n.M.SkillPickerSourceActiveFmt, active)
 }
 
-func renderSkillDetail(s skill.Skill, w int) string {
-	var b strings.Builder
-	b.WriteString(renderSkillDetailHeader(s, w))
-	if body := renderSkillBodyPreview(s, w, 12); body != "" {
-		b.WriteByte('\n')
-		b.WriteString(body)
-	}
-	return b.String()
-}
-
 func renderSkillDetailHeader(s skill.Skill, w int) string {
 	var b strings.Builder
 	b.WriteString(accent("/" + s.SlashName()))

@@ -115,12 +115,6 @@ func flattenBlockWraps(blocks [][]string) []string {
 }
 
 // wrappedContentString returns the viewport payload for tests/debug.
-func (m chatTUI) wrappedContentString() string {
-	if len(m.wrappedLines) == 0 {
-		return ""
-	}
-	return strings.Join(m.wrappedLines, "\n")
-}
 
 // invalidateWrapFrom drops the wrap cache from block index onward so the next
 // syncWrappedLines only re-wraps the suffix. Used by setTranscriptBlock and any

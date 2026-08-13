@@ -35,9 +35,6 @@ export type ThemeSelection =
 let experienceCache: ThemeExperienceView | null = null;
 let previewDepth = 0;
 
-export function getCachedThemeExperience(): ThemeExperienceView | null {
-  return experienceCache;
-}
 
 /**
  * Return the configured base style that React owners should mirror.
@@ -228,9 +225,6 @@ function endPreviewIfAny(): void {
   }
 }
 
-export function isPreviewActive(): boolean {
-  return previewDepth > 0;
-}
 
 /** Group packs for the gallery tabs. */
 export function groupThemePacks(packs: ThemePackView[]): {

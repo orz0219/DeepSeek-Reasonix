@@ -321,33 +321,6 @@ func (s *service) switchSessionToolApproval(ctx context.Context, sess *acpSessio
 	return cfgState, nil
 }
 
-func (s *service) rebuildSession(ctx context.Context, sess *acpSession, cfgState SessionConfigState, deltas []sessionConfigDelta) error {
-	if !sess.stateChangeMu.TryLock() {
-
-		sess.mu.Lock()
-		if sess.maintenanceDone != nil && !sess.deleted {
-			for _, delta := range deltas {
-				sess.pendingConfig = mergePendingConfig(sess.pendingConfig, delta)
-			}
-			sess.mu.Unlock()
-			sess.sink.send(configOptionUpdate{SessionUpdate: "config_option_update", ConfigOptions: cfgState.ConfigOptions})
-			return nil
-		}
-		sess.mu.Unlock()
-		sess.stateChangeMu.Lock()
-	}
-	didMaintenance := false
-	err := s.rebuildSessionLocked(ctx, sess, cfgState, deltas, &didMaintenance)
-	sess.stateChangeMu.Unlock()
-	if didMaintenance {
-		pendingErr := s.applyPendingSessionConfig(ctx, sess)
-		s.reportPendingSessionConfigError(ctx, sess, pendingErr, "after maintenance")
-
-		s.drainPendingReload(ctx, sess)
-	}
-	return err
-}
-
 func (s *service) rebuildSessionLocked(ctx context.Context, sess *acpSession, cfgState SessionConfigState, deltas []sessionConfigDelta, didMaintenance *bool) (retErr error) {
 	sess.mu.Lock()
 	if sess.deleted {

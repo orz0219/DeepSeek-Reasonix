@@ -230,9 +230,6 @@ func (a *approvalManager) preApprovedForRequiredHuman(tool, subject string) bool
 
 // register allocates an approval ID, records the pending prompt, and returns the
 // reply channel the resolve path will signal.
-func (a *approvalManager) register(tool, subject, reason string) (string, chan approvalReply) {
-	return a.registerWithInput(tool, subject, reason, nil)
-}
 
 func (a *approvalManager) registerWithInput(tool, subject, reason string, rawInput json.RawMessage) (string, chan approvalReply) {
 	return a.registerDecisionWithInput(tool, subject, reason, rawInput, false, false)
@@ -241,9 +238,6 @@ func (a *approvalManager) registerWithInput(tool, subject, reason string, rawInp
 // registerDecision allocates an approval ID for either an ordinary tool
 // permission or a fresh user decision. Fresh decisions are not auto-drained when
 // the user switches to auto/yolo tool approval while the prompt is visible.
-func (a *approvalManager) registerDecision(tool, subject, reason string, fresh, requireHuman bool) (string, chan approvalReply) {
-	return a.registerDecisionWithInput(tool, subject, reason, nil, fresh, requireHuman)
-}
 
 func (a *approvalManager) registerDecisionWithInput(tool, subject, reason string, rawInput json.RawMessage, fresh, requireHuman bool) (string, chan approvalReply) {
 	return a.registerDecisionKindWithInput(tool, subject, reason, rawInput, fresh, requireHuman, "", nil)
@@ -392,17 +386,6 @@ func (a *approvalManager) markAskEmitted(id string) {
 }
 
 // queuedAsks reports asks registered but not yet shown.
-func (a *approvalManager) queuedAsks() int {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	n := 0
-	for _, p := range a.asks {
-		if p.queued {
-			n++
-		}
-	}
-	return n
-}
 
 // cancelAsk drops a pending ask (timeout/abort path).
 func (a *approvalManager) cancelAsk(id string) {

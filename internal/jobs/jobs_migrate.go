@@ -125,10 +125,6 @@ func unlockArtifactMigrationJobs(jobs []artifactMigrationJob) {
 	}
 }
 
-func migrateArtifactDir(src, dst string) error {
-	return migrateArtifactDirSkipping(src, dst, nil)
-}
-
 func migrateArtifactDirSkipping(src, dst string, skip map[string]bool) error {
 	entries, err := os.ReadDir(src)
 	if err != nil {

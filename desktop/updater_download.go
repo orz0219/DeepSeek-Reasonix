@@ -1,9 +1,7 @@
 package main
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -71,20 +69,10 @@ func isTransientFetchError(err error) bool {
 }
 
 // fetchBytes GETs a URL fully into memory, retrying transient transport failures.
-func fetchBytes(ctx context.Context, c *http.Client, url string) ([]byte, error) {
-	return fetchBytesFallbackForChannel(ctx, c, nil, runningUpdateChannel(), url)
-}
 
 // fetchBytesFallback retries transport failures with the IPv4-pinned client.
 // This covers small manifest/signature requests as well as the artifact body;
 // previously only the large artifact download escaped a broken IPv6 route.
-func fetchBytesFallback(ctx context.Context, c, fallback *http.Client, url string) ([]byte, error) {
-	return fetchBytesFallbackForChannel(ctx, c, fallback, runningUpdateChannel(), url)
-}
-
-func fetchBytesFallbackForChannel(ctx context.Context, c, fallback *http.Client, selected, url string) ([]byte, error) {
-	return fetchBytesFallbackForChannelSized(ctx, c, fallback, selected, url, maxDesktopManifestSize)
-}
 
 func fetchBytesFallbackForChannelSized(
 	ctx context.Context,
@@ -140,15 +128,10 @@ func fetchBytesOnce(ctx context.Context, c *http.Client, selected, url string, m
 	return data, nil
 }
 
-// download fetches url into memory, invoking onProgress as bytes arrive. A transient
-// transport failure is retried; the retry resumes from the bytes already received
-// via a Range request instead of restarting, and switches to the IPv4 fallback
-// client (when provided) since a reset usually means the IPv6 route is the problem.
-// total is the expected size for the progress denominator (refined from the response).
-func download(ctx context.Context, c, fallback *http.Client, url string, total int64, onProgress func(received, total int64)) ([]byte, error) {
-	return downloadForChannel(ctx, c, fallback, runningUpdateChannel(), url, total, onProgress)
-}
-
+// downloadForChannel fetches url into memory, invoking onProgress as bytes
+// arrive. A transient transport failure retries via a Range request from the
+// bytes already received, switching to the IPv4 fallback client when provided;
+// total is the expected size for the progress denominator.
 func downloadForChannel(ctx context.Context, c, fallback *http.Client, selected, url string, total int64, onProgress func(received, total int64)) ([]byte, error) {
 	selected = normalizeUpdateChannel(selected)
 	if total < 0 || total > maxDesktopReleaseAssetSize {
@@ -275,24 +258,3 @@ func checkSHA256(data []byte, want string) error {
 }
 
 // extractBinary pulls a single named regular file out of a .tar.gz blob.
-func extractBinary(targz []byte, name string) ([]byte, error) {
-	gz, err := gzip.NewReader(bytes.NewReader(targz))
-	if err != nil {
-		return nil, err
-	}
-	defer gz.Close()
-	tr := tar.NewReader(gz)
-	for {
-		h, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		if h.Typeflag == tar.TypeReg && (h.Name == name || strings.HasSuffix(h.Name, "/"+name)) {
-			return io.ReadAll(tr)
-		}
-	}
-	return nil, fmt.Errorf("update: %q not found in archive", name)
-}

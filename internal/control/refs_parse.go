@@ -18,12 +18,6 @@ func (c *Controller) HasRefs(line string) bool {
 // inputImages resolves image @-references in the turn input to data URLs so the
 // turn can carry them to a vision-capable model. Best-effort: an unreadable image
 // is skipped — the @ref still lands as text via ResolveRefs.
-func (c *Controller) inputImages(line string) []string {
-	if !c.imageInputEnabled() {
-		return nil
-	}
-	return c.resolveInputImageCandidates(line)
-}
 
 // resolveInputImageCandidates resolves authorized image references without
 // consulting the active model capability. The parent controller uses this only

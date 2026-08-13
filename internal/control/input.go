@@ -286,10 +286,6 @@ func escapeHookContext(s string) string {
 	return strings.ReplaceAll(s, "</"+hookContextTag+">", "<\\/"+hookContextTag+">")
 }
 
-func reasoningLanguageBlock(lang string) string {
-	return agent.ReasoningLanguageBlock(lang)
-}
-
 func (c *Controller) ComposeSynthetic(text string) string {
 	c.mu.Lock()
 	responseLang := c.responseLanguage

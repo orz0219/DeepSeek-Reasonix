@@ -34,9 +34,6 @@ export function zoomToPercent(zoom: ZoomLevel): number {
 }
 
 /** Convert a percentage integer (50-200) back to a zoom value (0.5-2.0). */
-export function percentToZoom(pct: number): ZoomLevel {
-  return snapZoom(pct / 100);
-}
 
 function readZoom(fallback: ZoomLevel): ZoomLevel {
   const stored = typeof localStorage !== "undefined" ? localStorage.getItem(ZOOM_KEY) : null;
@@ -74,6 +71,3 @@ export function saveRestartZoom(userZoom: ZoomLevel): void {
  * Init: no-op for zoom (the Go-side ZoomFactor is applied at WebView2
  * creation time).
  */
-export function initDpiScale(): void {
-  /* zoom is handled entirely by the Go side (ZoomFactor) */
-}

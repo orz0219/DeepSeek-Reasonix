@@ -153,16 +153,6 @@ export function codeReadabilityDecls(palette: CodeReadabilityPalette): string {
   ].join(";");
 }
 
-export function codeReadabilityRatios(palette: CodeReadabilityPalette): Record<string, number> {
-  const backgrounds = [palette.background, palette.additionBackground, palette.deletionBackground];
-  return Object.fromEntries(
-    ["foreground", "keyword", "string", "number", "comment", "function", "type", "builtin", "meta", "addition", "deletion"]
-      .map((key) => {
-        const foreground = palette[key as keyof CodeReadabilityPalette];
-        return [key, Math.min(...backgrounds.map((background) => contrastRatio(foreground, background)))];
-      }),
-  );
-}
 
 /**
  * Install complete code palettes for every built-in style before any optional

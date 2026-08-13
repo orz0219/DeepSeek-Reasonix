@@ -316,18 +316,8 @@ export function releaseMarkdownWorkerClient(): void {
 }
 
 /** Explicit teardown (app shutdown, tests). Settles all pending requests. */
-export function disposeMarkdownWorkerClient(): void {
-  leases = 0;
-  singleton?.dispose();
-  singleton = null;
-}
 
 /** Test hook: install a fake/spied client as the app singleton. */
-export function setMarkdownWorkerClientForTest(client: MarkdownWorkerClient | null): void {
-  singleton?.dispose();
-  singleton = client;
-  leases = 0;
-}
 
 // Diagnostics provider: lets crash.ts/bench read worker counters without an
 // eager import of this lazy-chunk module.

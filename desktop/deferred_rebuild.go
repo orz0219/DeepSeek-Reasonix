@@ -105,14 +105,6 @@ func (a *App) clearDeferredRebuild(tabID string) {
 	d.mu.Unlock()
 }
 
-func (a *App) deferredRebuildPending(tabID string) bool {
-	d := &a.deferredRebuild
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	_, ok := d.pending[tabID]
-	return ok
-}
-
 // stopDeferredRebuildRetry permanently stops the retry loop; used on shutdown
 // and by tests.
 func (a *App) stopDeferredRebuildRetry() {

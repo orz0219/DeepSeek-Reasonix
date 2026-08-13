@@ -136,12 +136,6 @@ func numberedExportPath(path string, partIndex, partCount int) string {
 	return fmt.Sprintf("%s-%d-of-%d%s", stem, partIndex+1, partCount, ext)
 }
 
-func saveExclusiveExportFiles(targets []string, payloads [][]byte) error {
-	return saveExclusiveExportPayloads(targets, len(payloads), func(index int) ([]byte, error) {
-		return payloads[index], nil
-	})
-}
-
 func saveExclusiveExportPayloads(targets []string, payloadCount int, payloadAt func(int) ([]byte, error)) error {
 	if len(targets) == 0 || len(targets) != payloadCount || payloadAt == nil {
 		return errors.New("invalid export image batch")

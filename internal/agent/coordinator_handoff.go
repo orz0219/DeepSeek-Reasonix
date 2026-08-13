@@ -90,14 +90,6 @@ route: %s
 </planner-turn>`, strings.TrimSpace(input), decision.Depth, decision.Route)
 }
 
-func formatHandoff(task, plan string, toolContext ...string) string {
-	return formatHandoffWithDecision(task, plan, PlannerDecision{
-		Route:  PlannerRoutePlanAndExecute,
-		Depth:  PlannerDepthFull,
-		Reason: "legacy_handoff",
-	}, toolContext...)
-}
-
 func formatHandoffWithDecision(task, plan string, decision PlannerDecision, toolContext ...string) string {
 	toolBlock := ""
 	if len(toolContext) > 0 {

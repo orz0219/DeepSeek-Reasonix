@@ -191,17 +191,8 @@ export function registerTrustedThemeBackgroundURLs(urls: readonly string[]): voi
   }
 }
 
-export function getActiveThemePack(): ThemePackView | null {
-  return activePack;
-}
 
-export function getThemeScene(): ThemeScene {
-  return activeScene;
-}
 
-export function getBaseAppearance(): { theme: Theme; style: ThemeStyle } | null {
-  return baseAppearance ? { ...baseAppearance } : null;
-}
 
 export function isThemeTokenKey(key: string): boolean {
   return (TOKEN_KEYS as readonly string[]).includes(key);

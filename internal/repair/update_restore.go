@@ -567,10 +567,6 @@ func validateOrphanedAppBundleBackupMetadata(tx *UpdateTransaction) error {
 	return nil
 }
 
-func copyFileWithHash(src, dst string, mode os.FileMode) (string, error) {
-	return copyFileWithHashMode(src, dst, mode, false)
-}
-
 func copyFileWithHashCreate(src, dst string, mode os.FileMode) (string, error) {
 	return copyFileWithHashMode(src, dst, mode, true)
 }

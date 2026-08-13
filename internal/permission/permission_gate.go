@@ -131,21 +131,11 @@ func (g *Gate) approve(ctx context.Context, toolName, subject string, args json.
 	return allow, remember, "", err
 }
 
-// rememberRule builds the rule string persisted when the user picks "always
-// allow". Bash commands prefer a safe command prefix (e.g. go test:*) so
-// "always allow" covers similar invocations with different arguments. File
-// mutation tools are remembered tool-wide ("Edit") so approving one file edit
-// covers all files. Other tools are remembered by tool name. Deny and ask rules keep their higher precedence.
-func rememberRule(toolName, subject string) string {
-	return RememberRuleForScope(toolName, subject)
-}
-
 // RememberRuleForScope builds the rule string persisted when the user chooses
 // an always-allow option. Bash commands prefer a safe prefix (go test:*) so
-// similar invocations (different search terms, different test packages) match;
-// when no safe prefix can be extracted the exact command is used. File
-// mutation tools are always remembered tool-wide (Edit). Other tools use their
-// bare tool name. Deny rules still take precedence on every call.
+// similar invocations match; when no safe prefix can be extracted the exact
+// command is used. File mutation tools are remembered tool-wide (Edit); other
+// tools use their bare tool name. Deny rules still take precedence.
 func RememberRuleForScope(toolName, subject string) string {
 	subject = strings.TrimSpace(subject)
 	if subject != "" && toolName == "bash" {

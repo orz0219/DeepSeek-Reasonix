@@ -2,7 +2,6 @@ package main
 
 import (
 	"archive/zip"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -370,13 +369,3 @@ func writeThemeZip(destPath string, m *ThemePackManifest, imageBytes []byte, tas
 }
 
 // extractThemeZipBytes is a test helper for in-memory ZIP fixtures.
-func extractThemeZipBytes(data []byte) (*ThemePackManifest, string, error) {
-	if int64(len(data)) > themePackMaxZipBytes {
-		return nil, "", fmt.Errorf("theme package exceeds %d bytes", themePackMaxZipBytes)
-	}
-	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil {
-		return nil, "", err
-	}
-	return extractThemeZip(zr)
-}
