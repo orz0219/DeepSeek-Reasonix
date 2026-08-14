@@ -83,7 +83,6 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
                     enabled: true,
                     approvalMode: "yolo",
                     newConversationEachRun: false,
-                    notifyChannels: false,
                     createdAt: Date.now(),
                 });
             }).catch(() => { });
@@ -111,7 +110,6 @@ export function HeartbeatPanel({ open, onClose, startNew, onOpenTopic }: Heartbe
                 enabled: true,
                 approvalMode: "yolo",
                 newConversationEachRun: false,
-                notifyChannels: false,
                 createdAt: Date.now(),
             });
         }

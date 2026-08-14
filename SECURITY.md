@@ -29,22 +29,22 @@ Preferred reporting path:
 Please include:
 
 - Affected Reasonix version, commit, operating system, and installation method.
-- The feature or surface involved, such as CLI, desktop app, HTTP `serve`, bot
-  gateway, MCP plugin, built-in tool, updater, or configuration loading.
+- The feature or surface involved, such as CLI, desktop app, HTTP `serve`, MCP
+  plugin, built-in tool, updater, or configuration loading.
 - Clear reproduction steps using dummy credentials and non-sensitive files.
 - The expected impact, such as secret disclosure, arbitrary file access,
   command execution, sandbox escape, authentication bypass, or supply-chain risk.
 - Any relevant logs with API keys, tokens, local paths, and personal data
   redacted.
 
-Do not send real provider API keys, bot credentials, OAuth tokens, private
+Do not send real provider API keys, OAuth tokens, private
 workspace files, or third-party user data.
 
 ## Security Boundaries
 
 Reasonix is a local coding agent. Many features intentionally operate on the
 user's local machine and workspace, including file reads, file writes, shell
-commands, MCP plugins, language servers, bot sessions, and model-provider
+commands, MCP plugins, language servers, and model-provider
 requests. A finding is security-relevant when it crosses a supported boundary or
 bypasses an explicit guard.
 
@@ -54,13 +54,11 @@ Supported boundaries include:
   as workspace-scoped.
 - Permission checks for tool calls, shell commands, file writes, and approvals.
 - Sandbox behavior for built-in shell execution where the platform supports it.
-- Secret handling for provider keys, bot credentials, OAuth tokens, plugin
-  headers, and credential-store fallback files.
+- Secret handling for provider keys, OAuth tokens, plugin headers, and
+  credential-store fallback files.
 - HTTP `serve` protections for the unauthenticated local server, including
   localhost binding assumptions, JSON-only state-changing requests, and CORS
   restrictions.
-- Desktop and bot session isolation, including per-workspace session metadata
-  and configured bot allowlists.
 - Updater, install, and release verification paths.
 
 The following are normally treated as trusted local/operator-controlled inputs
@@ -80,12 +78,10 @@ when they bypass the intended boundary:
   local-user intent.
 - Following symlinks or path traversal to escape workspace confinement.
 - Running shell commands or external tools without the required permission gate.
-- Leaking credentials, environment variables, prompt history, local files, or bot
+- Leaking credentials, environment variables, prompt history, local files, or
   messages to logs, model providers, MCP servers, crash reports, or telemetry.
 - Allowing a website to drive the local HTTP server through CSRF, CORS, or
   content-type bypasses.
-- Letting a bot user outside the configured allowlist submit prompts, approve
-  tools, or access a project workspace.
 - Trusting unverified update artifacts, plugin definitions, or downloaded
   binaries.
 
@@ -99,7 +95,7 @@ preserve these invariants:
   the active workspace root before file content is read or attached.
 - Path traversal such as `..` must not escape the workspace root.
 - Symlinks must not be usable to bypass the intended workspace boundary.
-- Unscoped local CLI compatibility must not be exposed to remote, bot, or
+- Unscoped local CLI compatibility must not be exposed to remote or
   browser-controlled inputs unless an equivalent workspace boundary is applied.
 - File content should be size-limited and binary content should not be dumped as
   prompt text.

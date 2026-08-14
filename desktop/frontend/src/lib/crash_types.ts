@@ -2,7 +2,7 @@
 // whole tree (blank window), and global errors/rejections leave no trace either.
 import { type Breadcrumb } from "./breadcrumbs";
 import { type SessionPipelineDiagnostics } from "./sessionDiagnostics";
-export type CrashKind = "crash" | "exception" | "feedback" | "performance" | "bot";
+export type CrashKind = "crash" | "exception" | "feedback" | "performance";
 export type PerformanceSnapshot = {
     reason: string;
     uptimeMs: number;
@@ -51,7 +51,7 @@ export type PerformanceSnapshot = {
 };
 export type CrashPayload = {
     schemaVersion: 2;
-    source: "frontend" | "frontend.react" | "frontend.global" | "frontend.performance" | "bot.runtime";
+    source: "frontend" | "frontend.react" | "frontend.global" | "frontend.performance";
     kind: CrashKind;
     label: string;
     message: string;

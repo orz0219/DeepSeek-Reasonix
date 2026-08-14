@@ -31,8 +31,6 @@ type tabEventSink struct {
 	ctx           context.Context
 	runtimeEpoch  string
 	runtimeEvents asyncRuntimeEmitter
-	botSink       event.Sink // optional: when set, events are also forwarded here
-	botSinkGen    uint64
 	turn          turnSubmissionState // stays reserved through the end of TurnDone fan-out
 }
 
@@ -84,16 +82,6 @@ func (s *tabEventSink) Emit(e event.Event) {
 		case event.TurnDone:
 			s.recordTurnDone()
 		}
-		if m := app.metrics.Load(); m != nil {
-			m.observe(e)
-			if e.Kind == event.TurnDone {
-
-				if tab := app.tabByID(tabID); tab != nil && tab.Ctrl != nil {
-					observeControllerRecoveryMetrics(m, tab.Ctrl)
-				}
-				m.persist()
-			}
-		}
 		if e.Kind == event.TurnDone {
 			s.flushDisplay(e.Cancelled)
 		}
@@ -119,18 +107,6 @@ func (s *tabEventSink) Emit(e event.Event) {
 		app.scheduleTabSnapshot(tabID)
 	}
 
-	bs, botSinkGen := s.botSinkSnapshot()
-	if bs != nil {
-		bs.Emit(e)
-
-		if e.Kind == event.TurnDone {
-			s.clearBotSink(botSinkGen)
-		}
-	}
-
-	if app != nil && app.botBridge != nil {
-		app.botBridge.observe(tabID, e)
-	}
 	if e.Kind == event.TurnDone {
 		s.mu.Lock()
 		s.turn = turnSubmissionState{}
@@ -138,45 +114,8 @@ func (s *tabEventSink) Emit(e event.Event) {
 	}
 }
 
-// SetBotSink atomically sets or clears the bot event forwarder on this sink.
 // It is safe to call concurrently with Emit.
-func (s *tabEventSink) SetBotSink(sink event.Sink) uint64 {
-	s.mu.Lock()
-	old := s.botSink
-	s.botSink = sink
-	s.botSinkGen++
-	generation := s.botSinkGen
-	s.mu.Unlock()
-	if old != nil && old != sink {
-		if closer, ok := old.(closeableEventSink); ok {
-			closer.Close()
-		}
-	}
-	return generation
-}
-
-func (s *tabEventSink) botSinkSnapshot() (event.Sink, uint64) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.botSink, s.botSinkGen
-}
-
-// clearBotSink clears only the forwarder generation observed by the finishing
 // turn. A delayed TurnDone must not detach a replacement installed meanwhile.
-func (s *tabEventSink) clearBotSink(generation uint64) {
-	s.mu.Lock()
-	if s.botSinkGen != generation {
-		s.mu.Unlock()
-		return
-	}
-	old := s.botSink
-	s.botSink = nil
-	s.botSinkGen++
-	s.mu.Unlock()
-	if closer, ok := old.(closeableEventSink); ok {
-		closer.Close()
-	}
-}
 
 // tryBeginTurn reserves the tab until its TurnDone has finished fan-out. The
 // controller clears RuntimeStatus().Running before it emits TurnDone, so the

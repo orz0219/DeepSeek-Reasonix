@@ -19,10 +19,10 @@ import (
 )
 
 // This file defines the driving port: the typed, segregated interface surface
-// that frontends (cli, desktop, bot, acp, serve) consume instead of coupling to
+// that frontends (cli, desktop, acp, serve) consume instead of coupling to
 // the concrete *Controller and its ~99 methods. Each frontend depends only on
-// the sub-ports it actually uses (interface segregation), so e.g. the bot never
-// sees checkpoint or memory methods.
+// the sub-ports it actually uses (interface segregation), so e.g. a headless
+// frontend never sees checkpoint or memory methods.
 //
 // The sub-ports are also the intended decomposition boundary for Controller
 // itself: the port comes first and gives the later collaborator splits a spec to
@@ -248,7 +248,7 @@ type Settings interface {
 
 // SessionAPI is the full driving port — the composition of every sub-port. A
 // rich frontend (the HTTP server, the desktop app, the TUI) depends on this;
-// leaner frontends (bot, acp) depend on just the sub-ports they use.
+// leaner frontends (acp) depend on just the sub-ports they use.
 type SessionAPI interface {
 	Lifecycle
 	TurnControl

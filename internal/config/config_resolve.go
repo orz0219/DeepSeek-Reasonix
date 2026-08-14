@@ -70,22 +70,6 @@ func Default() *Config {
 
 		LSP:     LSPConfig{Enabled: true},
 		Network: NetworkConfig{ProxyMode: netclient.ModeAuto},
-		Bot: BotConfig{
-			ToolApprovalMode:   "ask",
-			MaxSteps:           0,
-			DebounceMs:         1500,
-			QueueMode:          "steer",
-			QueueCap:           20,
-			QueueDrop:          "summarize",
-			IgnoreSelfMessages: true,
-			Control:            BotControlConfig{Addr: "127.0.0.1:37913", TokenEnv: "REASONIX_BOT_CONTROL_TOKEN"},
-			Pairing:            BotPairingConfig{Enabled: true, RequestTTLMinutes: 60, MaxPendingPerPlatform: 3},
-			Allowlist:          BotAllowlist{Enabled: true},
-			QQ:                 QQBotConfig{AppSecretEnv: "QQ_BOT_APP_SECRET"},
-			Feishu:             FeishuBotConfig{Domain: "feishu", AppSecretEnv: "FEISHU_BOT_APP_SECRET", Mode: "webhook", WebhookPort: 8080, RequireMention: true},
-			Weixin:             WeixinBotConfig{AccountID: "default", TokenEnv: "WEIXIN_BOT_TOKEN", APIBase: "https://ilinkai.weixin.qq.com"},
-		},
-
 		Providers: []ProviderEntry{
 			{
 				Name: "deepseek-flash", Kind: "anthropic", BaseURL: deepSeekAnthropicBaseURL,

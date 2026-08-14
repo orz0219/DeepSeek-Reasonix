@@ -250,9 +250,6 @@ func LoadBuiltinDefaultsForRoot(root string) *Config {
 	cfg := Default()
 	cfg.Plugins = nil
 	cfg.Skills = SkillsConfig{}
-	cfg.Bot.Enabled = false
-	cfg.Bot.Connections = nil
-	cfg.Bot.Routes = nil
 	cfg.Statusline.Command = ""
 	cfg.LSP.Enabled = false
 	cfg.setExpansionEnv(nil)

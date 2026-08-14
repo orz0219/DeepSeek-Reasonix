@@ -306,20 +306,6 @@ const METRIC_SIGNALS = [
     "settings_provider_count",
     "settings_provider_access_count",
     "settings_provider_access",
-    "settings_bot_enabled",
-    "settings_bot_model",
-    "settings_bot_tool_approval",
-    "settings_bot_allowlist",
-    "settings_bot_allow_all",
-    "settings_bot_qq_enabled",
-    "settings_bot_feishu_enabled",
-    "settings_bot_weixin_enabled",
-    "settings_bot_connection_count",
-    "settings_bot_connection_provider",
-    "settings_bot_connection_enabled",
-    "settings_bot_connection_status",
-    "settings_bot_connection_model",
-    "settings_bot_connection_approval",
 ] as const;
 type MetricSignal = (typeof METRIC_SIGNALS)[number];
 const METRIC_SIGNAL_SET: ReadonlySet<string> = new Set(METRIC_SIGNALS);
@@ -551,8 +537,6 @@ function severityForKind(kind: string): string {
     if (kind === "crash")
         return "high";
     if (kind === "performance")
-        return "medium";
-    if (kind === "bot")
         return "medium";
     if (kind === "exception")
         return "medium";

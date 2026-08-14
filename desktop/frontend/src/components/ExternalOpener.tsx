@@ -97,9 +97,8 @@ type ResolvedExternalOpeners = ExternalOpenersView & { tabId: string };
 
 export function shouldMountExternalOpener(
   tab: Pick<TabMeta, "id" | "scope"> | null | undefined,
-  imDetailVisible: boolean,
 ): boolean {
-  return !imDetailVisible && Boolean(tab?.id);
+  return Boolean(tab?.id);
 }
 
 export function ExternalOpener({

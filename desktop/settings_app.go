@@ -139,116 +139,6 @@ type AgentView struct {
 	CompactRatioOverridden bool    `json:"compactRatioOverridden,omitempty"`
 }
 
-type BotAllowlistView struct {
-	Enabled         bool     `json:"enabled"`
-	AllowAll        bool     `json:"allowAll"`
-	QQUsers         []string `json:"qqUsers"`
-	FeishuUsers     []string `json:"feishuUsers"`
-	WeixinUsers     []string `json:"weixinUsers"`
-	QQApprovers     []string `json:"qqApprovers"`
-	FeishuApprovers []string `json:"feishuApprovers"`
-	WeixinApprovers []string `json:"weixinApprovers"`
-	QQAdmins        []string `json:"qqAdmins"`
-	FeishuAdmins    []string `json:"feishuAdmins"`
-	WeixinAdmins    []string `json:"weixinAdmins"`
-	QQGroups        []string `json:"qqGroups"`
-	FeishuGroups    []string `json:"feishuGroups"`
-	WeixinGroups    []string `json:"weixinGroups"`
-}
-
-type BotAccessView struct {
-	Enabled        bool     `json:"enabled"`
-	AllowAll       bool     `json:"allowAll"`
-	PairingEnabled bool     `json:"pairingEnabled"`
-	Users          []string `json:"users"`
-	Groups         []string `json:"groups"`
-	Approvers      []string `json:"approvers"`
-	Admins         []string `json:"admins"`
-}
-
-type BotSelfUserIDsView struct {
-	QQ     []string `json:"qq"`
-	Feishu []string `json:"feishu"`
-	Weixin []string `json:"weixin"`
-}
-
-type BotPairingView struct {
-	Enabled               bool `json:"enabled"`
-	RequestTTLMinutes     int  `json:"requestTtlMinutes"`
-	MaxPendingPerPlatform int  `json:"maxPendingPerPlatform"`
-}
-
-type BotControlView struct {
-	Enabled  bool   `json:"enabled"`
-	Addr     string `json:"addr"`
-	TokenEnv string `json:"tokenEnv"`
-}
-
-type BotRouteView struct {
-	ConnectionID     string `json:"connectionId"`
-	Platform         string `json:"platform"`
-	ChatType         string `json:"chatType"`
-	ChatID           string `json:"chatId"`
-	UserID           string `json:"userId"`
-	ThreadID         string `json:"threadId"`
-	Model            string `json:"model"`
-	ToolApprovalMode string `json:"toolApprovalMode"`
-	WorkspaceRoot    string `json:"workspaceRoot"`
-}
-
-type QQBotView struct {
-	Enabled          bool          `json:"enabled"`
-	AppID            string        `json:"appId"`
-	AppSecretEnv     string        `json:"appSecretEnv"`
-	SecretSet        bool          `json:"secretSet"`
-	Sandbox          bool          `json:"sandbox"`
-	Model            string        `json:"model"`
-	ToolApprovalMode string        `json:"toolApprovalMode"`
-	WorkspaceRoot    string        `json:"workspaceRoot"`
-	Access           BotAccessView `json:"access"`
-}
-
-type FeishuBotView struct {
-	Enabled           bool   `json:"enabled"`
-	Domain            string `json:"domain"`
-	AppID             string `json:"appId"`
-	AppSecretEnv      string `json:"appSecretEnv"`
-	SecretSet         bool   `json:"secretSet"`
-	VerificationToken string `json:"verificationToken"`
-	Mode              string `json:"mode"`
-	WebhookPort       int    `json:"webhookPort"`
-	RequireMention    bool   `json:"requireMention"`
-}
-
-type WeixinBotView struct {
-	Enabled   bool   `json:"enabled"`
-	AccountID string `json:"accountId"`
-	TokenEnv  string `json:"tokenEnv"`
-	TokenSet  bool   `json:"tokenSet"`
-	APIBase   string `json:"apiBase"`
-}
-
-type BotSettingsView struct {
-	Enabled            bool                `json:"enabled"`
-	Model              string              `json:"model"`
-	ToolApprovalMode   string              `json:"toolApprovalMode"`
-	MaxSteps           int                 `json:"maxSteps"`
-	DebounceMs         int                 `json:"debounceMs"`
-	QueueMode          string              `json:"queueMode"`
-	QueueCap           int                 `json:"queueCap"`
-	QueueDrop          string              `json:"queueDrop"`
-	IgnoreSelfMessages bool                `json:"ignoreSelfMessages"`
-	SelfUserIDs        BotSelfUserIDsView  `json:"selfUserIds"`
-	Control            BotControlView      `json:"control"`
-	Pairing            BotPairingView      `json:"pairing"`
-	Routes             []BotRouteView      `json:"routes"`
-	Allowlist          BotAllowlistView    `json:"allowlist"`
-	QQ                 QQBotView           `json:"qq"`
-	Feishu             FeishuBotView       `json:"feishu"`
-	Weixin             WeixinBotView       `json:"weixin"`
-	Connections        []BotConnectionView `json:"connections"`
-}
-
 // SettingsView is the whole Settings panel payload.
 type SettingsView struct {
 	DefaultModel                 string               `json:"defaultModel"`
@@ -263,7 +153,6 @@ type SettingsView struct {
 	Sandbox                      SandboxView          `json:"sandbox"`
 	Network                      NetworkView          `json:"network"`
 	Agent                        AgentView            `json:"agent"`
-	Bot                          BotSettingsView      `json:"bot"`
 	DesktopLanguage              string               `json:"desktopLanguage"`
 	DesktopCurrency              string               `json:"desktopCurrency"`
 	DesktopLayoutStyle           string               `json:"desktopLayoutStyle"`
@@ -278,10 +167,6 @@ type SettingsView struct {
 	StatusBarItems               []string             `json:"statusBarItems"`
 	DefaultToolApprovalMode      string               `json:"defaultToolApprovalMode"`
 
-	CheckUpdates      bool   `json:"checkUpdates"`
-	UpdateChannel     string `json:"updateChannel"`
-	Telemetry         bool   `json:"telemetry"`
-	Metrics           bool   `json:"metrics"`
 	ExpandThinking    bool   `json:"expandThinking"`
 	ConversationWidth string `json:"conversationWidth,omitempty"`
 	ConfigPath        string `json:"configPath"`
@@ -305,20 +190,17 @@ type SettingsView struct {
 // frontend startup. It deliberately excludes providers and credential state so
 // slow keychain/env resolution stays off the first-render path.
 type DesktopStartupSettingsView struct {
-	Bot                          BotSettingsView `json:"bot"`
-	DesktopLanguage              string          `json:"desktopLanguage"`
-	DesktopLayoutStyle           string          `json:"desktopLayoutStyle"`
-	DesktopTheme                 string          `json:"desktopTheme"`
-	DesktopThemeStyle            string          `json:"desktopThemeStyle"`
-	DesktopTerminalTheme         string          `json:"desktopTerminalTheme,omitempty"`
-	DisplayMode                  string          `json:"displayMode"`
-	ReasoningDisplayMode         string          `json:"reasoningDisplayMode"`
-	ReasoningDisplayModeExplicit bool            `json:"reasoningDisplayModeExplicit"`
-	StatusBarStyle               string          `json:"statusBarStyle"`
-	StatusBarItems               []string        `json:"statusBarItems"`
-	CheckUpdates                 bool            `json:"checkUpdates"`
-	UpdateChannel                string          `json:"updateChannel"`
-	ConversationWidth            string          `json:"conversationWidth,omitempty"`
+	DesktopLanguage              string   `json:"desktopLanguage"`
+	DesktopLayoutStyle           string   `json:"desktopLayoutStyle"`
+	DesktopTheme                 string   `json:"desktopTheme"`
+	DesktopThemeStyle            string   `json:"desktopThemeStyle"`
+	DesktopTerminalTheme         string   `json:"desktopTerminalTheme,omitempty"`
+	DisplayMode                  string   `json:"displayMode"`
+	ReasoningDisplayMode         string   `json:"reasoningDisplayMode"`
+	ReasoningDisplayModeExplicit bool     `json:"reasoningDisplayModeExplicit"`
+	StatusBarStyle               string   `json:"statusBarStyle"`
+	StatusBarItems               []string `json:"statusBarItems"`
+	ConversationWidth            string   `json:"conversationWidth,omitempty"`
 	// ConfigWarnings report in-memory recovery without rewriting user/project files.
 	ConfigWarnings         []string `json:"configWarnings,omitempty"`
 	ConfigWarningsRevision uint64   `json:"configWarningsRevision"`
@@ -362,7 +244,7 @@ type DesktopStartupSettingsView struct {
 // active project continued using its old value.
 
 // Serialize the load-modify-save against other in-process config editors
-// (bot auto-session persistence, applyConfigOnly) so neither drops the
+// (applyConfigOnly) so neither drops the
 // other's fields. rebuild() runs after unlocking — it does slow work and
 // must not hold the config edit lock.
 
@@ -391,8 +273,8 @@ type DesktopStartupSettingsView struct {
 
 // loadDesktopUserConfigForView loads the user config for read-only callers.
 // Contract: it never writes to disk, so it is safe without
-// config.LockUserConfigEdits(). Legacy migrations (provider-access normalize,
-// legacy bot-config merge) are applied to the returned copy in memory only;
+// config.LockUserConfigEdits(). Legacy migrations (provider-access normalize)
+// are applied to the returned copy in memory only;
 // the on-disk file migrates the first time a locked write path runs
 // loadDesktopUserConfigForEdit. Credentials (Reasonix global .env) are not
 // loaded; callers that hand the config to a runtime resolving secrets from the
@@ -401,30 +283,15 @@ type DesktopStartupSettingsView struct {
 // loadDesktopUserConfigForViewWithCredentials is loadDesktopUserConfigForView
 // plus credential resolution: like config.LoadForEdit it loads Reasonix's
 // global .env into the process env. Use it for read-only loads whose result
-// feeds a runtime that resolves env-based secrets — the bot runtime
-// (app-secret/control-token envs) and MCP server connects. It still never
-// writes to disk.
+// feeds a runtime that resolves env-based secrets — MCP server connects. It
+// still never writes to disk.
 
 // loadDesktopUserConfigReadOnlyForRoot is the shared pure-read loader behind
 // the View variants: same shape as loadDesktopUserConfigForEdit, but every
 // legacy migration stays in memory (zero SaveTo) and resolves from root.
 
-// The user config does not exist yet: serve the legacy config as the view.
-// It already carries any legacy bot config, so no merge is needed; the
-// write path creates the migrated user file later.
-
-// migrateLegacyBotConfigToUserForRoot is the write-path legacy bot-config
-// migration against an explicit workspace's legacy config file. Callers must
-// hold config.LockUserConfigEdits() (see loadDesktopUserConfigForEdit).
-
-// migrateLegacyBotConfigToUser is the write-path variant: it merges the legacy
-// bot config in memory and persists the result to userPath. Callers must hold
-// config.LockUserConfigEdits() (see loadDesktopUserConfigForEdit). Read paths
-// use mergeLegacyBotConfigInMemory instead.
-
-// mergeLegacyBotConfigInMemory copies the legacy bot config onto userCfg when
-// the user config has none of its own. It never touches disk; it reports
-// whether userCfg changed (i.e. whether a write path should persist it).
+// The user config does not exist yet: serve the legacy config as the view;
+// the write path creates the migrated user file later.
 
 // normalizeLegacyDesktopProviderAccessForSettings is the write-path variant:
 // it normalizes in memory and persists the migrated form to path. Callers must
@@ -666,10 +533,6 @@ type DesktopStartupSettingsView struct {
 
 // SetNetwork updates ordinary outbound proxy settings.
 
-// SetBotConnectionToolApprovalMode updates a single connection's tool approval
-// mode without restarting the bot gateway. Only the connection's mode field is
-// persisted; existing sessions on the running gateway are updated in-place.
-
 // SetCloseBehavior updates desktop-only window close behavior without rebuilding
 // the active controller. It must stay out of provider-visible prompt/request data.
 
@@ -703,17 +566,6 @@ type DesktopStartupSettingsView struct {
 
 // SetDesktopLayoutStyle updates only the desktop layout style. It does not
 // rebuild the active controller and must stay out of provider-visible requests.
-
-// SetDesktopCheckUpdates updates only the desktop startup update-check
-// preference. Manual checks in Settings are unaffected.
-
-// SetDesktopUpdateChannel is retained for older Wails clients. The config layer
-// clears the retired preference and every updater request uses Stable.
-
-// SetDesktopTelemetry sets whether the desktop sends the anonymous launch ping.
-
-// SetDesktopMetrics sets whether the desktop sends aggregate desktop metrics,
-// starting or stopping the live aggregator so the toggle takes effect immediately.
 
 // SetExpandThinking sets whether reasoning text is expanded by default on
 // the desktop. It is desktop-only and does not rebuild the controller.

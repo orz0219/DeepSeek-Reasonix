@@ -15,11 +15,40 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+# v1.24.1 -> v1.24.2; any -prerelease suffix is stripped before bumping the
+# patch number (v1.24.2-beta.1 -> v1.24.3).
+next_version() {
+	python3 -c '
+import re, sys
+m = re.match(r"v?(\d+)\.(\d+)\.(\d+)", sys.argv[1])
+if not m:
+	sys.exit(1)
+print("v%d.%d.%d" % (int(m.group(1)), int(m.group(2)), int(m.group(3)) + 1))
+' "$1"
+}
+
 VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
-	VERSION="$(python3 -c 'import json;print(json.load(open("release-notes/releases.json"))["releases"][0]["version"])' 2>/dev/null || true)"
-	[ -n "$VERSION" ] && VERSION="v${VERSION#v}"
-	[ -n "$VERSION" ] || { echo "cannot determine version from release-notes/releases.json; pass it explicitly: $0 <version> [arch]" >&2; exit 1; }
+	# Default: newest entry in release-notes/releases.json, bumped by one
+	# patch version. When stdin is a TTY, prompt to confirm or override;
+	# in non-TTY (CI) runs the bumped version is used without prompting.
+	CURRENT_VERSION="$(python3 -c 'import json;print(json.load(open("release-notes/releases.json"))["releases"][0]["version"])' 2>/dev/null || true)"
+	[ -n "$CURRENT_VERSION" ] && CURRENT_VERSION="v${CURRENT_VERSION#v}"
+	if [ -z "$CURRENT_VERSION" ]; then
+		echo "cannot determine version from release-notes/releases.json; pass it explicitly: $0 <version> [arch]" >&2
+		exit 1
+	fi
+	NEXT_VERSION="$(next_version "$CURRENT_VERSION")" || {
+		echo "cannot bump version: $CURRENT_VERSION" >&2
+		exit 1
+	}
+	if [ -t 0 ]; then
+		echo "current release: $CURRENT_VERSION"
+		read -r -p "version to build [default: $NEXT_VERSION]: " VERSION
+		VERSION="${VERSION:-$NEXT_VERSION}"
+	else
+		VERSION="$NEXT_VERSION"
+	fi
 fi
 ARCH="${2:-arm64}"
 case "$ARCH" in

@@ -138,9 +138,6 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 	case "review":
 		configureCLIThemeFromConfig()
 		return reviewCommand(rest)
-	case "bot":
-		configureCLIThemeFromConfig()
-		return botCommand(rest, version)
 	case "upgrade", "update":
 		configureCLIThemeFromConfig()
 		return upgradeCommand(rest, version)

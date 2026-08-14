@@ -84,7 +84,7 @@ func (a *App) SubmitToTabWithID(tabID, input, submissionID string) error {
 	if err := validateTurnInput(input); err != nil {
 		return err
 	}
-	return a.submitToTab(tabID, input, false, submissionID)
+	return a.submitToTab(tabID, input, submissionID)
 }
 
 func (a *App) SubmitDisplayToTabWithID(tabID, display, input, submissionID string) error {
@@ -95,7 +95,7 @@ func (a *App) submitDisplayToTab(tabID, display, input, submissionID string) err
 	if err := validateTurnInput(input); err != nil {
 		return err
 	}
-	admission, ctrl, err := a.beginTabTurn(tabID, true, submissionID)
+	admission, ctrl, err := a.beginTabTurn(tabID, submissionID)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (a *App) submitDeliveryRecoveryToTab(tabID, display, input, submissionID st
 	if err := validateTurnInput(input); err != nil {
 		return err
 	}
-	admission, ctrl, err := a.beginTabTurn(tabID, true, submissionID)
+	admission, ctrl, err := a.beginTabTurn(tabID, submissionID)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (a *App) submitDeliveryWaiverToTab(tabID, display, input, submissionID stri
 	if err := validateTurnInput(input); err != nil {
 		return err
 	}
-	admission, ctrl, err := a.beginTabTurn(tabID, true, submissionID)
+	admission, ctrl, err := a.beginTabTurn(tabID, submissionID)
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (a *App) submitInvocationsToTab(tabID, display, input string, invocations [
 	if err := validateInvocationTurnInput(input, invocations); err != nil {
 		return err
 	}
-	admission, ctrl, err := a.beginTabTurn(tabID, true, submissionID)
+	admission, ctrl, err := a.beginTabTurn(tabID, submissionID)
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (a *App) submitEditedDisplayToTab(tabID, display, input, original, submissi
 	if err := validateTurnInput(input); err != nil {
 		return err
 	}
-	admission, ctrl, err := a.beginTabTurn(tabID, true, submissionID)
+	admission, ctrl, err := a.beginTabTurn(tabID, submissionID)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (a *App) SubmitToTab(tabID, input string) error {
 	if err := validateTurnInput(input); err != nil {
 		return err
 	}
-	return a.submitToTab(tabID, input, false)
+	return a.submitToTab(tabID, input)
 }
 
 // tabTurnAdmission owns both locks acquired while a foreground turn starts.
@@ -256,7 +256,7 @@ func (admission *tabTurnAdmission) abort() {
 
 // beginTabTurn locks the tab's foreground-turn admission gate and reserves the
 // event sink until TurnDone has completed all of its fan-out.
-func (a *App) beginTabTurn(tabID string, reclaim bool, submissionID ...string) (*tabTurnAdmission, control.SessionAPI, error) {
+func (a *App) beginTabTurn(tabID string, submissionID ...string) (*tabTurnAdmission, control.SessionAPI, error) {
 	tab, ctrl := a.tabAndCtrlByID(tabID)
 	if a.tabIsReadOnly(tab) {
 		return nil, nil, readOnlyChannelErr()
@@ -279,9 +279,6 @@ func (a *App) beginTabTurn(tabID string, reclaim bool, submissionID ...string) (
 		abort()
 		return nil, nil, readOnlyChannelErr()
 	}
-	if reclaim && a.botBridge != nil {
-		a.botBridge.reclaimFromDesktop(tab.ID)
-	}
 	ctrl = a.controllerForTab(tab)
 	if err := a.workspaceRuntimeAdmissionErr(tab, ctrl); err != nil {
 		abort()
@@ -299,10 +296,8 @@ func (a *App) beginTabTurn(tabID string, reclaim bool, submissionID ...string) (
 	return &tabTurnAdmission{app: a, tab: tab}, ctrl, nil
 }
 
-// submitToTab is the shared submit body. fromBridge marks submissions driven
-// by the IM takeover bridge; local (frontend) submissions on a taken-over tab
-// reclaim remote control first — typing locally is the grab-back gesture.
-func (a *App) submitToTab(tabID, input string, fromBridge bool, submissionID ...string) error {
+// submitToTab is the shared submit body for local (frontend) submissions.
+func (a *App) submitToTab(tabID, input string, submissionID ...string) error {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "/effort" || strings.HasPrefix(trimmed, "/effort ") {
 		tab, _ := a.tabAndCtrlByID(tabID)
@@ -312,13 +307,10 @@ func (a *App) submitToTab(tabID, input string, fromBridge bool, submissionID ...
 		if tab == nil {
 			return a.workspaceNotReadyErr(tab)
 		}
-		if !fromBridge && a.botBridge != nil {
-			a.botBridge.reclaimFromDesktop(tab.ID)
-		}
 		a.runEffortCommandForTab(tabID, trimmed)
 		return nil
 	}
-	admission, ctrl, err := a.beginTabTurn(tabID, !fromBridge, submissionID...)
+	admission, ctrl, err := a.beginTabTurn(tabID, submissionID...)
 	if err != nil {
 		return err
 	}
@@ -331,23 +323,15 @@ func (a *App) submitToTab(tabID, input string, fromBridge bool, submissionID ...
 }
 
 func (a *App) submitUserTurnToTabWithSink(tabID, input string, forwarder event.Sink) bool {
-	admission, ctrl, err := a.beginTabTurn(tabID, false)
+	admission, ctrl, err := a.beginTabTurn(tabID)
 	if err != nil {
 		return false
 	}
 	defer admission.abort()
 	tab := admission.tab
-	var generation uint64
-	if forwarder != nil {
-		generation = tab.sink.SetBotSink(forwarder)
-	}
 	a.ensureTabTopicIndexedForUserTurn(tab)
 	ctrl.SubmitUserTurn(input, input)
-	started := admission.finish(ctrl)
-	if !started && forwarder != nil {
-		tab.sink.clearBotSink(generation)
-	}
-	return started
+	return admission.finish(ctrl)
 }
 
 // RunShell executes a shell command directly (bypassing the model) and streams
@@ -357,7 +341,7 @@ func (a *App) RunShell(command string) error {
 }
 
 func (a *App) RunShellForTab(tabID, command string) error {
-	admission, ctrl, err := a.beginTabTurn(tabID, true)
+	admission, ctrl, err := a.beginTabTurn(tabID)
 	if err != nil {
 		return err
 	}
@@ -417,7 +401,7 @@ func (a *App) submitInitialGoalToLocalTab(
 	invocations []InvocationRequest,
 	submissionID ...string,
 ) ([]string, error) {
-	admission, ctrl, err := a.beginTabTurn(tabID, true, submissionID...)
+	admission, ctrl, err := a.beginTabTurn(tabID, submissionID...)
 	if err != nil {
 		return []string{}, err
 	}

@@ -37,9 +37,8 @@ import (
 var assets embed.FS
 
 // version is injected at build time via `wails build -ldflags "-X main.version=..."`,
-// mirroring cmd/reasonix/main.go. The auto-updater reads it (App.Version) to compare
-// against the published manifest; an un-injected dev build stays "dev" and never
-// prompts to update.
+// mirroring cmd/reasonix/main.go. The desktop settings "About" page displays it;
+// an un-injected dev build stays "dev".
 var version = "dev"
 
 // channel records the build's release line, injected via
@@ -96,11 +95,6 @@ func linuxWebviewGpuPolicy(pattern string) linux.WebviewGpuPolicy {
 }
 
 func main() {
-	// Detached macOS self-update child: wait for the old PID, hold the shared
-	// repair mutation lock, then swap the .app bundle. Must run before Wails.
-	if handled, exitCode := maybeRunMacUpdateHandoff(os.Args[1:]); handled {
-		os.Exit(exitCode)
-	}
 	capturePreviousFatalCrash()
 	installFatalCrashOutput()
 
@@ -137,7 +131,6 @@ func main() {
 		// Claim diagnostics before Wails so second processes cannot create evidence.
 		prepareDesktopDiagnostics(app)
 		defer app.releaseDesktopDiagnosticsOwnership()
-		capturePendingUpdateHealthIdentity(app)
 	}
 
 	width, height := initialDesktopWindowSize()

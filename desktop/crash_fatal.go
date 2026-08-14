@@ -7,7 +7,6 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"time"
 
 	"reasonix/internal/config"
 )
@@ -61,9 +60,10 @@ func markFatalCrashCoveredForPID(pid int) {
 	}
 }
 
-// capturePreviousFatalCrash converts runtime.SetCrashOutput dumps from dead
-// processes into the normal scrubbed queue. Per-PID files keep a routine second
-// launch from truncating or unlinking the running primary process's dump.
+// capturePreviousFatalCrash manages runtime.SetCrashOutput dumps from dead
+// processes. Dumps are retained on disk as local diagnostics (no queueing or
+// network reporting). Per-PID files keep a routine second launch from
+// truncating or unlinking the running primary process's dump.
 func capturePreviousFatalCrash() {
 	// Preserve compatibility with the single-file format used by older builds.
 	// An empty legacy file may still be owned by a running older process, so it
@@ -119,10 +119,6 @@ func captureFatalCrashFile(path, coveredPath string, removeEmpty bool) {
 	if err != nil {
 		return
 	}
-	occurredAt := time.Now().UTC()
-	if info, statErr := f.Stat(); statErr == nil {
-		occurredAt = info.ModTime().UTC()
-	}
 	raw, readErr := io.ReadAll(io.LimitReader(f, maxCrashStackBytes+1))
 	_ = f.Close()
 	if readErr != nil || len(strings.TrimSpace(string(raw))) == 0 {
@@ -137,22 +133,10 @@ func captureFatalCrashFile(path, coveredPath string, removeEmpty bool) {
 		_ = os.Remove(path)
 		return
 	}
-	stack := sanitizeFatalRuntimeDump(string(raw))
-	report := baseCrashReport("crash")
-	report.SchemaVersion = 2
-	report.Source = "go.runtime"
-	report.Label = "go.fatal"
-	report.ErrorType = "GoRuntimeFatal"
-	report.ErrorMessage = "Go runtime terminated the desktop process."
-	report.Stack = stack
-	report.TopFrame = topFrameFromStack(stack)
-	report.FingerprintHint = "go.runtime.fatal"
-	report.OccurredAt = occurredAt.Format(time.RFC3339)
-	report.Message = sanitizeCrashText("[go.runtime.fatal]\n\n"+stack, maxCrashDetailBytes)
-	if writePendingReport(report, true) {
-		_ = os.Remove(coveredPath)
-		_ = os.Remove(path)
-	}
+	// The crash dump is retained on disk as a local diagnostic; queued crash
+	// reporting was removed. Clear any covered marker from earlier builds so
+	// the dump is not mistaken for already-consumed.
+	_ = os.Remove(coveredPath)
 }
 
 // sanitizeFatalRuntimeDump removes panic values and preamble text that could

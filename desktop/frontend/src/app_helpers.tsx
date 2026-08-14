@@ -8,7 +8,6 @@ import { type PendingNavigationRequest } from "./lib/openTopicCoalescing";
 import { type Theme } from "./lib/theme";
 import { applyTextSize, DEFAULT_TEXT_SIZE, getTextSize, nextTextSize } from "./lib/textSize";
 import { useGlobalShortcut } from "./lib/keyboardShortcuts";
-import { SidebarImConnection } from "./app_sidebar";
 import { DesktopPlatform, browserPlatformOverride } from "./app_window";
 /** Footer decision surface kinds. Runtime blockers are explicit recovery choices. */
 export type DecisionSurfaceKind = MockDecisionSurfaceKind | "extension_form";
@@ -141,9 +140,6 @@ export type DesktopNavigationIntent = {
 } | {
     kind: "delivery-worktree";
     workspaceRoot: string;
-} | {
-    kind: "sidebar-im";
-    connection: SidebarImConnection;
 } | {
     kind: "resume-session";
     session: SessionMeta;

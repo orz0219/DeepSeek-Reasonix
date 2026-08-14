@@ -43,7 +43,7 @@ type approvalManager struct {
 	toolApprovalMode string
 	// approvalTimeout bounds how long requestApproval/Ask block on a user
 	// decision. Zero means wait indefinitely (correct for an interactive
-	// terminal); bot/headless frontends set it so a walked-away user can't wedge
+	// terminal); headless frontends set it so a walked-away user can't wedge
 	// the session forever (#4626, #4402). Write-once at construction.
 	approvalTimeout time.Duration
 	// planAutoApprove auto-allows the ordinary writer fallback while a

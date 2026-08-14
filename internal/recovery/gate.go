@@ -494,7 +494,7 @@ func (g *Gate) snapshotLocked(persistence bool) Snapshot {
 // mutation/verification success, a new Episode, or revise does.
 
 // Create the waiter channel before EmitPrompt. Resolve may race in as soon
-// as the approval id is known (desktop/bot), so re-key the waiter under the
+// as the approval id is known (desktop), so re-key the waiter under the
 // real id immediately after EmitPrompt returns.
 
 // EmitPrompt implementations may bind the real id before emitting, which

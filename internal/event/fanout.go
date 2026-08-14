@@ -3,7 +3,7 @@ package event
 // FanOut dispatches each event to every registered sink in order.
 // A nil sink in the list is silently skipped. Use it when you want one
 // event stream to reach multiple consumers — e.g. the desktop tab UI and
-// a bot-channel notifier.
+// a channel notifier.
 type FanOut struct {
 	sinks []Sink
 }

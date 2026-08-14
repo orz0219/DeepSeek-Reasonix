@@ -733,7 +733,7 @@ Seatbelt on macOS and bubblewrap on Linux):
 commands may write only those same roots plus platform-specific command
 temp/cache roots, cannot read configured `forbid_read` roots while the OS
 sandbox is active, and reach the network only when `[sandbox] network` is set.
-Reasonix always removes saved provider and bot credential variables from tool
+Reasonix always removes saved provider credential variables from tool
 subprocess environments and automatically adds its global credential `.env` to
 the runtime read-deny boundary. Project `.env` files keep their existing
 workspace-scoped behavior.
@@ -1260,8 +1260,7 @@ Existing `[agent].max_steps` and `planner_max_steps` keys remain syntactically
 accepted during upgrades, but their values are ignored and removed with a
 one-time notice. This prevents a stale hidden limit from truncating automatic
 progress or inherited subagent work. Use the one-off CLI `--max-steps` flag when
-an explicit run budget is needed; unattended bots retain `[bot].max_steps`,
-where `0` means continuous execution and a positive value is explicit.
+an explicit run budget is needed.
 
 **An ordinary chat task has no limit of any kind by default** — not rounds, not
 tokens, not time, not money. It runs until the model finishes, an adaptive

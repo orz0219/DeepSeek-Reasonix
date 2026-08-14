@@ -13,8 +13,6 @@ const modulePrefix = "reasonix/"
 var frontends = []string{
 	"internal/acp",
 	"internal/boot",
-	"internal/bot",
-	"internal/botruntime",
 	"internal/cli",
 	"internal/serve",
 }

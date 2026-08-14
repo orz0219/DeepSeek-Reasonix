@@ -1,5 +1,12 @@
 import type { ControlResult, SessionMeta } from "./types";
 
+/** taskSessionIDFromPath extracts the session id (filename without extension) from a session path. */
+export function taskSessionIDFromPath(path: string): string {
+  const base = path.replace(/\\/g, "/").split("/").pop() || "";
+  const extension = base.lastIndexOf(".");
+  return extension > 0 ? base.slice(0, extension) : base;
+}
+
 export interface TaskMonitorNavigationDeps {
   tabID: string;
   taskID: string;

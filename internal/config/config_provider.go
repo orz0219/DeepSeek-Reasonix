@@ -17,7 +17,7 @@ type AgentConfig struct {
 	SystemPromptFile string `toml:"system_prompt_file"`
 	// Deprecated compatibility fields. Old TOML and desktop clients may still
 	// send them, but config loading normalizes both to zero and rendering omits
-	// them. One-off CLI and unattended bot limits remain separate controls.
+	// them. The one-off CLI --max-steps flag remains the explicit control.
 	MaxSteps            int     `toml:"max_steps"`
 	PlannerMaxSteps     int     `toml:"planner_max_steps"`
 	Temperature         float64 `toml:"temperature"`

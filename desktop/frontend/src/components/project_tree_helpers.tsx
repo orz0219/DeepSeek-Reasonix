@@ -13,7 +13,6 @@ export interface ProjectTreeProps {
     activeWorkspaceRoot?: string;
     activeTopicId?: string;
     activeSessionPath?: string;
-    imTopicSources?: Record<string, ProjectTreeImTopicSource>;
     variant?: ProjectTreeVariant;
     onOpenTopic: (scope: string, workspaceRoot: string, topicId: string, sessionPath?: string) => Promise<void> | void;
     onAddProject: () => Promise<void>;
@@ -30,12 +29,6 @@ export interface ProjectTreeProps {
     shortcutPlatform?: ShortcutPlatform;
     onVisibleTopicsChange?: (topics: TopicShortcutEntry[]) => void;
 }
-type ProjectTreeImTopicSource = {
-    platform?: string;
-    label: string;
-    title?: string;
-    remoteId?: string;
-};
 export function projectNodeKey(node: ProjectNode, depth: number): string {
     return node.key || `${node.kind}-${node.root ?? ""}-${node.topicId ?? ""}-${depth}`;
 }

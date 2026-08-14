@@ -140,12 +140,6 @@ type App struct {
 	tryRunMu     sync.Mutex
 	tryRunCancel context.CancelFunc
 
-	// updaterOperationMu guards the single native download/install operation.
-	// Checks are read-only and may overlap; cache mutation and installation fail
-	// fast when another updater operation is already active.
-	updaterOperationMu sync.Mutex
-	updaterOperationID string
-
 	// deferredRebuild tracks tabs whose settings were saved but whose runtime
 	// could not refresh because the session lease was held by another process.
 	deferredRebuild deferredRebuildState
@@ -188,14 +182,6 @@ type App struct {
 	hangWatchdogCancel  context.CancelFunc
 
 	mediaTokens *mediaTokenStore
-	botInstalls map[string]*botInstallSession
-	botRuntime  *desktopBotRuntime
-	// botBridge gives the embedded bot gateway a god view over desktop
-	// sessions (/desktop commands). Set once in NewApp before any tab exists,
-	// read-only afterwards, so tabEventSink.Emit reads it without a lock.
-	botBridge *botBridgeHub
-
-	metrics atomic.Pointer[metricsAggregator] // non-nil only when desktop.metrics is opted in; swapped live by SetDesktopMetrics
 
 	notificationSenderOnce sync.Once
 	notificationSender     notify.Sender
@@ -256,14 +242,8 @@ type App struct {
 	diagnosticsOwner        bool
 	diagnosticsOwnerRelease func()
 	diagnosticsConfigLoaded bool
-	diagnosticsTelemetry    bool
-	// Healthy-update identity is captured before Wails starts. A process may
-	// commit only the complete probationary transaction it actually booted from,
-	// never a rewritten or later same-version retry.
-	healthyUpdateCreatedAt     string
-	healthyUpdateTransactionID string
 	// startupReady records that the window reached domReady so LKG config
-	// snapshots and update health are only committed after a real UI boot.
+	// snapshots are only committed after a real UI boot.
 	startupReady atomic.Bool
 }
 
@@ -305,11 +285,6 @@ func (a *App) startup(ctx context.Context) {
 		}
 	})
 
-	if cfg, err := config.Load(); err == nil && cfg.DesktopMetrics() && version != "dev" {
-		a.metrics.Store(newMetricsAggregator(config.MemoryUserDir()))
-		a.recordSettingsMetricsSnapshot(cfg)
-	}
-	a.recordPreviousRunDiagnostics()
 	a.observeIncompleteWindowRestore()
 	a.startMainThreadWatchdog()
 
@@ -322,10 +297,6 @@ func (a *App) startup(ctx context.Context) {
 	go a.restoreOrBuildTabs()
 	a.registerHistoryIndexEvents()
 	a.startSessionCatalog(false)
-	a.goSafe("refreshBotRuntime", a.refreshBotRuntime)
-	a.goSafe("sendStartupPing", a.sendStartupPing)
-	a.goSafe("flushMetrics", a.flushMetrics)
-	a.goSafe("flushPendingCrash", a.flushPendingCrash)
 
 	a.startRecoveryGC()
 }
@@ -646,28 +617,8 @@ func (a *App) domReady(_ context.Context) {
 		case <-ctx.Done():
 			return
 		}
-		if err := a.commitPendingUpdateHealth(); err != nil {
-			slog.Warn("desktop: commit healthy update", "err", err)
-		}
 		if err := repair.RecordHealthyConfig(version); err != nil {
 			slog.Debug("desktop: record last-known-good config", "err", err)
 		}
-		if archived, err := archiveSupersededPendingUpdateAfterReady(); err != nil {
-			slog.Warn("desktop: retire superseded update", "err", err)
-		} else if archived {
-			slog.Info("desktop: archived superseded update transaction")
-		}
 	})
-}
-
-func (a *App) commitPendingUpdateHealth() error {
-	if a == nil || strings.TrimSpace(a.healthyUpdateCreatedAt) == "" ||
-		strings.TrimSpace(a.healthyUpdateTransactionID) == "" {
-		return nil
-	}
-	return markPendingUpdateHealthyAfterReady(
-		version,
-		a.healthyUpdateCreatedAt,
-		a.healthyUpdateTransactionID,
-	)
 }

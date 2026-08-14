@@ -583,7 +583,7 @@ Sandbox 是授权之后的第二层边界，不能替代命令解析，也不能
 `bash` 本身默认进 OS 沙盒（`[sandbox] bash`：macOS 使用 Seatbelt，Linux 使用 bubblewrap）：
 命令只能写这些 root（外加平台按命令提供的临时/缓存 root），
 OS 沙盒生效时也不能读取配置的 `forbid_read` roots，`[sandbox] network` 为真时才能联网。
-Reasonix 始终会从工具子进程环境中移除已保存的 provider 与 bot 凭据变量，并自动把
+Reasonix 始终会从工具子进程环境中移除已保存的 provider 凭据变量，并自动把
 全局凭据 `.env` 加入运行时禁读边界；项目 `.env` 仍保持现有的 workspace 范围行为。
 
 **会话私有标准临时目录。**同一逻辑会话内的多条 Bash 命令共享一个私有临时目录，
@@ -976,8 +976,7 @@ Reasonix 会自动管理正常执行：活跃 Todo 连续 8 个工具调用轮�
 
 升级时仍可解析已有的 `[agent].max_steps` 和 `planner_max_steps`，但其值会被忽略，并在一次性
 迁移提示后从配置中移除，避免隐藏的旧上限截断自动进度管理或子 Agent 的继承任务。确实需要
-为单次运行设置预算时使用 CLI `--max-steps`；无人值守 Bot 仍保留 `[bot].max_steps`，其中 `0`
-表示自动持续执行，正数表示用户显式上限。
+为单次运行设置预算时使用 CLI `--max-steps`。
 
 **普通对话任务默认没有任何上限**——轮数、token、时长、花费都不限。它一直跑到模型自己
 结束、自适应守卫判定它不再产生进展，或者你手动停止为止。

@@ -12,7 +12,7 @@ agent. It is the Reasonix analog of Claude Code's CLAUDE.md.
   TUI, HTTP/SSE serve, Wails desktop). Add behavior to the controller, not a
   frontend, so all three inherit it.
 - Layering (enforced): utility packages import nothing under `reasonix/`; only
-  the frontends `cli`, `serve`, `acp`, `bot`, `botruntime`, `boot` and the hosts
+  the frontends `cli`, `serve`, `acp`, `boot` and the hosts
   `cmd/`, `desktop/` may import `control`; nothing below a frontend may import
   one. The declared sets live in `tools/repolint/layers.go`.
 - Subagent delegation keeps five concepts apart: a profile says how a worker

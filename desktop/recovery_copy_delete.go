@@ -2,10 +2,8 @@ package main
 
 import (
 	"errors"
-	"log/slog"
 
 	"reasonix/internal/agent"
-	"reasonix/internal/botruntime"
 )
 
 func (a *App) deleteRecoveryCopy(path string) error {
@@ -39,9 +37,6 @@ func (a *App) deleteRecoveryCopy(path string) error {
 		return nil
 	}(); err != nil {
 		return err
-	}
-	if err := botruntime.ForgetAutoSessionMappingsForPath(sessionPath); err != nil {
-		slog.Warn("desktop: failed to clear auto bot session mapping", "err", err)
 	}
 	a.removeSessionCatalogPath(sessionPath, "recovery_copy_deleted")
 	a.emitProjectTreeChangedForSessionDirs(dir)

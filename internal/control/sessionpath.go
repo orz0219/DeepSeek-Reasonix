@@ -11,7 +11,7 @@ import (
 // continue has already pinned a path (SessionPath() != ""), so callers can run a
 // conditional Resume and then invoke this unconditionally. Centralises the
 // per-surface copies of this logic (the CLI chat/serve fresh branches and the
-// bot's former ensureControllerSessionPath).
+// the former ensureControllerSessionPath).
 func (c *Controller) EnsureSessionPath() {
 	if c.SessionPath() != "" || c.SessionDir() == "" {
 		return

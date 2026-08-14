@@ -155,7 +155,7 @@ type Options struct {
 	OnSessionRecovered func(SessionRecoveryInfo) error
 	// ApprovalTimeout bounds how long a tool-approval or ask prompt blocks waiting
 	// for a user decision. Zero (default) waits forever — right for an interactive
-	// terminal. Bot/headless frontends set a positive value so an unanswered
+	// terminal. Headless frontends set a positive value so an unanswered
 	// prompt can't wedge the session indefinitely (#4626, #4402).
 	ApprovalTimeout time.Duration
 	// RuntimeProfile selects capability routing/filtering behavior. Empty keeps

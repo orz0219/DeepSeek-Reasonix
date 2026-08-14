@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"reasonix/internal/agent"
-	"reasonix/internal/botruntime"
 	"reasonix/internal/config"
 )
 
@@ -255,9 +254,6 @@ func (a *App) loadDesktopUserConfigForEditForRoot(root string) (*config.Config, 
 		if err := normalizeLegacyDesktopProviderAccessForSettings(cfg, userPath); err != nil {
 			return nil, "", err
 		}
-		if err := a.migrateLegacyBotConfigToUserForRoot(root, cfg, userPath); err != nil {
-			return nil, "", err
-		}
 		return cfg, userPath, nil
 	}
 	cfg, err := config.LoadForEditReadOnlyStrict(userPath)
@@ -277,16 +273,13 @@ func (a *App) loadDesktopUserConfigForEditForRoot(root string) (*config.Config, 
 	}
 	normalizeLegacyDesktopProviderAccessInMemory(legacyCfg, legacyPath)
 	legacyCfg.ConfigVersion = config.Default().ConfigVersion
-	if err := migrateLegacyBotConfigToUser(cfg, legacyCfg, userPath); err != nil {
-		return nil, "", err
-	}
 	return legacyCfg, userPath, nil
 }
 
 // loadDesktopUserConfigForView loads the user config for read-only callers.
 // Contract: it never writes to disk, so it is safe without
-// config.LockUserConfigEdits(). Legacy migrations (provider-access normalize,
-// legacy bot-config merge) are applied to the returned copy in memory only;
+// config.LockUserConfigEdits(). Legacy migrations (provider-access normalize)
+// are applied to the returned copy in memory only;
 // the on-disk file migrates the first time a locked write path runs
 // loadDesktopUserConfigForEdit. Credentials (Reasonix global .env) are not
 // loaded; callers that hand the config to a runtime resolving secrets from the
@@ -302,9 +295,8 @@ func (a *App) loadDesktopUserConfigForViewForRoot(root string) (*config.Config, 
 // loadDesktopUserConfigForViewWithCredentials is loadDesktopUserConfigForView
 // plus credential resolution: like config.LoadForEdit it loads Reasonix's
 // global .env into the process env. Use it for read-only loads whose result
-// feeds a runtime that resolves env-based secrets — the bot runtime
-// (app-secret/control-token envs) and MCP server connects. It still never
-// writes to disk.
+// feeds a runtime that resolves env-based secrets — MCP server connects. It
+// still never writes to disk.
 func (a *App) loadDesktopUserConfigForViewWithCredentials() (*config.Config, string, error) {
 	return a.loadDesktopUserConfigForViewWithCredentialsForRoot(a.activeWorkspaceRoot())
 }
@@ -327,14 +319,6 @@ func (a *App) loadDesktopUserConfigReadOnlyForRoot(root string, load func(string
 			return nil, "", err
 		}
 		normalizeLegacyDesktopProviderAccessInMemory(cfg, userPath)
-		legacyPath := config.SourcePathForRoot(root)
-		if legacyPath != "" && !sameConfigPath(legacyPath, userPath) {
-			legacyCfg, err := load(legacyPath)
-			if err != nil {
-				return nil, "", err
-			}
-			mergeLegacyBotConfigInMemory(cfg, legacyCfg)
-		}
 		return cfg, userPath, nil
 	}
 	cfg, err := load(userPath)
@@ -354,109 +338,6 @@ func (a *App) loadDesktopUserConfigReadOnlyForRoot(root string, load func(string
 	normalizeLegacyDesktopProviderAccessInMemory(legacyCfg, legacyPath)
 	legacyCfg.ConfigVersion = config.Default().ConfigVersion
 	return legacyCfg, userPath, nil
-}
-
-// migrateLegacyBotConfigToUserForRoot is the write-path legacy bot-config
-// migration against an explicit workspace's legacy config file. Callers must
-// hold config.LockUserConfigEdits() (see loadDesktopUserConfigForEdit).
-func (a *App) migrateLegacyBotConfigToUserForRoot(root string, userCfg *config.Config, userPath string) error {
-	if userCfg == nil {
-		return nil
-	}
-	legacyPath := config.SourcePathForRoot(root)
-	if legacyPath == "" || sameConfigPath(legacyPath, userPath) {
-		return nil
-	}
-	legacyCfg, err := config.LoadForEditReadOnlyStrict(legacyPath)
-	if err != nil {
-		return err
-	}
-	return migrateLegacyBotConfigToUser(userCfg, legacyCfg, userPath)
-}
-
-// migrateLegacyBotConfigToUser is the write-path variant: it merges the legacy
-// bot config in memory and persists the result to userPath. Callers must hold
-// config.LockUserConfigEdits() (see loadDesktopUserConfigForEdit). Read paths
-// use mergeLegacyBotConfigInMemory instead.
-func migrateLegacyBotConfigToUser(userCfg, legacyCfg *config.Config, userPath string) error {
-	if !mergeLegacyBotConfigInMemory(userCfg, legacyCfg) {
-		return nil
-	}
-	if err := userCfg.SaveTo(userPath); err != nil {
-		return fmt.Errorf("migrate legacy bot config: %w", err)
-	}
-	return nil
-}
-
-// mergeLegacyBotConfigInMemory copies the legacy bot config onto userCfg when
-// the user config has none of its own. It never touches disk; it reports
-// whether userCfg changed (i.e. whether a write path should persist it).
-func mergeLegacyBotConfigInMemory(userCfg, legacyCfg *config.Config) bool {
-	if userCfg == nil || legacyCfg == nil || desktopBotConfigConfigured(userCfg.Bot) {
-		return false
-	}
-	if !desktopBotConfigConfigured(legacyCfg.Bot) {
-		return false
-	}
-	userCfg.Bot = legacyCfg.Bot
-	return true
-}
-
-func desktopBotConfigConfigured(bot config.BotConfig) bool {
-	defaults := config.Default().Bot
-	if bot.Enabled || strings.TrimSpace(bot.Model) != "" || len(bot.Connections) > 0 {
-		return true
-	}
-	if (bot.MaxSteps != 0 && bot.MaxSteps != defaults.MaxSteps) ||
-		(bot.DebounceMs != 0 && bot.DebounceMs != defaults.DebounceMs) ||
-		(strings.TrimSpace(bot.QueueMode) != "" && bot.QueueMode != defaults.QueueMode) ||
-		(bot.QueueCap != 0 && bot.QueueCap != defaults.QueueCap) ||
-		(strings.TrimSpace(bot.QueueDrop) != "" && bot.QueueDrop != defaults.QueueDrop) ||
-		bot.IgnoreSelfMessages != defaults.IgnoreSelfMessages ||
-		bot.Pairing.Enabled != defaults.Pairing.Enabled ||
-		(bot.Pairing.RequestTTLMinutes != 0 && bot.Pairing.RequestTTLMinutes != defaults.Pairing.RequestTTLMinutes) ||
-		(bot.Pairing.MaxPendingPerPlatform != 0 && bot.Pairing.MaxPendingPerPlatform != defaults.Pairing.MaxPendingPerPlatform) ||
-		bot.Control.Enabled != defaults.Control.Enabled ||
-		(strings.TrimSpace(bot.Control.Addr) != "" && bot.Control.Addr != defaults.Control.Addr) ||
-		(strings.TrimSpace(bot.Control.TokenEnv) != "" && bot.Control.TokenEnv != defaults.Control.TokenEnv) ||
-		len(bot.Routes) > 0 ||
-		len(bot.SelfUserIDs.QQ)+len(bot.SelfUserIDs.Feishu)+len(bot.SelfUserIDs.Weixin) > 0 {
-		return true
-	}
-	if bot.Allowlist.AllowAll ||
-		len(bot.Allowlist.QQUsers)+len(bot.Allowlist.FeishuUsers)+len(bot.Allowlist.WeixinUsers) > 0 ||
-		len(bot.Allowlist.QQApprovers)+len(bot.Allowlist.FeishuApprovers)+len(bot.Allowlist.WeixinApprovers) > 0 ||
-		len(bot.Allowlist.QQAdmins)+len(bot.Allowlist.FeishuAdmins)+len(bot.Allowlist.WeixinAdmins) > 0 ||
-		len(bot.Allowlist.QQGroups)+len(bot.Allowlist.FeishuGroups)+len(bot.Allowlist.WeixinGroups) > 0 {
-		return true
-	}
-	if bot.QQ.Enabled ||
-		strings.TrimSpace(bot.QQ.AppID) != "" ||
-		bot.QQ.AppSecretEnv != defaults.QQ.AppSecretEnv ||
-		bot.QQ.Sandbox != defaults.QQ.Sandbox ||
-		strings.TrimSpace(bot.QQ.Model) != "" ||
-		strings.TrimSpace(bot.QQ.ToolApprovalMode) != "" ||
-		strings.TrimSpace(bot.QQ.WorkspaceRoot) != "" ||
-		botruntime.BotAccessActive(bot.QQ.Access) {
-		return true
-	}
-	if bot.Feishu.Enabled ||
-		strings.TrimSpace(bot.Feishu.AppID) != "" ||
-		bot.Feishu.Domain != defaults.Feishu.Domain ||
-		bot.Feishu.AppSecretEnv != defaults.Feishu.AppSecretEnv ||
-		strings.TrimSpace(bot.Feishu.VerificationToken) != "" ||
-		bot.Feishu.Mode != defaults.Feishu.Mode ||
-		bot.Feishu.WebhookPort != defaults.Feishu.WebhookPort ||
-		bot.Feishu.RequireMention != defaults.Feishu.RequireMention {
-		return true
-	}
-	if bot.Weixin.Enabled ||
-		bot.Weixin.AccountID != defaults.Weixin.AccountID ||
-		bot.Weixin.TokenEnv != defaults.Weixin.TokenEnv ||
-		bot.Weixin.APIBase != defaults.Weixin.APIBase {
-		return true
-	}
-	return false
 }
 
 // normalizeLegacyDesktopProviderAccessForSettings is the write-path variant:

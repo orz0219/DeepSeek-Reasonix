@@ -10,22 +10,22 @@ import (
 func desktopStartupSettingsFromConfig(cfg *config.Config) DesktopStartupSettingsView {
 	if cfg == nil {
 		return DesktopStartupSettingsView{
-			Bot: botSettingsView(config.BotConfig{}), DesktopLayoutStyle: "workbench",
-			DesktopTheme: "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
+			DesktopLayoutStyle: "workbench",
+			DesktopTheme:       "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
 			DisplayMode: "standard", ReasoningDisplayMode: "auto", StatusBarStyle: "text",
-			StatusBarItems: config.DefaultDesktopStatusBarItems(), CheckUpdates: true,
-			UpdateChannel: "stable", ConversationWidth: "standard",
+			StatusBarItems:    config.DefaultDesktopStatusBarItems(),
+			ConversationWidth: "standard",
 		}
 	}
 	return DesktopStartupSettingsView{
-		Bot: botSettingsView(cfg.Bot), DesktopLanguage: cfg.DesktopLanguage(),
+		DesktopLanguage:    cfg.DesktopLanguage(),
 		DesktopLayoutStyle: cfg.DesktopLayoutStyle(), DesktopTheme: cfg.DesktopTheme(),
 		DesktopThemeStyle: cfg.DesktopThemeStyle(), DesktopTerminalTheme: cfg.DesktopTerminalTheme(),
 		DisplayMode: cfg.DesktopDisplayMode(), ReasoningDisplayMode: cfg.DesktopReasoningDisplayMode(),
 		ReasoningDisplayModeExplicit: cfg.DesktopReasoningDisplayModeExplicit(), StatusBarStyle: cfg.DesktopStatusBarStyle(),
-		StatusBarItems: cfg.DesktopStatusBarItems(), CheckUpdates: cfg.DesktopCheckUpdates(),
-		UpdateChannel: cfg.DesktopUpdateChannel(), ConversationWidth: cfg.DesktopConversationWidth(),
-		ConfigWarnings: cfg.LoadWarnings(), ConfigPath: config.UserConfigPath(),
+		StatusBarItems:    cfg.DesktopStatusBarItems(),
+		ConversationWidth: cfg.DesktopConversationWidth(),
+		ConfigWarnings:    cfg.LoadWarnings(), ConfigPath: config.UserConfigPath(),
 	}
 }
 
@@ -43,12 +43,12 @@ func (a *App) defaultSettingsView() SettingsView {
 			ReasoningLanguage: "auto",
 			CompactRatio:      defaults.Agent.CompactRatio, EffectiveCompactRatio: defaults.Agent.CompactRatio,
 		},
-		Bot: botSettingsView(config.BotConfig{}), AutoPlan: "off", DesktopLayoutStyle: "workbench",
+		AutoPlan: "off", DesktopLayoutStyle: "workbench",
 		DesktopTheme: "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
 		CloseBehavior: "background", DisplayMode: "standard", ReasoningDisplayMode: "auto",
 		StatusBarStyle: "text", StatusBarItems: config.DefaultDesktopStatusBarItems(),
-		DefaultToolApprovalMode: "auto", CheckUpdates: true, UpdateChannel: "stable",
-		Telemetry: true, Metrics: true, ExpandThinking: false, ConversationWidth: "standard",
+		DefaultToolApprovalMode: "auto",
+		ExpandThinking:          false, ConversationWidth: "standard",
 	}
 }
 

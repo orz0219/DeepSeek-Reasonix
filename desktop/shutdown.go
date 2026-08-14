@@ -43,7 +43,6 @@ func (a *App) shutdownBody() {
 	if a.heartbeat != nil {
 		a.heartbeat.Stop()
 	}
-	a.stopBotRuntime()
 	a.stopRemoteRuntime()
 	a.stopTray()
 	// Terminal process shutdown is independent from controller teardown. Do it
@@ -95,14 +94,6 @@ func (a *App) shutdownBody() {
 	if a.startupReady.Load() {
 		// A visible UI is sufficient health evidence even if the user closes the
 		// window before the delayed post-DOM task runs.
-		if err := a.commitPendingUpdateHealth(); err != nil {
-			slog.Warn("desktop: commit healthy update during shutdown", "err", err)
-		}
-		if archived, err := archiveSupersededPendingUpdateAfterReady(); err != nil {
-			slog.Warn("desktop: retire superseded update during shutdown", "err", err)
-		} else if archived {
-			slog.Info("desktop: archived superseded update transaction during shutdown")
-		}
 		// Independent last-known-good config snapshot after a successful UI session.
 		_ = repair.RecordHealthyConfig(version)
 	}

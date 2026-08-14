@@ -8,7 +8,7 @@ import (
 	"reasonix/internal/sessioninbox"
 )
 
-// RunInboxTurn synchronously claims and executes one durable item. Bot and ACP
+// RunInboxTurn synchronously claims and executes one durable item. ACP
 // use this path so their blocking response sink remains attached through every
 // queued follow-up while Controller still owns durable state and ack semantics.
 func (c *Controller) RunInboxTurn(ctx context.Context, id string) error {

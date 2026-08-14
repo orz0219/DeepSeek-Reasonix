@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
-  Bot,
   Box,
   Cable,
   Database,
@@ -11,8 +10,8 @@ import {
   Network,
   Package,
   Palette,
+  Info,
   Plug,
-  RefreshCw,
   Search,
   Server,
   Settings2,
@@ -26,18 +25,18 @@ import { useT, type DictKey } from "../lib/i18n";
 import type { SettingsTab } from "../lib/types";
 
 export const SETTINGS_NAV_TABS: SettingsTab[] = [
-  "general", "models", "bots", "mcp", "remote", "skills", "subagents", "plugins", "memory",
-  "hooks", "diagnostics", "shortcuts", "permissions", "sandbox", "network", "appearance", "storage", "updates",
+  "general", "models", "mcp", "remote", "skills", "subagents", "plugins", "memory",
+  "hooks", "diagnostics", "shortcuts", "permissions", "sandbox", "network", "appearance", "storage", "about",
 ];
 
 const SETTINGS_TAB_GROUPS: { labelKey: DictKey; tabs: SettingsTab[] }[] = [
-  { labelKey: "settings.navGroup.preferences", tabs: ["general", "models", "bots"] },
+  { labelKey: "settings.navGroup.preferences", tabs: ["general", "models"] },
   { labelKey: "settings.navGroup.connections", tabs: ["mcp", "remote"] },
   { labelKey: "settings.navGroup.capabilities", tabs: ["skills", "subagents", "plugins"] },
   { labelKey: "settings.navGroup.context", tabs: ["memory"] },
   { labelKey: "settings.navGroup.automation", tabs: ["hooks", "diagnostics", "shortcuts"] },
   { labelKey: "settings.navGroup.security", tabs: ["permissions", "sandbox", "network"] },
-  { labelKey: "settings.navGroup.application", tabs: ["appearance", "storage", "updates"] },
+  { labelKey: "settings.navGroup.application", tabs: ["appearance", "storage", "about"] },
 ];
 
 export type SettingsNavigationItem = {
@@ -129,7 +128,6 @@ function settingsTabIcon(id: SettingsTab): ReactNode {
     case "general": return <Settings2 {...props} />;
     case "models": return <Box {...props} />;
     case "providers": return <Cable {...props} />;
-    case "bots": return <Bot {...props} />;
     case "mcp": return <Plug {...props} />;
     case "remote": return <Server {...props} />;
     case "skills": return <Sparkles {...props} />;
@@ -144,6 +142,6 @@ function settingsTabIcon(id: SettingsTab): ReactNode {
     case "network": return <Network {...props} />;
     case "appearance": return <Palette {...props} />;
     case "storage": return <HardDrive {...props} />;
-    case "updates": return <RefreshCw {...props} />;
+    case "about": return <Info {...props} />;
   }
 }

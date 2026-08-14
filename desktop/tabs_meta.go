@@ -31,7 +31,6 @@ type TabMeta struct {
 	Runtime           SessionRuntimeView `json:"runtime"`
 	Running           bool               `json:"running"`
 	PendingPrompt     bool               `json:"pendingPrompt,omitempty"`
-	RemoteControlled  bool               `json:"remoteControlled,omitempty"`
 	BackgroundJobs    int                `json:"backgroundJobs,omitempty"`
 	CancelRequested   bool               `json:"cancelRequested,omitempty"`
 	Cancellable       bool               `json:"cancellable"`
@@ -118,9 +117,6 @@ func (a *App) tabMeta(tab *WorkspaceTab, active bool) TabMeta {
 		m.BackgroundJobs = status.BackgroundJobs
 		m.CancelRequested = status.CancelRequested
 		m.Cancellable = status.Cancellable
-	}
-	if a.botBridge != nil {
-		m.RemoteControlled = a.botBridge.remoteControlledTabs()[tab.ID]
 	}
 	if meta, ok, err := agent.LoadBranchMeta(tab.currentSessionPath()); err == nil && ok && meta.Recovered {
 		m.Recovered = true

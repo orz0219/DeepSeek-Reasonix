@@ -6,7 +6,7 @@ import { normalizeTerminalThemePreference } from "../lib/terminalTheme";
 import { normalizeConversationWidth } from "../lib/conversationWidth";
 import { normalizeStatusBarItems, type StatusBarItemId } from "../lib/statusBarItems";
 import { normalizeToolApprovalMode } from "../lib/types";
-import type { BotAccessView, BotRouteView, BotSettingsView, NetworkView, ProviderPresetView, ProviderView, SettingsView } from "../lib/types";
+import type { NetworkView, ProviderPresetView, ProviderView, SettingsView } from "../lib/types";
 // allRefs flattens providers into "provider/model" refs for the model selectors.
 export function allRefs(s: SettingsView): string[] {
     const out: string[] = [];
@@ -49,9 +49,6 @@ export const PROXY_TYPES = ["http", "https", "socks5", "socks5h"] as const;
 export const LANGUAGE_PREFS: LangPref[] = ["", "zh", "en"];
 export const TOOL_APPROVAL_MODES = ["ask", "auto", "yolo"] as const;
 export const BOT_TOOL_APPROVAL_MODES = ["", "ask", "auto", "yolo"] as const;
-export const BOT_QUEUE_MODES = ["steer", "followup", "collect", "interrupt"] as const;
-export const BOT_QUEUE_DROPS = ["summarize", "old", "new"] as const;
-export const BOT_ROUTE_CHAT_TYPES = ["", "dm", "group", "guild", "direct", "thread"] as const;
 export type ProxyMode = (typeof PROXY_MODES)[number];
 export function normalizeProxyMode(mode: string): ProxyMode {
     switch (mode) {
@@ -227,261 +224,6 @@ function normalizeReasoningLanguage(lang: string | undefined): string {
     const v = String(lang ?? "").trim().toLowerCase();
     return v === "zh" || v === "en" ? v : "auto";
 }
-export function normalizeBotQueueMode(mode: unknown): string {
-    const raw = String(mode ?? "").trim().toLowerCase();
-    return BOT_QUEUE_MODES.includes(raw as any) ? raw : "steer";
-}
-export function normalizeBotQueueDrop(mode: unknown): string {
-    const raw = String(mode ?? "").trim().toLowerCase();
-    return BOT_QUEUE_DROPS.includes(raw as any) ? raw : "summarize";
-}
-function normalizeBotRouteChatType(value: unknown): string {
-    const raw = String(value ?? "").trim().toLowerCase();
-    return BOT_ROUTE_CHAT_TYPES.includes(raw as any) ? raw : "";
-}
-export function normalizeBotRoute(raw: any): BotRouteView {
-    return {
-        connectionId: String(raw?.connectionId ?? "").trim(),
-        platform: String(raw?.platform ?? "").trim().toLowerCase(),
-        chatType: normalizeBotRouteChatType(raw?.chatType),
-        chatId: String(raw?.chatId ?? "").trim(),
-        userId: String(raw?.userId ?? "").trim(),
-        threadId: String(raw?.threadId ?? "").trim(),
-        model: String(raw?.model ?? "").trim(),
-        toolApprovalMode: normalizeBotToolApprovalMode(raw?.toolApprovalMode),
-        workspaceRoot: String(raw?.workspaceRoot ?? "").trim(),
-    };
-}
-export function emptyBotRoute(): BotRouteView {
-    return {
-        connectionId: "",
-        platform: "",
-        chatType: "",
-        chatId: "",
-        userId: "",
-        threadId: "",
-        model: "",
-        toolApprovalMode: "",
-        workspaceRoot: "",
-    };
-}
-export function botRouteHasValue(route: BotRouteView): boolean {
-    return Boolean(route.connectionId ||
-        route.platform ||
-        route.chatType ||
-        route.chatId ||
-        route.userId ||
-        route.threadId ||
-        route.model ||
-        route.toolApprovalMode ||
-        route.workspaceRoot);
-}
-function defaultBotSettings(): BotSettingsView {
-    return {
-        enabled: false,
-        model: "",
-        toolApprovalMode: "ask",
-        maxSteps: 0,
-        debounceMs: 1500,
-        queueMode: "steer",
-        queueCap: 20,
-        queueDrop: "summarize",
-        ignoreSelfMessages: true,
-        selfUserIds: {
-            qq: [],
-            feishu: [],
-            weixin: [],
-        },
-        control: {
-            enabled: false,
-            addr: "127.0.0.1:37913",
-            tokenEnv: "REASONIX_BOT_CONTROL_TOKEN",
-        },
-        pairing: {
-            enabled: true,
-            requestTtlMinutes: 60,
-            maxPendingPerPlatform: 3,
-        },
-        routes: [],
-        allowlist: {
-            enabled: true,
-            allowAll: false,
-            qqUsers: [],
-            feishuUsers: [],
-            weixinUsers: [],
-            qqApprovers: [],
-            feishuApprovers: [],
-            weixinApprovers: [],
-            qqAdmins: [],
-            feishuAdmins: [],
-            weixinAdmins: [],
-            qqGroups: [],
-            feishuGroups: [],
-            weixinGroups: [],
-        },
-        qq: { enabled: false, appId: "", appSecretEnv: "QQ_BOT_APP_SECRET", secretSet: false, sandbox: false, model: "", toolApprovalMode: "ask", workspaceRoot: "", access: defaultBotAccess() },
-        feishu: {
-            enabled: false,
-            domain: "feishu",
-            appId: "",
-            appSecretEnv: "FEISHU_BOT_APP_SECRET",
-            secretSet: false,
-            verificationToken: "",
-            mode: "webhook",
-            webhookPort: 8080,
-            requireMention: true,
-        },
-        weixin: {
-            enabled: false,
-            accountId: "default",
-            tokenEnv: "WEIXIN_BOT_TOKEN",
-            tokenSet: false,
-            apiBase: "https://ilinkai.weixin.qq.com",
-        },
-        connections: [],
-    };
-}
-export function defaultBotAccess(): BotAccessView {
-    return {
-        enabled: true,
-        allowAll: false,
-        pairingEnabled: true,
-        users: [],
-        groups: [],
-        approvers: [],
-        admins: [],
-    };
-}
-export function normalizeBotAccess(raw: any, fallback: BotAccessView = defaultBotAccess()): BotAccessView {
-    const access = raw ?? fallback;
-    return {
-        enabled: access.enabled !== false,
-        allowAll: Boolean(access.allowAll),
-        pairingEnabled: access.pairingEnabled !== false,
-        users: asArray(access.users),
-        groups: asArray(access.groups),
-        approvers: asArray(access.approvers),
-        admins: asArray(access.admins),
-    };
-}
-export function normalizeBotSettings(bot: BotSettingsView | null | undefined): BotSettingsView {
-    const fallback = defaultBotSettings();
-    const allowlist = bot?.allowlist ?? fallback.allowlist;
-    const selfUserIds = bot?.selfUserIds ?? fallback.selfUserIds;
-    const control = bot?.control ?? fallback.control;
-    const pairing = bot?.pairing ?? fallback.pairing;
-    const mode = bot?.feishu?.mode === "websocket" ? "websocket" : "webhook";
-    return {
-        ...fallback,
-        ...bot,
-        toolApprovalMode: normalizeBotToolApprovalMode(bot?.toolApprovalMode),
-        maxSteps: Math.max(0, Number(bot?.maxSteps ?? fallback.maxSteps) || 0),
-        debounceMs: Number(bot?.debounceMs) || fallback.debounceMs,
-        queueMode: normalizeBotQueueMode(bot?.queueMode),
-        queueCap: Math.max(0, Math.floor(Number(bot?.queueCap ?? fallback.queueCap) || 0)),
-        queueDrop: normalizeBotQueueDrop(bot?.queueDrop),
-        ignoreSelfMessages: bot?.ignoreSelfMessages !== false,
-        selfUserIds: {
-            qq: asArray(selfUserIds.qq),
-            feishu: asArray(selfUserIds.feishu),
-            weixin: asArray(selfUserIds.weixin),
-        },
-        control: {
-            enabled: Boolean(control.enabled),
-            addr: String(control.addr ?? fallback.control.addr),
-            tokenEnv: String(control.tokenEnv ?? fallback.control.tokenEnv),
-        },
-        pairing: {
-            enabled: pairing.enabled !== false,
-            requestTtlMinutes: Math.max(0, Math.floor(Number(pairing.requestTtlMinutes ?? fallback.pairing.requestTtlMinutes) || 0)),
-            maxPendingPerPlatform: Math.max(0, Math.floor(Number(pairing.maxPendingPerPlatform ?? fallback.pairing.maxPendingPerPlatform) || 0)),
-        },
-        routes: asArray(bot?.routes).map(normalizeBotRoute).filter(botRouteHasValue),
-        allowlist: {
-            ...fallback.allowlist,
-            ...allowlist,
-            qqUsers: asArray(allowlist.qqUsers),
-            feishuUsers: asArray(allowlist.feishuUsers),
-            weixinUsers: asArray(allowlist.weixinUsers),
-            qqApprovers: asArray(allowlist.qqApprovers),
-            feishuApprovers: asArray(allowlist.feishuApprovers),
-            weixinApprovers: asArray(allowlist.weixinApprovers),
-            qqAdmins: asArray(allowlist.qqAdmins),
-            feishuAdmins: asArray(allowlist.feishuAdmins),
-            weixinAdmins: asArray(allowlist.weixinAdmins),
-            qqGroups: asArray(allowlist.qqGroups),
-            feishuGroups: asArray(allowlist.feishuGroups),
-            weixinGroups: asArray(allowlist.weixinGroups),
-        },
-        qq: {
-            ...fallback.qq,
-            ...bot?.qq,
-            model: String(bot?.qq?.model ?? fallback.qq.model).trim(),
-            toolApprovalMode: normalizeBotToolApprovalMode(bot?.qq?.toolApprovalMode),
-            workspaceRoot: String(bot?.qq?.workspaceRoot ?? fallback.qq.workspaceRoot).trim(),
-            access: normalizeBotAccess(bot?.qq?.access, fallback.qq.access),
-        },
-        feishu: { ...fallback.feishu, ...bot?.feishu, domain: bot?.feishu?.domain === "lark" ? "lark" : "feishu", mode },
-        weixin: { ...fallback.weixin, ...bot?.weixin },
-        connections: asArray(bot?.connections).map(normalizeBotConnection),
-    };
-}
-export function normalizeBotConnection(raw: any) {
-    const credential = raw?.credential ?? {};
-    const workspaceRoot = String(raw?.workspaceRoot ?? "").trim();
-    return {
-        id: String(raw?.id ?? "").trim(),
-        provider: String(raw?.provider ?? "").trim(),
-        domain: String(raw?.domain ?? "").trim(),
-        label: String(raw?.label ?? "").trim(),
-        enabled: raw?.enabled !== false,
-        status: String(raw?.status ?? "disconnected").trim(),
-        model: String(raw?.model ?? "").trim(),
-        toolApprovalMode: normalizeBotToolApprovalMode(raw?.toolApprovalMode, true),
-        workspaceRoot,
-        access: normalizeBotAccess(raw?.access),
-        credential: {
-            appId: String(credential.appId ?? "").trim(),
-            appSecretEnv: String(credential.appSecretEnv ?? "").trim(),
-            accountId: String(credential.accountId ?? "").trim(),
-            tokenEnv: String(credential.tokenEnv ?? "").trim(),
-            secretSet: Boolean(credential.secretSet),
-        },
-        sessionMappings: asArray(raw?.sessionMappings).map((item: any) => ({
-            remoteId: String(item?.remoteId ?? "").trim(),
-            sessionId: String(item?.sessionId ?? "").trim(),
-            sessionSource: String(item?.sessionSource ?? "").trim(),
-            chatType: String(item?.chatType ?? "").trim(),
-            userId: String(item?.userId ?? "").trim(),
-            threadId: String(item?.threadId ?? "").trim(),
-            scope: normalizeBotMappingScope(item?.scope, item?.workspaceRoot ?? workspaceRoot),
-            workspaceRoot: normalizeBotMappingScope(item?.scope, item?.workspaceRoot ?? workspaceRoot) === "project"
-                ? String(item?.workspaceRoot ?? workspaceRoot).trim()
-                : "",
-            updatedAt: String(item?.updatedAt ?? "").trim(),
-        })),
-        lastError: String(raw?.lastError ?? "").trim(),
-        createdAt: String(raw?.createdAt ?? "").trim(),
-        updatedAt: String(raw?.updatedAt ?? "").trim(),
-    };
-}
-export function normalizeBotToolApprovalMode(mode: unknown, allowEmpty = false): "ask" | "auto" | "yolo" | "" {
-    const raw = String(mode ?? "").trim().toLowerCase();
-    if (raw === "")
-        return allowEmpty ? "" : "ask";
-    if (raw === "ask")
-        return "ask";
-    if (raw === "auto")
-        return "auto";
-    if (raw === "yolo" || raw === "full" || raw === "full-access" || raw === "bypass")
-        return "yolo";
-    return allowEmpty ? "" : "ask";
-}
-function normalizeBotMappingScope(scope: unknown, workspaceRoot: unknown): "global" | "project" {
-    if (String(scope ?? "").trim() === "project")
-        return "project";
-    return String(workspaceRoot ?? "").trim() ? "project" : "global";
-}
 function normalizeStringMap(value: unknown): Record<string, string> {
     if (!value || typeof value !== "object" || Array.isArray(value))
         return {};
@@ -615,7 +357,6 @@ export function normalizeSettingsView(view: SettingsView | null | undefined): Se
             proxy: network.proxy ?? { type: "socks5", server: "", port: 0, username: "", password: "" },
         },
         agent,
-        bot: normalizeBotSettings(view.bot),
         autoPlan: "off",
         defaultToolApprovalMode: normalizeToolApprovalMode(view.defaultToolApprovalMode),
         autoApproveTools: Boolean(view.autoApproveTools ?? view.bypass),
@@ -631,8 +372,6 @@ export function normalizeSettingsView(view: SettingsView | null | undefined): Se
         statusBarStyle: normalizeStatusBarStyle(view.statusBarStyle),
         statusBarItems: normalizeStatusBarItems(view.statusBarItems),
         conversationWidth: normalizeConversationWidth(view.conversationWidth),
-        checkUpdates: view.checkUpdates !== false,
-        updateChannel: "stable",
     };
 }
 export type DesktopCurrency = "" | "CNY" | "USD";

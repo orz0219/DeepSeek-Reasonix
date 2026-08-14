@@ -19,8 +19,7 @@ import { SettingsNavigation, SETTINGS_NAV_TABS } from "./SettingsNavigation";
 import { formatSettingsError, normalizeSettingsView } from "./settings_normalize";
 import { GeneralSection, NetworkSection } from "./settings_general";
 import { ModelsSection } from "./settings_models";
-import { PermissionsSection, HooksSection, SandboxSection, UpdatesSection } from "./settings_permissions";
-import { BotsSection } from "./settings_bots";
+import { PermissionsSection, HooksSection, SandboxSection, AboutSection } from "./settings_permissions";
 import { SettingsSection, SettingsPageShell, settingsTabLabel, settingsTabMeta } from "./settings_shell";
 export { allRefs as allRefs } from "./settings_normalize";
 export { toRef as toRef } from "./settings_normalize";
@@ -38,9 +37,6 @@ export { PROXY_TYPES as PROXY_TYPES } from "./settings_normalize";
 export { LANGUAGE_PREFS as LANGUAGE_PREFS } from "./settings_normalize";
 export { TOOL_APPROVAL_MODES as TOOL_APPROVAL_MODES } from "./settings_normalize";
 export { BOT_TOOL_APPROVAL_MODES as BOT_TOOL_APPROVAL_MODES } from "./settings_normalize";
-export { BOT_QUEUE_MODES as BOT_QUEUE_MODES } from "./settings_normalize";
-export { BOT_QUEUE_DROPS as BOT_QUEUE_DROPS } from "./settings_normalize";
-export { BOT_ROUTE_CHAT_TYPES as BOT_ROUTE_CHAT_TYPES } from "./settings_normalize";
 export type { ProxyMode as ProxyMode } from "./settings_normalize";
 export { normalizeProxyMode as normalizeProxyMode } from "./settings_normalize";
 export { normalizeNetworkView as normalizeNetworkView } from "./settings_normalize";
@@ -50,16 +46,6 @@ export { formatProviderHeaders as formatProviderHeaders } from "./settings_norma
 export { parseProviderHeaders as parseProviderHeaders } from "./settings_normalize";
 export { formatSettingsError as formatSettingsError } from "./settings_normalize";
 export { providerModelFetchFallbackMessage as providerModelFetchFallbackMessage } from "./settings_normalize";
-export { normalizeBotQueueMode as normalizeBotQueueMode } from "./settings_normalize";
-export { normalizeBotQueueDrop as normalizeBotQueueDrop } from "./settings_normalize";
-export { normalizeBotRoute as normalizeBotRoute } from "./settings_normalize";
-export { emptyBotRoute as emptyBotRoute } from "./settings_normalize";
-export { botRouteHasValue as botRouteHasValue } from "./settings_normalize";
-export { defaultBotAccess as defaultBotAccess } from "./settings_normalize";
-export { normalizeBotAccess as normalizeBotAccess } from "./settings_normalize";
-export { normalizeBotSettings as normalizeBotSettings } from "./settings_normalize";
-export { normalizeBotConnection as normalizeBotConnection } from "./settings_normalize";
-export { normalizeBotToolApprovalMode as normalizeBotToolApprovalMode } from "./settings_normalize";
 export type { ProviderPresetStatus as ProviderPresetStatus } from "./settings_normalize";
 export { normalizeProviderPresetStatus as normalizeProviderPresetStatus } from "./settings_normalize";
 export { normalizeSettingsView as normalizeSettingsView } from "./settings_normalize";
@@ -81,41 +67,6 @@ export { reasoningProtocolLabel as reasoningProtocolLabel } from "./settings_nor
 export { thinkingModeLabel as thinkingModeLabel } from "./settings_normalize";
 export { GeneralSection as GeneralSection } from "./settings_general";
 export { NetworkSection as NetworkSection } from "./settings_general";
-export type { BotInstallTarget as BotInstallTarget } from "./settings_bot_helpers";
-export type { BotOfficialInstallTarget as BotOfficialInstallTarget } from "./settings_bot_helpers";
-export type { BotAllowlistTextKey as BotAllowlistTextKey } from "./settings_bot_helpers";
-export type { BotSelfUserTextKey as BotSelfUserTextKey } from "./settings_bot_helpers";
-export type { BotInstallState as BotInstallState } from "./settings_bot_helpers";
-export { BOT_INSTALL_TARGETS as BOT_INSTALL_TARGETS } from "./settings_bot_helpers";
-export { BOT_INSTALL_DEFAULT_TIMEOUT_SECONDS as BOT_INSTALL_DEFAULT_TIMEOUT_SECONDS } from "./settings_bot_helpers";
-export { BOT_INSTALL_MIN_POLL_SECONDS as BOT_INSTALL_MIN_POLL_SECONDS } from "./settings_bot_helpers";
-export { DEFAULT_QQ_SECRET_ENV as DEFAULT_QQ_SECRET_ENV } from "./settings_bot_helpers";
-export { QQ_CONNECTION_ID as QQ_CONNECTION_ID } from "./settings_bot_helpers";
-export { BOT_PLATFORM_KEYS as BOT_PLATFORM_KEYS } from "./settings_bot_helpers";
-export type { BotPlatformKey as BotPlatformKey } from "./settings_bot_helpers";
-export { BOT_ALLOWLIST_ROLES as BOT_ALLOWLIST_ROLES } from "./settings_bot_helpers";
-export type { BotAccessListField as BotAccessListField } from "./settings_bot_helpers";
-export { botAllowlistKey as botAllowlistKey } from "./settings_bot_helpers";
-export { botConnectionPlatform as botConnectionPlatform } from "./settings_bot_helpers";
-export { botPlatformLabel as botPlatformLabel } from "./settings_bot_helpers";
-export { diagnosticMessage as diagnosticMessage } from "./settings_bot_helpers";
-export { diagnosticReportDetail as diagnosticReportDetail } from "./settings_bot_helpers";
-export { botTargetLabel as botTargetLabel } from "./settings_bot_helpers";
-export { botTargetHint as botTargetHint } from "./settings_bot_helpers";
-export { qqBotAdded as qqBotAdded } from "./settings_bot_helpers";
-export { botAccessEntryCount as botAccessEntryCount } from "./settings_bot_helpers";
-export { botAccessReady as botAccessReady } from "./settings_bot_helpers";
-export { botInstallTargetMatchesConnection as botInstallTargetMatchesConnection } from "./settings_bot_helpers";
-export { botInstallTargetForConnection as botInstallTargetForConnection } from "./settings_bot_helpers";
-export { formatInstallUserCode as formatInstallUserCode } from "./settings_bot_helpers";
-export { formatInstallTimeLeft as formatInstallTimeLeft } from "./settings_bot_helpers";
-export { botConnectionLabel as botConnectionLabel } from "./settings_bot_helpers";
-export { firstConnectionRemote as firstConnectionRemote } from "./settings_bot_helpers";
-export { botConnectionScopeLabel as botConnectionScopeLabel } from "./settings_bot_helpers";
-export { botConnectionSecretEnv as botConnectionSecretEnv } from "./settings_bot_helpers";
-export { botConnectionSecretPatch as botConnectionSecretPatch } from "./settings_bot_helpers";
-export { botConnectionCredentialSummary as botConnectionCredentialSummary } from "./settings_bot_helpers";
-export { botDraftWithDerivedGatewayState as botDraftWithDerivedGatewayState } from "./settings_bot_helpers";
 export { ModelPicker as ModelPicker } from "./settings_models";
 export { proxyModeLabel as proxyModeLabel } from "./settings_models";
 export { ModelsSection as ModelsSection } from "./settings_models";
@@ -125,7 +76,7 @@ export { KeyField as KeyField } from "./settings_permissions";
 export { PermissionsSection as PermissionsSection } from "./settings_permissions";
 export { HooksSection as HooksSection } from "./settings_permissions";
 export { SandboxSection as SandboxSection } from "./settings_permissions";
-export { UpdatesSection as UpdatesSection } from "./settings_permissions";
+export { AboutSection as AboutSection } from "./settings_permissions";
 export type { ProviderAccessGroup as ProviderAccessGroup } from "./settings_provider_helpers";
 export { providerAccessGroups as providerAccessGroups } from "./settings_provider_helpers";
 export { providerSupportsServerWebSearch as providerSupportsServerWebSearch } from "./settings_provider_helpers";
@@ -155,21 +106,13 @@ export type { ProviderVisionCapability as ProviderVisionCapability } from "./set
 export { canonicalOfficialProviderName as canonicalOfficialProviderName } from "./settings_provider_helpers";
 export { officialProviderKind as officialProviderKind } from "./settings_provider_helpers";
 export { parseProviderListInput as parseProviderListInput } from "./settings_provider_helpers";
-export { botAllowlistTextValues as botAllowlistTextValues } from "./settings_provider_helpers";
-export { botSelfUserTextValues as botSelfUserTextValues } from "./settings_provider_helpers";
-export { parseBotListInput as parseBotListInput } from "./settings_provider_helpers";
 export { ProvidersSection as ProvidersSection } from "./settings_providers";
 export { AddProviderPanel as AddProviderPanel } from "./settings_providers";
 export { ProviderAccessCard as ProviderAccessCard } from "./settings_providers";
 export { ProviderEditorModelPicker as ProviderEditorModelPicker } from "./settings_providers";
 export { ProviderEditor as ProviderEditor } from "./settings_providers";
 export { ToggleSegment as ToggleSegment } from "./ToggleSegment";
-export { BotsSection as BotsSection } from "./settings_bots";
 export type SettingsInitialFocus = {
-    target: "bot-allowlist";
-    connectionId?: string;
-    requestId?: number;
-} | {
     target: "model-access";
     requestId?: number;
 } | {
@@ -404,7 +347,7 @@ export function SettingsPanel({ onClose, onChanged, initialTab, initialFocus, ag
         return () => document.removeEventListener("keydown", onKey);
     }, [requestClose]);
     // These pages need SettingsView; capability pages load their own data.
-    const needsSettings = tab === "general" || tab === "models" || tab === "bots" || tab === "subagents" || tab === "network" || tab === "permissions" || tab === "sandbox" || tab === "appearance" || tab === "updates";
+    const needsSettings = tab === "general" || tab === "models" || tab === "subagents" || tab === "network" || tab === "permissions" || tab === "sandbox" || tab === "appearance" || tab === "about";
     const lazySettingsPageFallback = <div className="empty">{t("settings.loading")}</div>;
     const settingsNavigationItems = useMemo(() => SETTINGS_NAV_TABS.map((id) => ({
         id,
@@ -438,7 +381,6 @@ export function SettingsPanel({ onClose, onChanged, initialTab, initialFocus, ag
             {needsSettings && !s ? (loadingSettings ? <div className="empty">{t("settings.loading")}</div> : null) : (<>
                 {tab === "general" && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><GeneralSection s={s} busy={busy} apply={apply} agentRunning={agentRunning}/></SettingsPageShell>}
                 {tab === "models" && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><ModelsSection s={s} busy={busy} apply={apply} backgroundApply={backgroundApply} initialFocus={initialFocus}/></SettingsPageShell>}
-                {tab === "bots" && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><BotsSection s={s} busy={busy} apply={apply} initialFocus={initialFocus}/></SettingsPageShell>}
                 {tab === "mcp" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><MCPServersSettingsPage /></Suspense></SettingsPageShell>}
                 {tab === "remote" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><RemoteHostsPage /></Suspense></SettingsPageShell>}
                 {tab === "skills" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><SkillsSettingsPage activeWorkspaceKey={activeWorkspaceKey}/></Suspense></SettingsPageShell>}
@@ -489,8 +431,8 @@ export function SettingsPanel({ onClose, onChanged, initialTab, initialFocus, ag
                 }}/>
                   </SettingsPageShell>)}
                 {tab === "storage" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><StorageSettingsPage /></Suspense></SettingsPageShell>}
-                {tab === "updates" && s && (<SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}>
-                    <UpdatesSection configPath={s.configPath} shadowedByPath={s.shadowedByPath} checkUpdates={s.checkUpdates} telemetry={s.telemetry !== false} metrics={s.metrics !== false} settingsBusy={busy} applySettings={apply}/>
+                {tab === "about" && s && (<SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}>
+                    <AboutSection configPath={s.configPath} shadowedByPath={s.shadowedByPath}/>
                   </SettingsPageShell>)}
               </>)}
           </main>

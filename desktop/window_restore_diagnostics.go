@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -79,11 +78,6 @@ func (a *App) observeIncompleteWindowRestore() {
 	}
 	_ = os.Remove(windowRestoreStatePath())
 	windowRestoreMu.Unlock()
-	if state.TimeoutReported {
-		return
-	}
-	_ = writePendingReport(windowRestoreFailureReport("incomplete", state.Source, state.StartedAt), true)
-	a.recordDiagnosticMetric("desktop_restore", "incomplete")
 }
 
 func (a *App) showMainWindowFrom(source string) {
@@ -102,7 +96,7 @@ func (a *App) showMainWindowFrom(source string) {
 		SchemaVersion: windowRestoreStateVersion,
 		PID:           os.Getpid(),
 		AttemptID:     attemptID,
-		Source:        metricBucket(source),
+		Source:        source,
 		StartedAt:     time.Now().UTC().Format(time.RFC3339Nano),
 	}
 	_ = writeWindowRestoreState(state)
@@ -141,7 +135,6 @@ func awaitWindowRestoreConfirmation(confirmed func() bool, ticks, deadline <-cha
 }
 
 func (a *App) completeWindowRestoreAttempt(attemptID uint64, state windowRestoreState, restored bool) {
-	metric := "success"
 	windowRestoreMu.Lock()
 	if windowRestoreSequence.Load() != attemptID {
 		windowRestoreMu.Unlock()
@@ -150,34 +143,12 @@ func (a *App) completeWindowRestoreAttempt(attemptID uint64, state windowRestore
 	if restored {
 		_ = os.Remove(windowRestoreStatePath())
 	} else {
-		metric = "timeout"
-		if writePendingReport(windowRestoreFailureReport("timeout", state.Source, state.StartedAt), true) {
+		// Local diagnostics only; crash/metrics reporting was removed. Keep
+		// the reported marker so a later launch does not re-flag this state.
+		if !state.TimeoutReported {
 			state.TimeoutReported = true
 			_ = writeWindowRestoreState(state)
 		}
 	}
 	windowRestoreMu.Unlock()
-	a.recordDiagnosticMetric("desktop_restore", metric)
-}
-
-func windowRestoreFailureReport(kind, source, startedAt string) crashReport {
-	kind = metricBucket(kind)
-	source = metricBucket(source)
-	report := baseCrashReport("performance")
-	report.SchemaVersion = 2
-	report.Source = "native.window"
-	report.Label = "windows.window_restore." + kind
-	report.ErrorType = "WindowsWindowRestoreFailure"
-	report.ErrorMessage = sanitizeCrashText("Windows window restoration did not complete normally.", maxCrashFieldBytes)
-	report.TopFrame = "windows.window_restore." + source
-	report.FingerprintHint = "windows.window_restore." + kind + "." + source
-	report.OccurredAt = time.Now().UTC().Format(time.RFC3339)
-	report.Message = sanitizeCrashText(fmt.Sprintf(`[windows.window_restore.%s]
-
-Reasonix could not confirm that the hidden window was restored.
-
-source: %s
-attempt started at: %s
-timeout: %s`, kind, source, sanitizeCrashField(startedAt, 64), windowRestoreTimeout), maxCrashDetailBytes)
-	return report
 }

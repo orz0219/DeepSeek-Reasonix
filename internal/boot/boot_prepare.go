@@ -292,7 +292,7 @@ func prepareBuild(ctx context.Context, opts Options) (*bootContext, error) {
 		level := event.LevelInfo
 		text := "Deprecated agent step limits were removed."
 		detail := "[agent].max_steps and planner_max_steps are no longer used; Reasonix now manages interactive progress automatically. " +
-			"Use the CLI --max-steps flag for a one-off run or [bot].max_steps for unattended bot sessions."
+			"Use the CLI --max-steps flag for a one-off run."
 		if stepLimitMigErr != nil {
 			level = event.LevelWarn
 			text = "Deprecated agent step limits were ignored."

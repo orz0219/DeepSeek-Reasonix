@@ -5,7 +5,7 @@ import type * as GeneratedApp from "../../wailsjs/go/main/App";
 import type { InvocationRequest } from "./invocationDisplay";
 import { type HistoryCatalogBindings } from "./historyCatalogBridge";
 import { type TaskCatalogBindings } from "./taskCatalogBridge";
-import type { RemoteHostView, RemoteHostInput, RemoteConnectionStatus, RemoteDirEntry, RemoteFilePreview, RemoteWriteResult, RemoteForwardInput, RemoteForwardView, RemoteServerView, RemoteLegacyWorkbenchData, BalanceInfo, UsageStatsRange, UsageStatsRequest, BotConnectionDiagnostic, BotInstallPollResult, BotInstallStartResult, BotRuntimeStatusView, BotSettingsView, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, MemoryFact, MemorySuggestion, MemorySuggestionsView, MemoryView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, UpdateInfo, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
+import type { RemoteHostView, RemoteHostInput, RemoteConnectionStatus, RemoteDirEntry, RemoteFilePreview, RemoteWriteResult, RemoteForwardInput, RemoteForwardView, RemoteServerView, RemoteLegacyWorkbenchData, BalanceInfo, UsageStatsRange, UsageStatsRequest, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, MemoryFact, MemorySuggestion, MemorySuggestionsView, MemoryView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
 // AppBindings is derived from the Wails-generated Go → TS method signatures, so
 // the compiler catches drift between the Go binding surface and the frontend mock.
 // Run `wails generate module` after adding/renaming a bound method on App, then
@@ -426,15 +426,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     ReloadSettings(): Promise<void>;
     SetSandbox(bash: string, network: boolean, workspaceRoot: string, allowWrite: string[], shell: string): Promise<void>;
     SetNetwork(n: NetworkView): Promise<void>;
-    SetBotSettings(b: BotSettingsView): Promise<void>;
-    SetBotConnectionToolApprovalMode(connID: string, mode: string): Promise<void>;
-    SetBotSecret(envName: string, value: string): Promise<void>;
-    ClearBotSecret(envName: string): Promise<void>;
-    StartBotConnectionInstall(provider: string, domain: string): Promise<BotInstallStartResult>;
-    PollBotConnectionInstall(installID: string): Promise<BotInstallPollResult>;
-    BotRuntimeStatus(): Promise<BotRuntimeStatusView>;
-    DiagnoseBotConnection(id: string): Promise<BotConnectionDiagnostic>;
-    TestBotConnection(id: string, target?: string): Promise<BotConnectionDiagnostic>;
     SetCloseBehavior(mode: string): Promise<void>;
     SetDisplayMode(mode: string): Promise<void>;
     SetStatusBarStyle(style: string): Promise<void>;
@@ -462,10 +453,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     SetDesktopZoomFactor(factor: number): Promise<void>;
     GetDesktopZoomFactor(): Promise<number>;
     RestartApplication(): Promise<void>;
-    SetDesktopCheckUpdates(enabled: boolean): Promise<void>;
-    SetDesktopUpdateChannel(channel: string): Promise<void>;
-    SetDesktopTelemetry(enabled: boolean): Promise<void>;
-    SetDesktopMetrics(enabled: boolean): Promise<void>;
     SetExpandThinking(on: boolean): Promise<void>;
     SetDesktopConversationWidth(width: string): Promise<void>;
     MigrateDesktopPreferences(language: string, theme: string, style: string): Promise<void>;
@@ -478,12 +465,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     // Runtime-only.
     SetBypass(on: boolean): Promise<void>;
     Version(): Promise<string>;
-    CheckUpdate(channel: string): Promise<UpdateInfo | null>;
-    /** v1.20+ single-action update: download, verify, install, relaunch. */
-    ApplyUpdateRequest(channel: string, expectedVersion: string, requestId: string): Promise<void>;
-    /** Discard a stuck previous update transaction so the next install can proceed. */
-    AbandonPendingUpdate?(): Promise<void>;
-    OpenDownloadPage(): Promise<void>;
     OpenUserConfigPath?(): Promise<void>;
     ReloadUserConfig?(): Promise<{
         configWarnings?: string[];
@@ -498,10 +479,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     }>;
     NeedsOnboarding(): Promise<boolean>;
     ConnectKey(apiKey: string): Promise<string>;
-    // Crash overlay "Send report" (desktop/crash_app.go): scrubs user paths, attaches
-    // version/os/arch, POSTs to the collection endpoint. Only ever sent on user click.
-    ReportCrash(kind: string, detail: string): Promise<void>;
-    RecordUIPerf(signals: Record<string, string>): Promise<void>;
     ListTabs(): Promise<TabMeta[]>;
     OpenProjectTab(workspaceRoot: string, topicID: string): Promise<TabMeta>;
     DeliveryWorktreeAvailability(workspaceRoot: string): Promise<DeliveryWorktreeAvailability>;

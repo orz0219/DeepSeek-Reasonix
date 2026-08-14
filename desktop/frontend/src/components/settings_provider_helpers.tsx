@@ -2,9 +2,8 @@ import { useDeferredValue, useEffect, useId, useMemo, useState } from "react";
 import { useT, type DictKey } from "../lib/i18n";
 import { providerIsConfigured, providerRequiresKey } from "../lib/providerModels";
 import { opencodeGoPresetDescriptionKeys } from "../lib/providerPresetDescriptions";
-import type { BotAllowlistView, BotSettingsView, ProviderPresetView, ProviderView } from "../lib/types";
+import type { ProviderPresetView, ProviderView } from "../lib/types";
 import { ProviderPresetStatus } from "./settings_normalize";
-import { BotAllowlistTextKey, BotSelfUserTextKey } from "./settings_bot_helpers";
 export type ProviderAccessGroup = {
     id: string;
     label: string;
@@ -522,33 +521,3 @@ export function parseProviderListInput(value: string): string[] {
         .map((entry) => entry.trim())
         .filter(Boolean));
 }
-export function botAllowlistTextValues(allowlist: BotAllowlistView): Record<BotAllowlistTextKey, string> {
-    return {
-        qqUsers: allowlist.qqUsers.join("\n"),
-        feishuUsers: allowlist.feishuUsers.join("\n"),
-        weixinUsers: allowlist.weixinUsers.join("\n"),
-        qqApprovers: allowlist.qqApprovers.join("\n"),
-        feishuApprovers: allowlist.feishuApprovers.join("\n"),
-        weixinApprovers: allowlist.weixinApprovers.join("\n"),
-        qqAdmins: allowlist.qqAdmins.join("\n"),
-        feishuAdmins: allowlist.feishuAdmins.join("\n"),
-        weixinAdmins: allowlist.weixinAdmins.join("\n"),
-        qqGroups: allowlist.qqGroups.join("\n"),
-        feishuGroups: allowlist.feishuGroups.join("\n"),
-        weixinGroups: allowlist.weixinGroups.join("\n"),
-    };
-}
-export function botSelfUserTextValues(selfUserIds: BotSettingsView["selfUserIds"]): Record<BotSelfUserTextKey, string> {
-    return {
-        qq: selfUserIds.qq.join("\n"),
-        feishu: selfUserIds.feishu.join("\n"),
-        weixin: selfUserIds.weixin.join("\n"),
-    };
-}
-export function parseBotListInput(value: string): string[] {
-    return uniqueStrings(value
-        .split(/[\n,，]+/)
-        .map((entry) => entry.trim())
-        .filter(Boolean));
-}
-

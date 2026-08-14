@@ -27,7 +27,6 @@ import (
 
 	"reasonix/internal/config"
 	"reasonix/internal/control"
-	"reasonix/internal/event"
 	"reasonix/internal/filelock"
 	"reasonix/internal/fileutil"
 	"reasonix/internal/secrets"
@@ -51,7 +50,6 @@ type HeartbeatTask struct {
 	ApprovalMode           string `json:"approvalMode"`              // "ask" | "auto" | "yolo"; empty defaults to "yolo"
 	TimeWindowStart        string `json:"timeWindowStart,omitempty"` // "HH:MM" — interval tasks only run after this time (inclusive)
 	TimeWindowEnd          string `json:"timeWindowEnd,omitempty"`   // "HH:MM" — interval tasks only run before this time (exclusive)
-	NotifyChannels         *bool  `json:"notifyChannels,omitempty"`  // true = push to bot channels; nil/false = skip
 }
 
 // heartbeatConfig is the on-disk format.
@@ -500,18 +498,9 @@ func (e *HeartbeatEngine) executeTaskOwned(t HeartbeatTask) HeartbeatTask {
 	t.ApprovalMode = mode
 	e.app.SetToolApprovalModeForTab(tabMeta.ID, mode)
 
-	// Attach bot event forwarding if the bot runtime is active and has
-	// session-mapped targets. The forwarder is set on the tab's event sink
-	// so AI output events are streamed to connected bot channels in
-	// real-time alongside the desktop UI.
-	var botForwarder event.Sink
-	if t.NotifyChannels != nil && *t.NotifyChannels {
-		botForwarder = e.newBotForwarder(tabMeta.ID)
-	}
-
 	// Submit as a plain user turn so scheduled prompts cannot invoke desktop
 	// shell or slash-command handlers such as "!cmd", "/clear", or "/compact".
-	if !e.app.submitUserTurnToTabWithSink(tabMeta.ID, t.Prompt, botForwarder) {
+	if !e.app.submitUserTurnToTabWithSink(tabMeta.ID, t.Prompt, nil) {
 		log.Printf("[heartbeat] submit skipped for %q", t.Title)
 		return t
 	}
@@ -638,28 +627,4 @@ func (a *App) HeartbeatGenerateID() string {
 		b[i] = chars[rand.Intn(len(chars))]
 	}
 	return string(b)
-}
-
-// newBotForwarder builds event forwarding for a heartbeat turn. The caller
-// attaches it only after acquiring the tab's turn-admission gate.
-func (e *HeartbeatEngine) newBotForwarder(tabID string) event.Sink {
-	runtime := e.app.botRuntime
-	if runtime == nil || !runtime.Running() {
-		return nil
-	}
-	cfg, err := e.app.loadDesktopBotConfig()
-	if err != nil {
-		log.Printf("[heartbeat] load config for bot forward: %v", err)
-		return nil
-	}
-	targets := runtime.ForwardTargets(cfg)
-	if len(targets) == 0 {
-		return nil // no session-mapped channels to forward to
-	}
-	tab := e.app.tabByID(tabID)
-	if tab == nil || tab.sink == nil {
-		return nil
-	}
-	log.Printf("[heartbeat] bot forwarding attached: %d target(s) for tab %s", len(targets), tabID)
-	return newBotEventForwarder(runtime, targets)
 }

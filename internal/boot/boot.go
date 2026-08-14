@@ -133,7 +133,7 @@ type Options struct {
 	CleanupPendingReconciler func(sessionDir string) error
 	// ApprovalTimeout bounds how long a tool-approval or ask prompt blocks for a
 	// user decision. Zero (default) waits forever — correct for an interactive
-	// terminal. Headless/bot frontends pass a positive value so an unanswered
+	// terminal. Headless frontends pass a positive value so an unanswered
 	// prompt can't wedge the session indefinitely (#4626, #4402).
 	ApprovalTimeout time.Duration
 	// HeadlessApprovalMode selects the non-interactive tool-approval contract

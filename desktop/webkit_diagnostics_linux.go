@@ -32,12 +32,9 @@ func installWebKitProcessObserver(app *App, enabled bool) {
 	}
 	webKitObserverState.Do(func() {
 		go func() {
-			for event := range webKitObserverState.events {
-				report, outcome, failureBucket := webKitNativeFailureReport(event)
-				_ = writePendingReport(report, true)
-				app.recordDiagnosticMetric("desktop_web_runtime_failure", failureBucket)
-				app.recordDiagnosticMetric("desktop_web_runtime_outcome", outcome)
-				recordDroppedWebRuntimeEvents(app, "webkitgtk", &webKitObserverState.dropped)
+			for range webKitObserverState.events {
+				// Native WebKit termination is observed locally; crash/metrics
+				// reporting was removed.
 			}
 		}()
 		C.reasonix_install_webkit_observer()

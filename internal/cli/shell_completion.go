@@ -269,16 +269,6 @@ func cliCompletionRootSpec() cliCompletionSpec {
 		completionSpec("review", []cliCompletionFlag{
 			completionFlag("--base --commit --instructions", cliCompletionStaticValue), model, help,
 		}),
-		completionSpec("bot", []cliCompletionFlag{help},
-			completionSpec("start", []cliCompletionFlag{completionFlag("--channels --dir", cliCompletionStaticValue), model, help}),
-			completionSpec("doctor", []cliCompletionFlag{completionFlag("--json --deep", cliCompletionNoValue), help}),
-			completionSpec("pairing", []cliCompletionFlag{help},
-				completionSpec("list", []cliCompletionFlag{help}),
-				completionSpec("approve", []cliCompletionFlag{help}),
-				completionSpecWithAliases("reject", []string{"deny"}, []cliCompletionFlag{help}),
-			),
-			completionSpec("weixin-login", []cliCompletionFlag{completionFlag("--timeout", cliCompletionStaticValue), help}),
-		),
 		completionSpecWithAliases("upgrade", []string{"update"}, []cliCompletionFlag{
 			completionFlag("--check --force", cliCompletionNoValue), completionFlag("--channel", cliCompletionStaticValue), help,
 		}),

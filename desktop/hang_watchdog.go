@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	goruntime "runtime"
 	"sync/atomic"
 	"time"
 )
@@ -114,82 +112,10 @@ func (a *App) watchMainThreadHeartbeat(ctx context.Context) {
 }
 
 func (a *App) recordMainThreadHang(age time.Duration, lastHeartbeat, observedAt time.Time) {
-	report := mainThreadHangReport(age, lastHeartbeat, observedAt)
-	wrote := writePendingReport(report, true)
-	if m := a.metrics.Load(); m != nil {
-		m.inc("desktop_hang", mainThreadMetricBucket())
-		m.inc("desktop_hang_age", hangAgeBucket(age))
-		m.persist()
-	}
+	// Local log only; crash/metrics reporting was removed.
 	slog.Warn("desktop: native UI thread heartbeat stalled",
 		"age", age.Round(time.Millisecond).String(),
 		"lastHeartbeat", lastHeartbeat.Format(time.RFC3339),
-		"pendingReport", wrote,
+		"observedAt", observedAt.Format(time.RFC3339),
 	)
-}
-
-func mainThreadHangReport(age time.Duration, lastHeartbeat, observedAt time.Time) crashReport {
-	label, errorType, platformName, topFrame := mainThreadDiagnosticIdentity()
-	age = age.Round(time.Second)
-	message := fmt.Sprintf(`[%s]
-
-Reasonix detected that the %s UI-thread heartbeat stopped for %s.
-
---- watchdog context ---
-last heartbeat: %s
-observed at: %s
-threshold: %s
-bucket: %s
-
---- native runtime context ---
-%s`,
-		label,
-		platformName,
-		age,
-		lastHeartbeat.UTC().Format(time.RFC3339),
-		observedAt.UTC().Format(time.RFC3339),
-		mainThreadHangThreshold,
-		hangAgeBucket(age),
-		nativeResourceContext(),
-	)
-	report := baseCrashReport("performance")
-	report.SchemaVersion = 2
-	report.Source = "native.watchdog"
-	report.Label = label
-	report.ErrorType = errorType
-	report.ErrorMessage = sanitizeCrashText(platformName+" UI thread heartbeat stopped; the native/Wails message loop may be blocked.", maxCrashFieldBytes)
-	report.TopFrame = topFrame
-	report.OccurredAt = observedAt.UTC().Format(time.RFC3339)
-	report.Message = sanitizeCrashText(message, maxCrashDetailBytes)
-	return report
-}
-
-func mainThreadDiagnosticIdentity() (label, errorType, platformName, topFrame string) {
-	if goruntime.GOOS == "windows" {
-		return "windows.ui_thread.hang", "WindowsUIThreadHang", "Windows", "windows.ui_thread.heartbeat"
-	}
-	return "mac.main_thread.hang", "MacMainThreadHang", "macOS", "mac.main_thread.heartbeat"
-}
-
-func mainThreadMetricBucket() string {
-	if goruntime.GOOS == "windows" {
-		return "windows_ui_thread"
-	}
-	return "main_thread"
-}
-
-func hangAgeBucket(age time.Duration) string {
-	seconds := age.Seconds()
-	switch {
-	case seconds < 15:
-		return "s_10_15"
-	case seconds < 30:
-		return "s_15_30"
-	case seconds < 60:
-		return "s_30_60"
-	case seconds < 300:
-		return "m_1_5"
-	default:
-		return "m_5_plus"
-	}
 }

@@ -1,4 +1,3 @@
-import { app } from "./bridge";
 
 // UI latency telemetry: turn-scoped, content-free counters and percentiles for
 // the streaming render pipeline. Everything reported is a bounded (signal,
@@ -208,18 +207,8 @@ export class UIPerfTurnCollector {
 }
 
 // uiPerfTracker is the app-wide instance; useController feeds it wire events,
-// state commits, and stream dispatches.
-export const uiPerfTracker: UIPerfTracker = createUIPerfTracker((signals) => {
-  // Older shells and lightweight browser/test bridge doubles may not expose
-  // the optional telemetry endpoint. Diagnostics must never turn a completed
-  // turn into a rejected event handler in those environments.
-  if (typeof app.RecordUIPerf !== "function") return;
-  try {
-    void Promise.resolve(app.RecordUIPerf(signals)).catch(() => {});
-  } catch {
-    // A partially initialized Wails binding can still throw synchronously.
-  }
-});
+// state commits, and stream dispatches. The remote metrics sink was removed.
+export const uiPerfTracker: UIPerfTracker = createUIPerfTracker(() => {});
 
 export interface UIPerfTracker {
   onWireEvent(tabId: string, kind: string): void;

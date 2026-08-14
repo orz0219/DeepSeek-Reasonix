@@ -155,10 +155,6 @@ func singleInstanceID() string {
 // in-flight settings-page subagent try run (TrySubagentProfile /
 // CancelTrySubagentProfile).
 
-// updaterOperationMu guards the single native download/install operation.
-// Checks are read-only and may overlap; cache mutation and installation fail
-// fast when another updater operation is already active.
-
 // deferredRebuild tracks tabs whose settings were saved but whose runtime
 // could not refresh because the session lease was held by another process.
 
@@ -182,10 +178,6 @@ func singleInstanceID() string {
 
 // protected by mu; assigned when collecting a snapshot
 // protected by tabsSaveMu
-
-// botBridge gives the embedded bot gateway a god view over desktop
-// sessions (/desktop commands). Set once in NewApp before any tab exists,
-// read-only afterwards, so tabEventSink.Emit reads it without a lock.
 
 // non-nil only when desktop.metrics is opted in; swapped live by SetDesktopMetrics
 
@@ -264,14 +256,11 @@ func NewApp() *App {
 		runtimeBySessionKey: map[string]*desktopSessionRuntime{},
 		detachedSessions:    map[string]*WorkspaceTab{},
 		mediaTokens:         newMediaTokenStore(),
-		botInstalls:         map[string]*botInstallSession{},
-		botRuntime:          newDesktopBotRuntime(),
 		remoteWindows:       newRemoteWindowRegistry(),
 		remoteWindowOwnerID: newRemoteWindowOwnerID(),
 	}
 	a.workspaceHub = newWorkspaceChangeHub(a)
 	a.terminals = newTerminalManager(a)
-	a.botBridge = a.newBotBridge()
 	return a
 }
 

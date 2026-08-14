@@ -3381,6 +3381,13 @@ a[href] {
   padding: 24px 32px 32px;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  /* Session-switch reveal: .transcript--reveal-hidden drops opacity to 0 on
+     the remounted scroller, and this transition fades it back in when the
+     class is removed. Opacity-only, so it never touches layout or scrolling. */
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+.transcript--reveal-hidden {
+  opacity: 0;
 }
 .transcript-shell {
   position: relative;
@@ -9448,8 +9455,11 @@ body > .mermaid-diagram--fullscreen {
   color: var(--fg);
   font: inherit;
   font-size: 12px;
+  line-height: 1.45;
   padding: 6px 8px;
   box-sizing: border-box;
+  resize: vertical;
+  min-height: 72px;
 }
 .ask-shelf__custom:focus {
   border-color: var(--accent);
@@ -9626,8 +9636,8 @@ body > .mermaid-diagram--fullscreen {
   gap: 4px;
 }
 .prompt-shelf--ask .ask-shelf__custom {
-  height: 30px;
-  padding: 0 9px;
+  min-height: 84px;
+  padding: 7px 9px;
 }
 .prompt-shelf--runtime-decision .prompt-shelf__note {
   overflow: hidden;

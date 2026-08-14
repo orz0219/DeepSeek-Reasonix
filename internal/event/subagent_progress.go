@@ -6,7 +6,7 @@ import "strings"
 //
 // These names are an internal wire contract between the agent progress
 // tracker and local frontends (desktop and CLI). They must never be presented
-// as provider-visible tool names: ACP and bot consumers ignore ToolProgress
+// as provider-visible tool names: ACP consumers ignore ToolProgress
 // bodies entirely, and the names are filtered out of any transcript or
 // provider context by construction (they only ever ride ToolProgress events).
 //

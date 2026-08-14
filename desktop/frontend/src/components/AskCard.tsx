@@ -36,7 +36,7 @@ export function AskCard({
   const [descriptionTruncated, setDescriptionTruncated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const shelfRef = useRef<HTMLDivElement | null>(null);
-  const customInputRef = useRef<HTMLInputElement | null>(null);
+  const customInputRef = useRef<HTMLTextAreaElement | null>(null);
   const instanceId = useId();
 
   const questions = ask.questions;
@@ -333,18 +333,18 @@ export function AskCard({
           )}
           {customOpen && (
             <div className="ask-shelf__custom-row">
-              <input
+              <textarea
                 ref={customInputRef}
                 className="ask-shelf__custom"
                 placeholder={t("ask.customPlaceholder")}
                 value={custom[q.id] ?? ""}
                 disabled={submitting}
+                rows={3}
                 onChange={(e) => setTyped(q, e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && canConfirm()) {
-                    e.preventDefault();
-                    confirmSelected();
-                  }
+                  // Enter must NOT submit from the custom answer box: typing a
+                  // reply can include newlines, and Enter misfires the send.
+                  // Submission happens via the confirm button only.
                   e.stopPropagation();
                 }}
               />

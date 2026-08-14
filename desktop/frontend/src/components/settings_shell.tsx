@@ -1,9 +1,8 @@
 import { type ReactNode } from "react";
 import { useT } from "../lib/i18n";
-import type { BotSettingsView, SettingsTab, SettingsView } from "../lib/types";
+import type { SettingsTab, SettingsView } from "../lib/types";
 import { Tooltip } from "./Tooltip";
-import { toRef, normalizeProxyMode, normalizeBotSettings, normalizeCloseBehavior, normalizeDesktopLayoutStyle, desktopLayoutStyleLabel, closeBehaviorLabel, permissionModeLabel, sandboxModeLabel } from "./settings_normalize";
-import { qqBotAdded } from "./settings_bot_helpers";
+import { toRef, normalizeProxyMode, normalizeCloseBehavior, normalizeDesktopLayoutStyle, desktopLayoutStyleLabel, closeBehaviorLabel, permissionModeLabel, sandboxModeLabel } from "./settings_normalize";
 import { proxyModeLabel, modelProviderLabel } from "./settings_models";
 export function SettingsPageShell({ s: _s, tab, children }: {
     s: SettingsView | null;
@@ -109,8 +108,6 @@ export function settingsTabLabel(id: SettingsTab, t: ReturnType<typeof useT>): s
             return t("settings.tab.models");
         case "providers":
             return t("settings.tab.providers");
-        case "bots":
-            return t("settings.tab.bots");
         case "mcp":
             return t("settings.tab.mcp");
         case "remote":
@@ -137,8 +134,8 @@ export function settingsTabLabel(id: SettingsTab, t: ReturnType<typeof useT>): s
             return t("settings.tab.sandbox");
         case "appearance": return t("settings.tab.appearance");
         case "storage": return t("settings.tab.storage");
-        case "updates":
-            return t("settings.tab.updates");
+        case "about":
+            return t("settings.tab.about");
     }
 }
 export function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<typeof useT>): string {
@@ -149,8 +146,6 @@ export function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<
             return `${desktopLayoutStyleLabel(normalizeDesktopLayoutStyle(s.desktopLayoutStyle), t)} · ${closeBehaviorLabel(normalizeCloseBehavior(s.closeBehavior), t)}`;
         case "providers":
             return t("settings.providerCount", { n: s.providers.length });
-        case "bots":
-            return botSettingsMeta(s.bot, t);
         case "mcp":
             return t("caps.connectorsTab");
         case "remote":
@@ -177,8 +172,8 @@ export function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<
             return sandboxModeLabel(s.sandbox.bash, t);
         case "appearance": return t("settings.appearanceMeta");
         case "storage": return t("settings.storageMeta");
-        case "updates":
-            return t("settings.updatesMeta");
+        case "about":
+            return t("settings.aboutMeta");
     }
 }
 export function settingsModelMeta(s: SettingsView, t: ReturnType<typeof useT>): string {
@@ -191,14 +186,5 @@ export function settingsModelMeta(s: SettingsView, t: ReturnType<typeof useT>): 
     const model = modelParts.join("/") || ref;
     const providerView = s.providers.find((p) => p.name === provider);
     return `${modelProviderLabel(provider, providerView, t)} · ${model}`;
-}
-function botSettingsMeta(bot: BotSettingsView, t: ReturnType<typeof useT>): string {
-    const normalized = normalizeBotSettings(bot);
-    const connections = normalized.connections.length + (qqBotAdded(normalized.qq) ? 1 : 0);
-    if (connections === 0)
-        return t("settings.botNoConnections");
-    if (!normalized.enabled)
-        return t("settings.botDisabledWithConnections", { n: connections });
-    return t("settings.botConnectionCount", { n: connections });
 }
 

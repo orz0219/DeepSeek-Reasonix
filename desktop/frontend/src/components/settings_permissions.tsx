@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { asArray } from "../lib/array";
-import { app, openExternal } from "../lib/bridge";
+import { app } from "../lib/bridge";
 import { useT } from "../lib/i18n";
-import { useUpdater } from "../lib/useUpdater";
 import type { HookConfigView, HooksSettingsView, SettingsView } from "../lib/types";
 import { Tooltip } from "./Tooltip";
-import { SectionProps, SettingsSection, SettingsField, ToggleSegment } from "./SettingsPanel";
+import { SectionProps, SettingsSection, SettingsField } from "./SettingsPanel";
 export function KeyField({ apiKeyEnv, busy, keySet = false, onSet, }: {
     apiKeyEnv: string;
     busy: boolean;
@@ -460,184 +459,27 @@ export function SandboxSection({ s, busy, apply, windows }: SectionProps & {
       <RuleList list="allow_write" rules={sb.allowWrite} busy={busy} onAdd={async (d) => { await set({ allowWrite: [...sb.allowWrite, d] }); }} onRemove={async (d) => { await set({ allowWrite: sb.allowWrite.filter((x) => x !== d) }); }}/>
     </SettingsSection>);
 }
-const MB = 1024 * 1024;
-const mb = (n: number) => (n / MB).toFixed(1);
-// UpdatesSection is the manual side of the auto-updater: it shows the startup
-// check preference, running version, and a Check button, then the same state
-// machine the top banner uses (useUpdater) — a single "update and restart"
-// action with inline progress and errors.
-export function UpdatesSection({ configPath, shadowedByPath, checkUpdates, telemetry, metrics, settingsBusy, applySettings, }: {
+// AboutSection shows the build version and the local configuration paths. The
+// auto-updater and its privacy/update preferences were removed.
+export function AboutSection({ configPath, shadowedByPath }: {
     configPath: string;
     shadowedByPath?: string;
-    checkUpdates: boolean;
-    telemetry: boolean;
-    metrics: boolean;
-    settingsBusy: boolean;
-    applySettings: (fn: () => Promise<void>) => Promise<boolean>;
 }) {
     const t = useT();
-    const { status, check, apply: applyUpdate, openDownload, abandonPending } = useUpdater();
     const [version, setVersion] = useState("");
     useEffect(() => {
         app.Version().then(setVersion).catch(() => { });
     }, []);
-    const updaterBusy = status.kind === "checking" ||
-        status.kind === "downloading" ||
-        status.kind === "verifying" ||
-        status.kind === "authorizing" ||
-        status.kind === "installing" ||
-        status.kind === "relaunching";
-    const updateStatus = status.kind === "checking" ? t("updater.checking") :
-        status.kind === "upToDate" ? t("updater.upToDate") :
-            status.kind === "available" ? t("updater.available", { v: status.info.latest }) :
-                status.kind === "downloading" ? t("updater.downloading", {
-                    done: mb(status.received),
-                    total: mb(status.total),
-                    pct: status.total > 0 ? Math.round((status.received / status.total) * 100) : 0,
-                }) :
-                    status.kind === "verifying" ? t("updater.verifying") :
-                        status.kind === "authorizing" ? t("updater.authorizing") :
-                            status.kind === "installing" ? (status.info?.requiresElevation || status.info?.installMode === "deb"
-                                ? t("updater.installingPackage")
-                                : t("updater.installing")) :
-                                status.kind === "relaunching" || status.kind === "done" ? t("updater.done") :
-                                    status.kind === "error" ? "" :
-                                        "";
-    const updateStatusTone = status.kind === "error" ? "error" :
-        status.kind === "available" ? "available" :
-            status.kind === "upToDate" || status.kind === "done" || status.kind === "relaunching" ? "success" :
-                status.kind === "checking" || updaterBusy ? "busy" :
-                    "neutral";
-    const updateErrorTitle = status.kind === "error"
-        ? status.disposition === "recovery"
-            ? t("updater.recoveryBlocked")
-            : status.disposition === "manual"
-                ? t("updater.manualUpdateRequired")
-                : t("updater.failed", { msg: status.message })
-        : "";
-    const updateErrorHint = status.kind === "error"
-        ? status.disposition === "recovery"
-            ? t("updater.recoveryHint")
-            : status.disposition === "manual"
-                ? t("updater.manualFallbackHint")
-                : ""
-        : "";
-    const downloadIsPrimary = status.kind === "error" && status.disposition !== "retryable";
     return (<SettingsSection>
-      <SettingsField className="settings-field--wide-copy updates-control" label={<div className="updates-control__summary">
-            <div className="updates-control__version">
-              {t("updater.currentVersion", { v: version || "…" })}
-            </div>
-            <div className={`updates-control__status updates-control__status--${updateStatusTone}`} role="status" aria-live="polite">
-              {updateStatus && (<>
-                  {updateStatusTone === "success" && <CheckCircle2 size={14} aria-hidden="true"/>}
-                  {updateStatusTone === "busy" && <Loader2 className="updates-control__spinner" size={14} aria-hidden="true"/>}
-                  <span>{updateStatus}</span>
-                </>)}
-            </div>
-          </div>}>
-        <div className="updates-control__controls">
-          <Tooltip label={t("updater.checkButton")}>
-            <button className="chip chip--icon" type="button" disabled={settingsBusy || updaterBusy} aria-label={t("updater.checkButton")} onClick={() => void check()}>
-              <RefreshCw className={status.kind === "checking" ? "updates-control__spinner" : undefined} size={14} aria-hidden="true"/>
-            </button>
-          </Tooltip>
-        </div>
+      <SettingsField className="settings-field--wide-copy" label={t("about.version")}>
+        <div className="updates-control__version">{version || "…"}</div>
       </SettingsField>
-      <div className="updates-control__hint" style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px 8px" }}>
-        <span>{t("updater.officialReleaseHint")}</span>
-        <button className="btn btn--small" type="button" onClick={openDownload} style={{
-            height: "auto",
-            minHeight: 0,
-            padding: 0,
-            borderColor: "transparent",
-            background: "transparent",
-            color: "var(--fg-dim)",
-            textDecoration: "underline",
-            textUnderlineOffset: 2,
-        }}>
-          {t("updater.officialDownload")}
-          <ExternalLink size={13} aria-hidden="true"/>
-        </button>
-      </div>
-      {status.kind === "available" && (<div className="updates-control__action">
-          <div className="updates-control__action-copy">
-            {!status.info.canSelfUpdate && <div>{status.info.manualReason || t("updater.macHint")}</div>}
-          </div>
-          <button className="btn btn--primary btn--small" disabled={settingsBusy || updaterBusy} onClick={() => applyUpdate(status.info)}>
-            {status.info.canSelfUpdate ? t("updater.updateAndRestart") : t("updater.goToDownload")}
-          </button>
-        </div>)}
-      {status.kind === "error" && (<div className="banner banner--update banner--error" role="alert" style={{ alignItems: "flex-start", flexWrap: "wrap", marginBottom: 12 }}>
-          <div style={{ flex: "1 1 360px", minWidth: 0 }}>
-            <div>{updateErrorTitle}</div>
-            {updateErrorHint && <div className="banner__hint">{updateErrorHint}</div>}
-            {status.disposition !== "retryable" && (<div className="banner__hint" style={{ overflowWrap: "anywhere" }}>
-                {t("updater.errorDetails", { msg: status.message })}
-              </div>)}
-          </div>
-          <span className="banner__spacer"/>
-          {status.disposition === "recovery" && (<button className="btn btn--small" type="button" disabled={settingsBusy || updaterBusy} onClick={() => void abandonPending()}>
-              {t("updater.discardPrevious")}
-            </button>)}
-          {downloadIsPrimary && (<button className="btn btn--primary btn--small" type="button" onClick={openDownload}>
-              {t("updater.officialDownload")}
-              <ExternalLink size={14} aria-hidden="true"/>
-            </button>)}
-          <button className={`btn btn--small${downloadIsPrimary ? "" : " btn--primary"}`} type="button" disabled={settingsBusy || updaterBusy} onClick={() => status.info ? applyUpdate(status.info) : void check()}>
-            {t("updater.retry")}
-          </button>
-        </div>)}
-      <SettingsField className="settings-field--wide-copy" label={t("changelog.title")} hint={t("changelog.subtitle")}>
-        <button className="btn btn--small" onClick={() => void openExternal("https://reasonix.io/changelog/")}>
-          {t("changelog.openWeb")}
-          <ExternalLink size={14} aria-hidden="true"/>
-        </button>
-      </SettingsField>
-      <SettingsField className="settings-field--wide-copy" label={t("feedback.title")} hint={t("feedback.subtitle")}>
-        <div className="settings-inline-controls">
-          <button className="btn btn--small" onClick={() => void openExternal("https://github.com/esengine/DeepSeek-Reasonix/issues/new/choose")}>
-            {t("feedback.submitIssue")}
-            <ExternalLink size={14} aria-hidden="true"/>
-          </button>
-          <button className="btn btn--small" onClick={() => void openExternal("https://github.com/esengine/DeepSeek-Reasonix/issues")}>
-            {t("feedback.viewIssues")}
-            <ExternalLink size={14} aria-hidden="true"/>
-          </button>
-        </div>
-      </SettingsField>
-      <details className="provider-editor-advanced" style={{
-            marginTop: 0,
-            borderRight: 0,
-            borderBottom: 0,
-            borderLeft: 0,
-            borderRadius: 0,
-            background: "transparent",
-        }}>
-        <summary style={{ padding: "0 2px" }}>
-          <span className="provider-editor-advanced__title">
-            <ChevronDown className="provider-editor-advanced__icon" size={16} aria-hidden="true"/>
-            {t("updater.privacyAndUpdatePreferences")}
-          </span>
-        </summary>
-        <div className="provider-editor-advanced__body">
-          <SettingsField className="settings-field--wide-copy" label={t("updater.autoCheckLabel")} hint={t("updater.autoCheckHint")}>
-            <ToggleSegment value={checkUpdates} disabled={settingsBusy} onChange={(enabled) => void applySettings(() => app.SetDesktopCheckUpdates(enabled))}/>
-          </SettingsField>
-          <SettingsField className="settings-field--wide-copy" label={t("settings.telemetryLabel")} hint={t("settings.telemetryHint")}>
-            <ToggleSegment value={telemetry} disabled={settingsBusy} onChange={(enabled) => void applySettings(() => app.SetDesktopTelemetry(enabled))}/>
-          </SettingsField>
-          <SettingsField className="settings-field--wide-copy" label={t("settings.metricsLabel")} hint={t("settings.metricsHint")}>
-            <ToggleSegment value={metrics} disabled={settingsBusy} onChange={(enabled) => void applySettings(() => app.SetDesktopMetrics(enabled))}/>
-          </SettingsField>
-          {configPath && (<Tooltip label={configPath} fill block className="mem-hint settings-config-path">
-              {t("settings.config", { path: configPath })}
-            </Tooltip>)}
-          {shadowedByPath && (<Tooltip label={shadowedByPath} fill block className="mem-hint settings-config-path settings-config-path--shadowed">
-              {t("settings.configShadowed", { path: shadowedByPath })}
-            </Tooltip>)}
-        </div>
-      </details>
+      {configPath && (<Tooltip label={configPath} fill block className="mem-hint settings-config-path">
+          {t("settings.config", { path: configPath })}
+        </Tooltip>)}
+      {shadowedByPath && (<Tooltip label={shadowedByPath} fill block className="mem-hint settings-config-path settings-config-path--shadowed">
+          {t("settings.configShadowed", { path: shadowedByPath })}
+        </Tooltip>)}
     </SettingsSection>);
 }
 

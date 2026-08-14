@@ -221,7 +221,6 @@ export function TaskEditor({ task, onSave, onCancel, onDelete, onDirtyChange, }:
         || draft.enabled !== initialTaskRef.current.enabled
         || draft.approvalMode !== initialTaskRef.current.approvalMode
         || draft.newConversationEachRun !== initialTaskRef.current.newConversationEachRun
-        || draft.notifyChannels !== initialTaskRef.current.notifyChannels
         || draft.scope !== initialTaskRef.current.scope
         || draft.workspaceRoot !== initialTaskRef.current.workspaceRoot
         || draft.timeWindowStart !== initialTaskRef.current.timeWindowStart
@@ -293,7 +292,7 @@ export function TaskEditor({ task, onSave, onCancel, onDelete, onDirtyChange, }:
         }} placeholder={t("heartbeat.promptPlaceholder")}/>
       </div>
 
-      {/* Approval Mode + Push to bot (side by side) */}
+      {/* Approval Mode */}
       <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
         <div className="heartbeat-editor__field" style={{ flex: "1 1 45%", minWidth: "200px" }}>
           <label>{t("heartbeat.fieldApprovalMode")}</label>
@@ -312,24 +311,6 @@ export function TaskEditor({ task, onSave, onCancel, onDelete, onDirtyChange, }:
             {normalizeMode(draft.approvalMode) === "yolo" ? t("heartbeat.approvalModeYoloHint") :
             normalizeMode(draft.approvalMode) === "auto" ? t("heartbeat.approvalModeAutoHint") :
                 t("heartbeat.approvalModeAskHint")}
-          </span>
-        </div>
-
-        {/* Push to bot channels */}
-        <div className="heartbeat-editor__field" style={{ flex: "1 1 45%", minWidth: "200px", textAlign: "left" }}>
-          <label>{t("heartbeat.notifyChannels")} <span className="heartbeat-editor__optional">{t("heartbeat.optional")}</span></label>
-          <div className="set-seg" style={{ alignSelf: "flex-start" }}>
-            <button className={`set-seg__btn${draft.notifyChannels === true ? " set-seg__btn--on" : ""}`} onClick={() => setDraft((prev) => ({ ...prev, notifyChannels: true }))}>
-              {t("heartbeat.notifyChannelsOn")}
-            </button>
-            <button className={`set-seg__btn${draft.notifyChannels !== true ? " set-seg__btn--on" : ""}`} onClick={() => setDraft((prev) => ({ ...prev, notifyChannels: false }))}>
-              {t("heartbeat.notifyChannelsOff")}
-            </button>
-          </div>
-          <span className="heartbeat-editor__mode-hint">
-            {draft.notifyChannels === true
-            ? t("heartbeat.notifyChannelsOnHint")
-            : t("heartbeat.notifyChannelsOffHint")}
           </span>
         </div>
       </div>

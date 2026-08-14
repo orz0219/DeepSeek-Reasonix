@@ -109,16 +109,9 @@ func prepareDesktopDiagnostics(app *App) {
 	}
 	app.diagnosticsOwner = true
 	app.diagnosticsOwnerRelease = release
-
-	cfg, err := config.Load()
-	if err != nil {
-		return
-	}
 	app.diagnosticsConfigLoaded = true
-	if !cfg.DesktopTelemetry() {
-		return
-	}
-	app.diagnosticsTelemetry = true
+
+	// Lifecycle diagnostics are local-only (no telemetry opt-in or reporting).
 	tracker := newDesktopLifecycleTracker(root, version, channel)
 	if tracker.start() == nil {
 		app.lifecycle.tracker = tracker
@@ -134,7 +127,6 @@ func (a *App) releaseDesktopDiagnosticsOwnership() {
 	a.diagnosticsOwnerRelease = nil
 	a.diagnosticsOwner = false
 	a.diagnosticsConfigLoaded = false
-	a.diagnosticsTelemetry = false
 }
 
 func initializeLifecycleDiagnostics(app *App) {
@@ -148,16 +140,11 @@ func initializeLifecycleDiagnostics(app *App) {
 	if tracker == nil {
 		tracker = newDesktopLifecycleTracker(config.MemoryUserDir(), version, channel)
 	}
-	enabled := app.diagnosticsTelemetry
 	legacy := repair.NewStartupTracker("").ObservePreviousRun()
-	if enabled {
-		app.lifecycle.previousRun = legacy
-	}
-	app.lifecycle.previousRuns = tracker.consumePrevious(enabled)
-	installWebKitProcessObserver(app, enabled)
-	if enabled {
-		refreshWebRuntimeContext()
-	}
+	app.lifecycle.previousRun = legacy
+	app.lifecycle.previousRuns = tracker.consumePrevious()
+	installWebKitProcessObserver(app, true)
+	refreshWebRuntimeContext()
 }
 
 func (a *App) markDesktopHealthy() {
@@ -288,9 +275,8 @@ func (t *desktopLifecycleTracker) writeStateLocked() error {
 }
 
 // consumePrevious atomically owns every dead per-process record before
-// returning it. When emit is false (telemetry opt-out), records are consumed
-// without exposing their contents to the reporting path.
-func (t *desktopLifecycleTracker) consumePrevious(emit bool) []desktopLifecycleObservation {
+// returning it. Observations feed local lifecycle diagnostics only.
+func (t *desktopLifecycleTracker) consumePrevious() []desktopLifecycleObservation {
 	if t == nil || t.dir == "" {
 		return nil
 	}
@@ -342,9 +328,6 @@ func (t *desktopLifecycleTracker) consumePrevious(emit bool) []desktopLifecycleO
 			continue
 		}
 		_ = os.Remove(claimed)
-		if !emit {
-			continue
-		}
 		observations = append(observations, desktopLifecycleObservation{
 			Version: state.Version, Channel: state.Channel, Phase: state.Phase,
 			StartedAt: state.StartedAt, UpdatedAt: state.UpdatedAt,

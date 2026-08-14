@@ -388,7 +388,7 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		}
 		// HeadlessApprovalMode is an explicit declaration that this frontend has
 		// no decision channel (`reasonix run`). ApprovalTimeout is not a proxy for
-		// that capability: bots have a bounded timeout and can still answer cards.
+		// that capability: headless frontends have a bounded timeout and can still answer cards.
 		ctrlOpts.RecoveryHeadless = recoveryHeadlessMode(opts)
 	}
 	// Goal evaluator: the same zero-config model fallback as the recovery

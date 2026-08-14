@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
-import { Archive, ArrowDown, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, ListCollapse, ListRestart, MessageSquare, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch } from "lucide-react";
+import { Archive, ArrowDown, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, ListCollapse, ListRestart, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch } from "lucide-react";
 import { asArray } from "../lib/array";
 import { useToast } from "../lib/toast";
 import { app } from "../lib/bridge";
@@ -22,7 +22,7 @@ import { Tooltip } from "./Tooltip";
 import { WorktreeBadge } from "./WorktreeBadge";
 import { activeSessionAncestorKeys, defaultExpandedProjectTreeKeys, arrangeClassicProjectTree, CLASSIC_TOPIC_PREVIEW_LIMIT, classicTopicWindow, splitPinnedProjectTree, ProjectTreeProps, projectNodeKey, ProjectDropPosition, WorkbenchHeaderMenu, WorkbenchOrganizeMode, WorkbenchSortMode, CollapseSnapshot, PinnedTreeSections, GLOBAL_PROJECT_ORDER_KEY, WORKBENCH_ORGANIZE_KEY, WORKBENCH_SORT_KEY, READ_ACTIVITY_INIT_KEY, loadReadActivity, saveReadActivity, loadWorkbenchOrganizeMode, loadWorkbenchSortMode, projectRoots, collapsibleFolderKeys, reorderedProjectRoots, applyProjectOrder, arrangeWorkbenchTree, projectAccentStyle, colorMenuLabel, menuLabelWithCheck, revealLabelKey, projectColorLabel } from "./project_tree_helpers";
 export * from "../lib/projectTreeTopic";
-export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath, imTopicSources = {}, variant = "classic", onOpenTopic, onAddProject, onCreateTopic, onCreateDeliveryWorktree, onRenameTopic, onTopicsChanged, refreshSignal, timeFilter, onTimeFilterChange, searchExpanded = true, searchFocusSignal = 0, showShortcutBadges = false, shortcutPlatform, onVisibleTopicsChange, }: ProjectTreeProps) {
+export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath, variant = "classic", onOpenTopic, onAddProject, onCreateTopic, onCreateDeliveryWorktree, onRenameTopic, onTopicsChanged, refreshSignal, timeFilter, onTimeFilterChange, searchExpanded = true, searchFocusSignal = 0, showShortcutBadges = false, shortcutPlatform, onVisibleTopicsChange, }: ProjectTreeProps) {
     const t = useT();
     const { showToast } = useToast();
     const compactTopics = variant === "workbench";
@@ -149,7 +149,7 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
         });
     }, []);
     const topicLoadSeqRef = useRef<Record<string, number>>({});
-    const loadProjectTopics = useCallback(async (project: ProjectNode, append = false) => {
+    const loadProjectTopics = useCallback(async (project: ProjectNode, append = false, silent = false) => {
         if (project.kind !== "project" && project.kind !== "global_folder")
             return;
         const key = project.key;
@@ -157,10 +157,14 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
         const cursor = append ? pageState?.nextCursor ?? "" : "";
         if (append && !cursor)
             return;
+        // A silent refresh (catalog event while a page is already painted) must
+        // not flip the load-more control into the indexing spinner: keep the
+        // current loading state and only swap the content when the response lands.
+        const hasPaintedPage = !append && asArray(treeRef.current.find((node) => node.key === key)?.children).length > 0;
         // Last-query-wins: never drop a newer search because an older page is still loading.
         const seq = (topicLoadSeqRef.current[key] ?? 0) + 1;
         topicLoadSeqRef.current[key] = seq;
-        updateTopicPageState(key, { ...pageState, loading: true });
+        updateTopicPageState(key, { ...pageState, loading: silent && hasPaintedPage ? (pageState?.loading ?? false) : true });
         try {
             const page = await app.ListProjectTopics({
                 scope: project.kind === "global_folder" ? "global" : "project",
@@ -241,12 +245,26 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
             const key = projectNodeKey(project, 0);
             if (!expanded.has(key))
                 continue;
-            if (projectTreeEventAffectsFolder(project, affected))
-                void loadProjectTopics(project);
+            if (!projectTreeEventAffectsFolder(project, affected))
+                continue;
+            // Preserve in-flight loads and pages the user already expanded:
+            // an automatic first-page reload must never interrupt "load more"
+            // nor reset the list back to the first page while a session runs.
+            const pageState = topicPageStateRef.current[key];
+            if (pageState?.loading)
+                continue;
+            const pageLimit = timeFilter === "10" ? 10 : timeFilter === "20" ? 20 : 50;
+            if (asArray(project.children).length > pageLimit)
+                continue;
+            void loadProjectTopics(project, false, true);
         }
-    }), [expanded, loadProjectTopics, refresh]);
+    }), [expanded, loadProjectTopics, refresh, timeFilter]);
     // Debounce query/timeFilter reloads so typing does not stampede the catalog.
     // Expansion and tree shell arrival still load on the same path after the delay.
+    // The signature (project keys only) intentionally ignores child-content
+    // changes: loading a page must not reschedule another full reload, which
+    // used to keep the folder pinned in an endless indexing/load-more flicker.
+    const treeProjectKeys = useMemo(() => tree.map((node) => projectNodeKey(node, 0)).join("\n"), [tree]);
     useEffect(() => {
         const filtering = query.trim() !== "" || timeFilter !== "all";
         const timer = setTimeout(() => {
@@ -257,7 +275,7 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
             }
         }, 200);
         return () => clearTimeout(timer);
-    }, [expanded, loadProjectTopics, query, timeFilter, tree]);
+    }, [expanded, loadProjectTopics, query, timeFilter, treeProjectKeys]);
     // Following the active topic is a view concern over the tree already held.
     useEffect(() => {
         const collapsed = manuallyCollapsedRef.current;
@@ -903,11 +921,7 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
             const unread = projectTreeTopicHasUnreadActivity(node, readActivity, activeScope, activeWorkspaceRoot, activeTopicId, activeSessionPath);
             const topicId = node.topicId ?? "";
             const topicTrashing = trashingTopics.has(topicId);
-            const imSource = scope === "global" && topicId ? imTopicSources[topicId] : undefined;
-            const imSourceLabel = imSource?.label || "";
-            const imSourceTitle = imSourceLabel ? t("msg.fromIm", { source: imSourceLabel }) : "";
-            const imSourcePlatform = (imSource?.platform || "im").replace(/[^a-z0-9_-]/gi, "").toLowerCase() || "im";
-            const title = [label, imSourceTitle, statusLabel, metaFull, projectTreeDedupedExactTime(metaFull, exactTimeLabel)].filter(Boolean).join(" · ");
+            const title = [label, statusLabel, metaFull, projectTreeDedupedExactTime(metaFull, exactTimeLabel)].filter(Boolean).join(" · ");
             const topicMenuOpen = !isSessionNode && menuTopic === topicId;
             const pinned = Boolean(node.pinned);
             const pinLabel = t(pinned ? "projectTree.unpinTopic" : "projectTree.pinTopic");
@@ -954,7 +968,7 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
                 },
             ];
             if (!isSessionNode && editingTopic === topicId) {
-                return (<div key={key} className={`project-tree__topic project-tree__topic--editing${active ? " project-tree__topic--active" : ""}${imSource ? " project-tree__topic--im-source" : ""}${!classicTopics && metaFull ? " project-tree__topic--has-meta" : ""}`} style={{ paddingLeft: 14 + depth * 16 }}>
+                return (<div key={key} className={`project-tree__topic project-tree__topic--editing${active ? " project-tree__topic--active" : ""}${!classicTopics && metaFull ? " project-tree__topic--has-meta" : ""}`} style={{ paddingLeft: 14 + depth * 16 }}>
             <input autoFocus className="project-tree__topic-input" value={topicDraft} onChange={(event) => setTopicDraft(event.target.value)} onFocus={(event) => event.target.select()} onKeyDown={(event) => {
                         if (event.key === "Enter")
                             void commitRenameTopic(topicId);
@@ -975,7 +989,7 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
                     sessionPath: openRequest.sessionPath,
                 });
             }
-            const row = (<div className={`project-tree__topic${scopeClass}${isSessionNode ? " project-tree__topic--session" : ""}${active ? " project-tree__topic--active" : ""}${node.running ? " project-tree__topic--running" : ""}${status ? ` project-tree__topic--status-${status}` : ""}${unread ? " project-tree__topic--unread" : ""}${!isSessionNode && pinned ? " project-tree__topic--pinned" : ""}${topicMenuOpen ? " project-tree__topic--menu-open" : ""}${sideTimeVisible && (timeLabel || showStatusInSide || showWaitingPill) ? " project-tree__topic--with-side" : metaFull ? " project-tree__topic--has-meta" : ""}${imSource ? " project-tree__topic--im-source" : ""}${shortcutIndex > 0 ? " project-tree__topic--show-shortcut" : ""}`} style={accentStyle} onContextMenu={isSessionNode ? undefined : openTopicMenu} onMouseEnter={classicTopics ? (event) => scheduleHoverCard(event.currentTarget, key, node) : undefined} onMouseLeave={classicTopics ? cancelHoverCard : undefined} onMouseDown={classicTopics ? cancelHoverCard : undefined}>
+            const row = (<div className={`project-tree__topic${scopeClass}${isSessionNode ? " project-tree__topic--session" : ""}${active ? " project-tree__topic--active" : ""}${node.running ? " project-tree__topic--running" : ""}${status ? ` project-tree__topic--status-${status}` : ""}${unread ? " project-tree__topic--unread" : ""}${!isSessionNode && pinned ? " project-tree__topic--pinned" : ""}${topicMenuOpen ? " project-tree__topic--menu-open" : ""}${sideTimeVisible && (timeLabel || showStatusInSide || showWaitingPill) ? " project-tree__topic--with-side" : metaFull ? " project-tree__topic--has-meta" : ""}${shortcutIndex > 0 ? " project-tree__topic--show-shortcut" : ""}`} style={accentStyle} onContextMenu={isSessionNode ? undefined : openTopicMenu} onMouseEnter={classicTopics ? (event) => scheduleHoverCard(event.currentTarget, key, node) : undefined} onMouseLeave={classicTopics ? cancelHoverCard : undefined} onMouseDown={classicTopics ? cancelHoverCard : undefined}>
           <button type="button" className="project-tree__topic-main" title={classicTopics ? undefined : title} aria-label={classicTopics ? title : undefined} style={{ paddingLeft: 14 + depth * 16 }} onClick={() => {
                     if (!openRequest)
                         return;
@@ -1011,10 +1025,6 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
             <span className="project-tree__topic-copy">
               <span className="project-tree__topic-heading">
                 <span className="project-tree__topic-label">{label}</span>
-                {imSource && (<span className={`project-tree__topic-im project-tree__topic-im--${imSourcePlatform}`} title={imSourceTitle} aria-label={imSourceTitle}>
-                    <MessageSquare size={11}/>
-                    <span>{imSourceLabel}</span>
-                  </span>)}
                 {!compactTopics && statusLabel && (!classicTopics || status === "paused" || status === "error") && (<span className={`project-tree__topic-status project-tree__topic-status--${status}`}>{statusLabel}</span>)}
               </span>
             </span>

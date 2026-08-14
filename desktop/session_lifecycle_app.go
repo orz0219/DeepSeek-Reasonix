@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"reasonix/internal/agent"
-	"reasonix/internal/botruntime"
-	"reasonix/internal/config"
 	"reasonix/internal/control"
 	"reasonix/internal/sessioncatalog"
 )
@@ -46,16 +44,6 @@ func (a *App) SummarizeUpToForTab(tabID string, turn int) error {
 		return nil
 	}
 	return ctrl.SummarizeUpTo(a.ctx, turn)
-}
-
-type channelSessionRoute struct {
-	channel       string
-	channelLabel  string
-	remoteID      string
-	chatType      string
-	userID        string
-	threadID      string
-	sessionSource string
 }
 
 type WorkspaceMeta struct {
@@ -149,14 +137,10 @@ func (a *App) listSessionsFromDir(dir, active string) []SessionMeta {
 		return []SessionMeta{}
 	}
 	open := a.openSessionPaths(dir)
-	channelRoutes := channelSessionRoutesForDir(dir)
 	out := make([]SessionMeta, 0, len(records))
 	for _, record := range records {
 		_, isOpen := open[record.Path]
 		meta := sessionMetaFromCatalog(record, record.Path == active, isOpen)
-		if route, ok := channelRoutes[sessionRuntimeKey(record.Path)]; ok {
-			applyChannelSessionRoute(&meta, route)
-		}
 		out = append(out, meta)
 	}
 	return out
@@ -211,101 +195,6 @@ func (a *App) sessionDirForPath(path string) (string, string, error) {
 		}
 	}
 	return "", "", fmt.Errorf("session path outside known session dirs: %s", path)
-}
-
-func applyChannelSessionRoute(meta *SessionMeta, route channelSessionRoute) {
-	if meta == nil {
-		return
-	}
-	meta.Kind = "channel"
-	meta.Channel = route.channel
-	meta.ChannelLabel = route.channelLabel
-	meta.RemoteID = route.remoteID
-	meta.ChatType = route.chatType
-	meta.UserID = route.userID
-	meta.ThreadID = route.threadID
-	meta.SessionSource = route.sessionSource
-}
-
-func channelSessionRoutesForDir(dir string) map[string]channelSessionRoute {
-	userPath := config.UserConfigPath()
-	if strings.TrimSpace(userPath) == "" {
-		return nil
-	}
-	cfg := config.LoadForEdit(userPath)
-	out := map[string]channelSessionRoute{}
-	for _, conn := range cfg.Bot.Connections {
-		channel := strings.TrimSpace(conn.Provider)
-		if channel == "" {
-			continue
-		}
-		channelLabel := strings.TrimSpace(conn.Label)
-		if channelLabel == "" {
-			channelLabel = channelDisplayName(channel, conn.Domain)
-		}
-		for _, mapping := range conn.SessionMappings {
-			if strings.TrimSpace(mapping.SessionSource) != "auto" {
-				continue
-			}
-			sessionPath := botSessionPathTarget(mapping.SessionID)
-			if sessionPath == "" {
-				continue
-			}
-			validPath, _, err := validateSessionPath(dir, sessionPath)
-			if err != nil {
-				continue
-			}
-			key := sessionRuntimeKey(validPath)
-			if key == "" {
-				continue
-			}
-			out[key] = channelSessionRoute{
-				channel:       channel,
-				channelLabel:  channelLabel,
-				remoteID:      strings.TrimSpace(mapping.RemoteID),
-				chatType:      strings.TrimSpace(mapping.ChatType),
-				userID:        strings.TrimSpace(mapping.UserID),
-				threadID:      strings.TrimSpace(mapping.ThreadID),
-				sessionSource: strings.TrimSpace(mapping.SessionSource),
-			}
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-func botSessionPathTarget(sessionID string) string {
-	sessionID = strings.TrimSpace(sessionID)
-	if sessionID == "" {
-		return ""
-	}
-	if strings.HasPrefix(strings.ToLower(sessionID), "path:") {
-		return strings.TrimSpace(sessionID[5:])
-	}
-	if strings.HasSuffix(sessionID, ".jsonl") || strings.Contains(sessionID, "/") || strings.Contains(sessionID, `\`) || strings.HasPrefix(sessionID, "~") {
-		return sessionID
-	}
-	return ""
-}
-
-func channelDisplayName(provider, domain string) string {
-	provider = strings.TrimSpace(provider)
-	domain = strings.TrimSpace(domain)
-	switch provider {
-	case "feishu":
-		if strings.EqualFold(domain, "lark") {
-			return "Lark"
-		}
-		return "Feishu"
-	case "weixin":
-		return "WeChat"
-	case "qq":
-		return "QQ"
-	default:
-		return provider
-	}
 }
 
 // DeleteSession moves a saved session to the local trash. If the session still
@@ -371,9 +260,6 @@ func (a *App) deleteSession(path string) error {
 		return nil
 	}(); err != nil {
 		return err
-	}
-	if err := botruntime.ForgetAutoSessionMappingsForPath(sessionPath); err != nil {
-		slog.Warn("desktop: failed to clear auto bot session mapping", "err", err)
 	}
 	if fallback.needs {
 		fallback = a.sessionDeleteFallbackTarget(fallback)

@@ -7,8 +7,8 @@ import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems } from "./statusBarIt
 import { registerTrustedThemeBackgroundURLs } from "./themePack";
 import { modeWithAutoApproveTools, modeWithPlan, normalizeCollaborationMode, normalizeMode, normalizeTokenMode, normalizeToolApprovalMode } from "./types";
 import { decisionSurfaceMockFromInput, isLongDecisionOptionsMockInput } from "./decisionSurfaceMock";
-import type { RemoteHostView, RemoteHostInput, RemoteConnectionStatus, RemoteForwardView, UsageStatsRange, BotSettingsView, CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, MemorySuggestion, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
-import { withMockTabScope, delay, emit, mockScopedTabId, stripLegacyGoalBudgetFlags, mockToolApprovalModeAfterModeChange, mockPreviewImageDataURL, emitUpdater, bumpMockTopicActivationCounter, setMockPendingTopicActivation, mockPendingTopicActivation, GLOBAL_PROJECT_ORDER_KEY } from "./bridge";
+import type { RemoteHostView, RemoteHostInput, RemoteConnectionStatus, RemoteForwardView, UsageStatsRange, CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, MemorySuggestion, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
+import { withMockTabScope, delay, emit, mockScopedTabId, stripLegacyGoalBudgetFlags, mockToolApprovalModeAfterModeChange, mockPreviewImageDataURL, bumpMockTopicActivationCounter, setMockPendingTopicActivation, mockPendingTopicActivation, GLOBAL_PROJECT_ORDER_KEY } from "./bridge";
 import { AppBindings } from "./bridge_types";
 import { mockScenario, baseName, mockProviderPresetViews, browserPreviewBashSandboxMode, browserPreviewEffectiveShell, browserPlatformOverride, mockExternalOpenerIconDataURL, cloneMockProviderTemplate } from "./bridge_mock_helpers";
 import { EVENT_CHANNEL, __emitMockTopicActivation, __emitMockTerminalExit, __emitMockTerminalOutput, __emitMockRemote } from "./bridge_events";
@@ -305,140 +305,6 @@ export function makeMockApp(): AppBindings {
             proxy: { type: "socks5", server: "127.0.0.1", port: 7890, username: "", password: "" },
         },
         agent: { temperature: 0.2, maxSteps: 0, plannerMaxSteps: 0, maxSubagentDepth: 2, maxSubagentConcurrency: 6, maxParallelWriters: 3, systemPrompt: "You are Reasonix, a coding agent.", reasoningLanguage: "auto", compactRatio: 0.8 },
-        bot: {
-            enabled: !freshMock,
-            model: "",
-            toolApprovalMode: "ask",
-            maxSteps: 0,
-            debounceMs: 1500,
-            queueMode: "steer",
-            queueCap: 20,
-            queueDrop: "summarize",
-            ignoreSelfMessages: true,
-            selfUserIds: {
-                qq: [],
-                feishu: [],
-                weixin: [],
-            },
-            control: {
-                enabled: false,
-                addr: "127.0.0.1:37913",
-                tokenEnv: "REASONIX_BOT_CONTROL_TOKEN",
-            },
-            pairing: {
-                enabled: true,
-                requestTtlMinutes: 60,
-                maxPendingPerPlatform: 3,
-            },
-            routes: [],
-            allowlist: {
-                enabled: true,
-                allowAll: false,
-                qqUsers: [],
-                feishuUsers: freshMock ? [] : ["ou_mock_user_001"],
-                weixinUsers: freshMock ? [] : ["wxid_mock_user_001"],
-                qqApprovers: [],
-                feishuApprovers: [],
-                weixinApprovers: [],
-                qqAdmins: [],
-                feishuAdmins: [],
-                weixinAdmins: [],
-                qqGroups: [],
-                feishuGroups: [],
-                weixinGroups: [],
-            },
-            qq: { enabled: false, appId: "", appSecretEnv: "QQ_BOT_APP_SECRET", secretSet: false, sandbox: false, model: "", toolApprovalMode: "ask", workspaceRoot: "", access: { enabled: true, allowAll: false, pairingEnabled: true, users: [], groups: [], approvers: [], admins: [] } },
-            feishu: {
-                enabled: false,
-                domain: "feishu",
-                appId: "",
-                appSecretEnv: "FEISHU_BOT_APP_SECRET",
-                secretSet: false,
-                verificationToken: "",
-                mode: "webhook",
-                webhookPort: 8080,
-                requireMention: true,
-            },
-            weixin: {
-                enabled: false,
-                accountId: "default",
-                tokenEnv: "WEIXIN_BOT_TOKEN",
-                tokenSet: false,
-                apiBase: "https://ilinkai.weixin.qq.com",
-            },
-            connections: freshMock ? [] : [
-                {
-                    id: "mock-lark-kun",
-                    provider: "feishu",
-                    domain: "lark",
-                    label: "kun",
-                    enabled: true,
-                    status: "connected",
-                    model: "",
-                    toolApprovalMode: "",
-                    workspaceRoot: "",
-                    access: { enabled: true, allowAll: false, pairingEnabled: true, users: ["ou_mock_user_001"], groups: [], approvers: [], admins: [] },
-                    credential: {
-                        appId: "cli_mock_lark",
-                        appSecretEnv: "FEISHU_BOT_APP_SECRET",
-                        accountId: "",
-                        tokenEnv: "",
-                        secretSet: true,
-                    },
-                    sessionMappings: [
-                        {
-                            remoteId: "ou_mock_user_001",
-                            sessionId: "topic:topic_product",
-                            sessionSource: "",
-                            chatType: "",
-                            userId: "",
-                            threadId: "",
-                            scope: "global",
-                            workspaceRoot: "",
-                            updatedAt: new Date(Date.now() - 4 * 60000).toISOString(),
-                        },
-                    ],
-                    lastError: "",
-                    createdAt: new Date(Date.now() - 86400000).toISOString(),
-                    updatedAt: new Date(Date.now() - 4 * 60000).toISOString(),
-                },
-                {
-                    id: "mock-weixin-kun",
-                    provider: "weixin",
-                    domain: "weixin",
-                    label: "kun",
-                    enabled: true,
-                    status: "connected",
-                    model: "",
-                    toolApprovalMode: "",
-                    workspaceRoot: "",
-                    access: { enabled: true, allowAll: false, pairingEnabled: true, users: ["wxid_mock_user_001"], groups: [], approvers: [], admins: [] },
-                    credential: {
-                        appId: "",
-                        appSecretEnv: "",
-                        accountId: "default",
-                        tokenEnv: "WEIXIN_BOT_TOKEN",
-                        secretSet: true,
-                    },
-                    sessionMappings: [
-                        {
-                            remoteId: "wxid_mock_user_001",
-                            sessionId: "topic:topic_ai",
-                            sessionSource: "",
-                            chatType: "",
-                            userId: "",
-                            threadId: "",
-                            scope: "global",
-                            workspaceRoot: "",
-                            updatedAt: new Date(Date.now() - 12 * 60000).toISOString(),
-                        },
-                    ],
-                    lastError: "",
-                    createdAt: new Date(Date.now() - 86400000).toISOString(),
-                    updatedAt: new Date(Date.now() - 12 * 60000).toISOString(),
-                },
-            ],
-        },
         desktopLanguage: "",
         desktopCurrency: "",
         desktopLayoutStyle: "workbench",
@@ -451,10 +317,6 @@ export function makeMockApp(): AppBindings {
         statusBarStyle: "text",
         statusBarItems: [...DEFAULT_STATUS_BAR_ITEMS],
         defaultToolApprovalMode: "auto",
-        checkUpdates: true,
-        updateChannel: "stable",
-        telemetry: true,
-        metrics: true,
         configPath: "~/.reasonix/config.toml",
         shadowedByPath: "~/projects/reasonix/reasonix.toml",
         providerKinds: ["openai", "anthropic"],
@@ -3143,9 +3005,8 @@ export function makeMockApp(): AppBindings {
             return this.SaveDoc(path, body);
         },
         async DesktopStartupSettings() {
-            const { bot, desktopLanguage, desktopLayoutStyle, desktopTheme, desktopThemeStyle, desktopTerminalTheme, displayMode, reasoningDisplayMode, reasoningDisplayModeExplicit, statusBarStyle, statusBarItems, checkUpdates, conversationWidth } = settings;
+            const { desktopLanguage, desktopLayoutStyle, desktopTheme, desktopThemeStyle, desktopTerminalTheme, displayMode, reasoningDisplayMode, reasoningDisplayModeExplicit, statusBarStyle, statusBarItems, conversationWidth } = settings;
             return JSON.parse(JSON.stringify({
-                bot,
                 desktopLanguage,
                 desktopLayoutStyle,
                 desktopTheme,
@@ -3154,7 +3015,6 @@ export function makeMockApp(): AppBindings {
                 displayMode, reasoningDisplayMode, reasoningDisplayModeExplicit,
                 statusBarStyle,
                 statusBarItems,
-                checkUpdates,
                 conversationWidth,
             })) as DesktopStartupSettingsView;
         },
@@ -3405,114 +3265,6 @@ export function makeMockApp(): AppBindings {
         async SetNetwork(n: NetworkView) {
             settings.network = n;
         },
-        async SetBotSettings(b: BotSettingsView) {
-            settings.bot = JSON.parse(JSON.stringify(b)) as BotSettingsView;
-        },
-        async SetBotConnectionToolApprovalMode(connID, mode) {
-            const conn = settings.bot.connections.find((c) => c.id === connID);
-            if (conn)
-                conn.toolApprovalMode = mode as any;
-        },
-        async SetBotSecret(envName: string, _value: string) {
-            const name = envName.trim();
-            if (settings.bot.qq.appSecretEnv === name)
-                settings.bot.qq.secretSet = true;
-            if (settings.bot.feishu.appSecretEnv === name)
-                settings.bot.feishu.secretSet = true;
-            if (settings.bot.weixin.tokenEnv === name)
-                settings.bot.weixin.tokenSet = true;
-            settings.bot.connections = settings.bot.connections.map((connection) => ({
-                ...connection,
-                credential: connection.credential.appSecretEnv === name || connection.credential.tokenEnv === name
-                    ? { ...connection.credential, secretSet: true }
-                    : connection.credential,
-            }));
-        },
-        async ClearBotSecret(envName: string) {
-            const name = envName.trim();
-            if (settings.bot.qq.appSecretEnv === name)
-                settings.bot.qq.secretSet = false;
-            if (settings.bot.feishu.appSecretEnv === name)
-                settings.bot.feishu.secretSet = false;
-            if (settings.bot.weixin.tokenEnv === name)
-                settings.bot.weixin.tokenSet = false;
-            settings.bot.connections = settings.bot.connections.map((connection) => ({
-                ...connection,
-                credential: connection.credential.appSecretEnv === name || connection.credential.tokenEnv === name
-                    ? { ...connection.credential, secretSet: false }
-                    : connection.credential,
-            }));
-        },
-        async BotRuntimeStatus() {
-            const qqRunning = settings.bot.qq.enabled && settings.bot.qq.appId.trim() && settings.bot.qq.secretSet;
-            const runningConnections = (qqRunning ? 1 : 0) + settings.bot.connections.filter((connection) => connection.enabled && connection.status === "connected").length;
-            return {
-                running: settings.bot.enabled && runningConnections > 0,
-                status: settings.bot.enabled && runningConnections > 0 ? "running" : "stopped",
-                message: settings.bot.enabled && runningConnections > 0 ? `${runningConnections} bot connection(s) running` : "bot runtime is not started",
-                connections: runningConnections,
-                startedAt: settings.bot.enabled && runningConnections > 0 ? new Date(t0).toISOString() : "",
-            };
-        },
-        async StartBotConnectionInstall(provider: string, domain: string) {
-            const normalizedProvider = provider === "weixin" ? "weixin" : "feishu";
-            const normalizedDomain = normalizedProvider === "weixin" ? "weixin" : domain === "lark" ? "lark" : "feishu";
-            return {
-                ok: true,
-                provider: normalizedProvider,
-                domain: normalizedDomain,
-                installId: `mock-${normalizedProvider}-${normalizedDomain}`,
-                url: "https://example.com/reasonix-bot-qr",
-                deviceCode: "MOCKDEVICE",
-                userCode: normalizedProvider === "weixin" ? "" : "MOCK-CODE",
-                interval: 3,
-                expireIn: 300,
-                message: "",
-            };
-        },
-        async PollBotConnectionInstall(installID: string) {
-            const isWeixin = installID.includes("weixin");
-            const domain = installID.includes("lark") ? "lark" : isWeixin ? "weixin" : "feishu";
-            const provider = isWeixin ? "weixin" : "feishu";
-            const connection = {
-                id: `${provider}-${domain}`,
-                provider,
-                domain,
-                label: domain === "lark" ? "Lark" : domain === "weixin" ? "微信" : "飞书",
-                enabled: true,
-                status: "connected",
-                model: "",
-                toolApprovalMode: "",
-                workspaceRoot: "",
-                access: { enabled: true, allowAll: false, pairingEnabled: true, users: [provider === "weixin" ? "wxid_mock_user_001" : "ou_mock_user_001"], groups: [], approvers: [], admins: [] },
-                credential: {
-                    appId: provider === "feishu" ? "cli_mock" : "",
-                    appSecretEnv: provider === "feishu" ? (domain === "lark" ? "LARK_BOT_APP_SECRET" : "FEISHU_BOT_APP_SECRET") : "",
-                    accountId: provider === "weixin" ? "mock-account" : "",
-                    tokenEnv: provider === "weixin" ? "WEIXIN_BOT_TOKEN" : "",
-                    secretSet: true,
-                },
-                sessionMappings: [],
-                lastError: "",
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            };
-            settings.bot.connections = [...settings.bot.connections.filter((c) => c.id !== connection.id), connection];
-            return { done: true, connection, status: "connected", message: "connected", error: "" };
-        },
-        async DiagnoseBotConnection(id: string) {
-            const connection = settings.bot.connections.find((c) => c.id === id);
-            const occurredAt = new Date().toISOString();
-            return connection
-                ? { id, label: connection.label, status: connection.enabled ? "ok" : "disabled", message: connection.enabled ? "连接配置已保存。" : "连接已保存但未启用。", messageId: "", phase: "config", code: connection.enabled ? "config_ok" : "connection_disabled", reportKind: "", reportDetail: "", occurredAt }
-                : { id, label: "", status: "missing", message: "未找到连接。", messageId: "", phase: "config", code: "connection_missing", reportKind: "bot", reportDetail: JSON.stringify({ schemaVersion: 2, kind: "bot", source: "bot.runtime", label: "bot.mock.config", message: "mock missing bot connection", errorType: "BotConnectionDiagnostic", errorMessage: "bot connection record was not found", topFrame: "bot.config", occurredAt }), occurredAt };
-        },
-        async TestBotConnection(id: string, target?: string) {
-            const diag = await this.DiagnoseBotConnection(id);
-            if (target?.trim())
-                return { ...diag, message: `Mock test sent to ${target.trim()}`, messageId: "mock-message-id" };
-            return diag;
-        },
         async SetCloseBehavior(mode: string) {
             settings.closeBehavior = mode === "quit" ? "quit" : "background";
         },
@@ -3674,19 +3426,6 @@ export function makeMockApp(): AppBindings {
         async RestartApplication() {
             // no-op in mock
         },
-        async SetDesktopCheckUpdates(enabled: boolean) {
-            settings.checkUpdates = enabled;
-        },
-        async SetDesktopUpdateChannel(channel: string) {
-            void channel;
-            settings.updateChannel = "stable";
-        },
-        async SetDesktopTelemetry(enabled: boolean) {
-            settings.telemetry = enabled;
-        },
-        async SetDesktopMetrics(enabled: boolean) {
-            settings.metrics = enabled;
-        },
         async SetDesktopConversationWidth(width: string) { settings.conversationWidth = width; },
         async SetReasoningDisplayMode(mode: "hidden" | "summary" | "auto") { if (!(["hidden", "summary", "auto"] as string[]).includes(mode))
             throw new Error("invalid reasoning display mode"); settings.reasoningDisplayMode = mode; settings.reasoningDisplayModeExplicit = true; },
@@ -3745,45 +3484,6 @@ export function makeMockApp(): AppBindings {
         async Version() {
             return "v1.0.0 (browser dev)";
         },
-        async CheckUpdate(channel: string) {
-            void channel;
-            // Keep the default browser preview focused on the primary product surface.
-            // Updater methods remain mocked for explicit updater-flow tests.
-            return {
-                available: false,
-                current: "v1.0.0",
-                latest: "v1.0.0",
-                notes: "",
-                channel: "stable",
-                canSelfUpdate: false,
-                manualOnly: true,
-                installMode: "manual",
-                manualReason: "browser preview",
-                downloaded: false,
-                downloadUrl: "",
-                assetSize: 0,
-            };
-        },
-        async ApplyUpdateRequest(channel: string, expectedVersion: string, requestId: string) {
-            void channel;
-            const selectedChannel = "stable";
-            const total = 12345678;
-            for (let r = 0; r <= total; r += 1800000) {
-                emitUpdater({ requestId, version: expectedVersion, channel: selectedChannel, phase: "downloading", received: Math.min(r, total), total });
-                await delay(120);
-            }
-            emitUpdater({ requestId, version: expectedVersion, channel: selectedChannel, phase: "verifying", received: total, total });
-            await delay(300);
-            emitUpdater({ requestId, version: expectedVersion, channel: selectedChannel, phase: "installing", received: total, total });
-            await delay(300);
-            emitUpdater({ requestId, version: expectedVersion, channel: selectedChannel, phase: "relaunching", received: 0, total: 0 });
-        },
-        async AbandonPendingUpdate() { },
-        async OpenDownloadPage() {
-            if (typeof window !== "undefined") {
-                window.open("https://reasonix.io/?download=desktop#start", "_blank", "noopener");
-            }
-        },
         async OpenUserConfigPath() { },
         async ReloadUserConfig() {
             return { configWarnings: [], configWarningsRevision: 0, configPath: "" };
@@ -3802,8 +3502,6 @@ export function makeMockApp(): AppBindings {
             await delay(300);
             return "";
         },
-        async ReportCrash() { await delay(300); },
-        async RecordUIPerf() { },
         // Tab management mocks.
         async ListTabs() {
             return mockTabs.map((tab) => ({ ...tab }));

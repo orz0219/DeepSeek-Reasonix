@@ -21,28 +21,14 @@ func installWebView2ProcessObserver(app *App) {
 	}
 	nativeWebView2ObserverInstalled.Store(true)
 	process := func(diagnostic edge.ProcessFailedDiagnostic) {
-		event := webView2NativeEvent{
-			Kind:                int(diagnostic.Kind),
-			Reason:              int(diagnostic.Reason),
-			ReasonAvailable:     diagnostic.ReasonAvailable,
-			ExitCode:            diagnostic.ExitCode,
-			ExitCodeAvailable:   diagnostic.ExitCodeAvailable,
-			ProcessDescription:  diagnostic.ProcessDescription,
-			FailureSourceModule: diagnostic.FailureSourceModule,
-			Recovery:            diagnostic.Recovery,
-		}
-		report, outcome := webView2NativeFailureReport(event, webView2RuntimeVersion(), windowsWebview2GPUDisabled())
-		_ = writePendingReport(report, true)
-		if report.WebRuntime != nil {
-			app.recordDiagnosticMetric("desktop_web_runtime_failure", "webview2."+report.WebRuntime.Kind+"."+report.WebRuntime.Reason)
-		}
-		app.recordDiagnosticMetric("desktop_web_runtime_outcome", outcome)
+		// WebView2 process failures are observed locally; crash/metrics
+		// reporting was removed.
+		_ = diagnostic
 	}
 	webView2ObserverState.Do(func() {
 		go func() {
 			for diagnostic := range webView2ObserverState.events {
 				process(diagnostic)
-				recordDroppedWebRuntimeEvents(app, "webview2", &webView2ObserverState.dropped)
 			}
 		}()
 		edge.SetProcessFailedObserver(func(diagnostic edge.ProcessFailedDiagnostic) {

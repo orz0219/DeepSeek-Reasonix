@@ -19,9 +19,9 @@ import (
 )
 
 // userEditMu serializes in-process read-modify-write cycles. The public lock
-// helpers also take a path-derived advisory file lock, so CLI, Desktop, bot, and
+// helpers also take a path-derived advisory file lock, so CLI, Desktop, and
 // other Reasonix processes cannot save stale snapshots over one another.
-// Desktop's read-only config loads (tray/view/bot-runtime paths) never write:
+// Desktop's read-only config loads (tray/view paths) never write:
 // they apply legacy migrations in memory only, and the migrated form reaches
 // disk through the first locked write path (loadDesktopUserConfigForEdit,
 // called with this lock held).

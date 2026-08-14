@@ -1115,8 +1115,8 @@ complete in order, and the phase becomes `in_progress` — and signs off — onl
 after all of its sub-steps have completed. A level-1 item with no phase above
 it is rejected. Retired `[agent].max_steps` and `planner_max_steps` keys remain
 parseable for upgrade compatibility, but are ignored and removed by a one-time
-migration. The CLI `--max-steps` flag and `[bot].max_steps` remain separate,
-explicit controls for one-off and unattended execution; bot `0` means continuous.
+migration. The CLI `--max-steps` flag remains the explicit control for
+one-off execution.
 
 `reasonix setup` writes this default config so the CLI is usable out of the box.
 

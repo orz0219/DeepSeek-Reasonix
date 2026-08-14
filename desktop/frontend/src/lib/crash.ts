@@ -4,7 +4,7 @@ import { addBreadcrumb, dumpBreadcrumbs, snapshotBreadcrumbs } from "./breadcrum
 import { writeClipboardText } from "./clipboard";
 import { t } from "./i18n";
 import { PerformanceSnapshot, CrashPayload, ProfilerTrace, NormalizedError, STARTUP_GRACE_MS, PROMPT_COOLDOWN_MS, MAX_LAG_SAMPLES, VISIBILITY_RESUME_GRACE_MS, longTasks, lagSamples, performanceMonitorInstalled, lastPerformancePromptAt, activeProfiler, startLongTaskProfiler, setActiveProfiler, setLastPerformancePromptAt, setPerformanceMonitorInstalled } from "./crash_types";
-import { formatPerformanceContext, performanceLabelForReason, performanceFingerprintHintForReason, shouldRecordLongTaskSample, shouldPromptForLongTasks, shouldPromptForEventLoopLag, formatLongTaskAttribution, aggregateLongTaskProfile, dismissedPerfLabels, currentBuildCommit, getReportedPerfLabels, markPerfReported, currentView, kindForLabel, sourceForLabel, formatText, fmtNumber, readHeapSnapshot, pruneLongTasks, longTaskSummary, performanceSnapshot, TaskAttributionLike } from "./crash_perf";
+import { formatPerformanceContext, performanceLabelForReason, performanceFingerprintHintForReason, shouldRecordLongTaskSample, shouldPromptForLongTasks, shouldPromptForEventLoopLag, formatLongTaskAttribution, aggregateLongTaskProfile, dismissedPerfLabels, currentBuildCommit, getReportedPerfLabels, currentView, kindForLabel, sourceForLabel, formatText, fmtNumber, readHeapSnapshot, pruneLongTasks, longTaskSummary, performanceSnapshot, TaskAttributionLike } from "./crash_perf";
 declare const __BUILD_COMMIT__: string;
 declare const __BUILD_CHANNEL__: string;
 async function collectLongTaskFrames(windows: {
@@ -163,31 +163,6 @@ export function opaqueScriptFingerprintHint(rawView = currentView(), breadcrumbs
         .join(">");
     return clip(`build:${buildCommit.slice(0, 16)}|view:${view}|cats:${categories || "none"}`, 300);
 }
-function sendButton(payload: CrashPayload, className = "crash-overlay__send", onSent?: () => void): HTMLButtonElement | null {
-    // Resolved at click time via window.go, not the bridge module: this overlay must
-    // stay usable even when the rest of the app (and its imports) is broken.
-    const report = window.go?.main?.App?.ReportCrash;
-    if (!report)
-        return null;
-    const send = document.createElement("button");
-    send.className = className;
-    send.textContent = t("crash.send");
-    send.onclick = async () => {
-        send.disabled = true;
-        send.textContent = t("crash.sending");
-        try {
-            await report(payload.kind, JSON.stringify(payload));
-            send.textContent = t("crash.sent");
-            onSent?.();
-        }
-        catch (err) {
-            send.textContent = t("crash.sendFailed");
-            send.title = err instanceof Error ? err.message : String(err);
-            send.disabled = false;
-        }
-    };
-    return send;
-}
 const COPY_FEEDBACK_MS = 2000;
 function copyButton(text: string, className: string): HTMLButtonElement {
     const copy = document.createElement("button");
@@ -233,7 +208,6 @@ function paintPerformancePrompt(payload: CrashPayload, snapshot: PerformanceSnap
     body.textContent = formatPerformanceContext(snapshot);
     const actions = document.createElement("div");
     actions.className = "performance-report__actions";
-    const send = sendButton(payload, "performance-report__send", () => markPerfReported(payload.label));
     const copy = copyButton(payload.message, "performance-report__copy");
     const dismiss = document.createElement("button");
     dismiss.className = "performance-report__dismiss";
@@ -242,8 +216,6 @@ function paintPerformancePrompt(payload: CrashPayload, snapshot: PerformanceSnap
         dismissedPerfLabels.add(payload.label);
         host?.remove();
     };
-    if (send)
-        actions.append(send);
     actions.append(copy, dismiss);
     const note = document.createElement("div");
     note.className = "performance-report__note";
@@ -266,14 +238,11 @@ function paint(payload: CrashPayload) {
     const copy = copyButton(payload.message, "crash-overlay__copy");
     const actions = document.createElement("div");
     actions.className = "crash-overlay__actions";
-    const send = sendButton(payload);
-    if (send)
-        actions.append(send);
     actions.append(copy);
     const note = document.createElement("div");
     note.className = "crash-overlay__note";
     note.textContent = t("crash.privacyNote");
-    host.replaceChildren(title, body, actions, ...(send ? [note] : []));
+    host.replaceChildren(title, body, actions, note);
 }
 export function reportCrash(label: string, err: unknown, extra?: string) {
     paint(buildCrashPayload(label, err, extra));

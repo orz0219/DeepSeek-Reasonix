@@ -215,7 +215,7 @@ func (a *App) FetchProviderModels(p ProviderView) ([]string, error) {
 		AuthHeader: p.AuthHeader,
 	}
 	e.ResolveAPIKeyForRoot(a.activeWorkspaceRoot())
-	ctx, cancel := context.WithTimeout(a.reqCtx(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(a.bootContext(), 15*time.Second)
 	defer cancel()
 	models, err := e.FetchModels(ctx)
 	if err != nil {
@@ -231,7 +231,7 @@ func (a *App) FetchProviderModels(p ProviderView) ([]string, error) {
 func (a *App) FetchAllProviderModels(providers []ProviderView) map[string][]string {
 	results := make(map[string][]string, len(providers))
 	var mu sync.Mutex
-	g, ctx := errgroup.WithContext(a.reqCtx())
+	g, ctx := errgroup.WithContext(a.bootContext())
 	g.SetLimit(4)
 	root := a.activeWorkspaceRoot()
 	for i := range providers {

@@ -22,7 +22,7 @@ type recoveryIdentity struct {
 
 // RecoveryGate is the host-side Auto Guard consulted by the agent around tool
 // execution. It is independent of the permission Gate and of
-// how the Controller surfaces confirmations (desktop card, bot prompt, headless
+// how the Controller surfaces confirmations (desktop card, headless
 // blocker). A nil gate means the feature is off for this agent.
 //
 // ObserveResult runs after a tool result is produced. BeforeMutation also checks

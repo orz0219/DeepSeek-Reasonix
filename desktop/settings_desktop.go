@@ -1,11 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"strings"
-	"time"
 
-	"reasonix/internal/botruntime"
 	"reasonix/internal/config"
 	"reasonix/internal/control"
 )
@@ -72,140 +69,6 @@ func (a *App) SetNetwork(n NetworkView) error {
 			},
 		})
 	})
-}
-
-func (a *App) SetBotSettings(b BotSettingsView) error {
-	err := a.applyConfigOnly(func(c *config.Config) error {
-		c.Bot.Enabled = b.Enabled
-		c.Bot.Model = strings.TrimSpace(b.Model)
-		c.Bot.ToolApprovalMode = normalizeBotConnectionToolApprovalMode(b.ToolApprovalMode)
-		c.Bot.MaxSteps = b.MaxSteps
-		c.Bot.DebounceMs = b.DebounceMs
-		c.Bot.QueueMode = strings.TrimSpace(b.QueueMode)
-		c.Bot.QueueCap = b.QueueCap
-		c.Bot.QueueDrop = strings.TrimSpace(b.QueueDrop)
-		c.Bot.IgnoreSelfMessages = b.IgnoreSelfMessages
-		c.Bot.SelfUserIDs = config.BotSelfUserIDs{
-			QQ:     trimList(b.SelfUserIDs.QQ),
-			Feishu: trimList(b.SelfUserIDs.Feishu),
-			Weixin: trimList(b.SelfUserIDs.Weixin),
-		}
-		c.Bot.Control = config.BotControlConfig{
-			Enabled:  b.Control.Enabled,
-			Addr:     strings.TrimSpace(b.Control.Addr),
-			TokenEnv: strings.TrimSpace(b.Control.TokenEnv),
-		}
-		c.Bot.Pairing = config.BotPairingConfig{
-			Enabled:               b.Pairing.Enabled,
-			RequestTTLMinutes:     b.Pairing.RequestTTLMinutes,
-			MaxPendingPerPlatform: b.Pairing.MaxPendingPerPlatform,
-		}
-		c.Bot.Routes = botRouteConfigs(b.Routes)
-		c.Bot.Allowlist = config.BotAllowlist{
-			Enabled:         b.Allowlist.Enabled,
-			AllowAll:        b.Allowlist.AllowAll,
-			QQUsers:         trimList(b.Allowlist.QQUsers),
-			FeishuUsers:     trimList(b.Allowlist.FeishuUsers),
-			WeixinUsers:     trimList(b.Allowlist.WeixinUsers),
-			QQApprovers:     trimList(b.Allowlist.QQApprovers),
-			FeishuApprovers: trimList(b.Allowlist.FeishuApprovers),
-			WeixinApprovers: trimList(b.Allowlist.WeixinApprovers),
-			QQAdmins:        trimList(b.Allowlist.QQAdmins),
-			FeishuAdmins:    trimList(b.Allowlist.FeishuAdmins),
-			WeixinAdmins:    trimList(b.Allowlist.WeixinAdmins),
-			QQGroups:        trimList(b.Allowlist.QQGroups),
-			FeishuGroups:    trimList(b.Allowlist.FeishuGroups),
-			WeixinGroups:    trimList(b.Allowlist.WeixinGroups),
-		}
-		c.Bot.QQ = config.QQBotConfig{
-			Enabled:          b.QQ.Enabled,
-			AppID:            strings.TrimSpace(b.QQ.AppID),
-			AppSecretEnv:     strings.TrimSpace(b.QQ.AppSecretEnv),
-			Sandbox:          b.QQ.Sandbox,
-			Model:            strings.TrimSpace(b.QQ.Model),
-			ToolApprovalMode: normalizeBotConnectionToolApprovalMode(b.QQ.ToolApprovalMode),
-			WorkspaceRoot:    strings.TrimSpace(b.QQ.WorkspaceRoot),
-			Access:           botAccessConfigFromView(b.QQ.Access),
-		}
-		c.Bot.Feishu = config.FeishuBotConfig{
-			Enabled:            b.Feishu.Enabled,
-			Domain:             botDomainOrDefault(b.Feishu.Domain),
-			AppID:              strings.TrimSpace(b.Feishu.AppID),
-			AppSecretEnv:       strings.TrimSpace(b.Feishu.AppSecretEnv),
-			VerificationToken:  strings.TrimSpace(b.Feishu.VerificationToken),
-			Mode:               strings.TrimSpace(b.Feishu.Mode),
-			WebhookPort:        b.Feishu.WebhookPort,
-			RequireMention:     b.Feishu.RequireMention,
-			OutboundMediaRoots: append([]string(nil), c.Bot.Feishu.OutboundMediaRoots...),
-		}
-		c.Bot.Weixin = config.WeixinBotConfig{
-			Enabled:   b.Weixin.Enabled,
-			AccountID: strings.TrimSpace(b.Weixin.AccountID),
-			TokenEnv:  strings.TrimSpace(b.Weixin.TokenEnv),
-			APIBase:   strings.TrimRight(strings.TrimSpace(b.Weixin.APIBase), "/"),
-		}
-		c.Bot.Connections = botConnectionConfigs(b.Connections)
-		return nil
-	})
-	if err == nil {
-		a.refreshBotRuntimeAsync()
-	}
-	return err
-}
-
-// SetBotConnectionToolApprovalMode updates a single connection's tool approval
-// mode without restarting the bot gateway. Only the connection's mode field is
-// persisted; existing sessions on the running gateway are updated in-place.
-func (a *App) SetBotConnectionToolApprovalMode(connID, mode string) error {
-	connID = strings.TrimSpace(connID)
-	mode = normalizeBotConnectionToolApprovalMode(mode)
-	runtimeConnID := connID
-	err := a.applyConfigOnly(func(c *config.Config) error {
-		for i := range c.Bot.Connections {
-			candidateRuntimeID := botruntime.ConnectionRuntimeID(c.Bot.Connections[i])
-			if candidateRuntimeID == "" {
-				candidateRuntimeID = strings.TrimSpace(c.Bot.Connections[i].ID)
-			}
-			if c.Bot.Connections[i].ID == connID || candidateRuntimeID == connID {
-				c.Bot.Connections[i].ToolApprovalMode = mode
-				c.Bot.Connections[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-				runtimeConnID = candidateRuntimeID
-				return nil
-			}
-		}
-		return fmt.Errorf("connection %q not found", connID)
-	})
-	if err != nil {
-		return err
-	}
-	if a.botRuntime != nil {
-		a.botRuntime.updateConnectionToolApprovalMode(runtimeConnID, mode)
-	}
-	return nil
-}
-
-func (a *App) SetBotSecret(envName, value string) error {
-	envName = strings.TrimSpace(envName)
-	if envName == "" {
-		return fmt.Errorf("bot secret env name is empty")
-	}
-	if err := upsertDotEnv(envName, value); err != nil {
-		return err
-	}
-	a.refreshBotRuntimeAsync()
-	return nil
-}
-
-func (a *App) ClearBotSecret(envName string) error {
-	envName = strings.TrimSpace(envName)
-	if envName == "" {
-		return fmt.Errorf("bot secret env name is empty")
-	}
-	if err := removeDotEnv(envName); err != nil {
-		return err
-	}
-	a.refreshBotRuntimeAsync()
-	return nil
 }
 
 // SetCloseBehavior updates desktop-only window close behavior without rebuilding
@@ -338,41 +201,6 @@ func (a *App) SetDesktopLayoutStyle(style string) error {
 	}
 	if singleSurfaceLayoutStyle(normalized) {
 		return a.applySingleSurfaceTabPolicy()
-	}
-	return nil
-}
-
-// SetDesktopCheckUpdates updates only the desktop startup update-check
-// preference. Manual checks in Settings are unaffected.
-func (a *App) SetDesktopCheckUpdates(enabled bool) error {
-	return a.applyConfigOnly(func(c *config.Config) error { return c.SetDesktopCheckUpdates(enabled) })
-}
-
-// SetDesktopUpdateChannel is retained for older Wails clients. The config layer
-// clears the retired preference and every updater request uses Stable.
-func (a *App) SetDesktopUpdateChannel(channel string) error {
-	return a.applyConfigOnly(func(c *config.Config) error { return c.SetDesktopUpdateChannel(channel) })
-}
-
-// SetDesktopTelemetry sets whether the desktop sends the anonymous launch ping.
-func (a *App) SetDesktopTelemetry(enabled bool) error {
-	return a.applyConfigOnly(func(c *config.Config) error { return c.SetDesktopTelemetry(enabled) })
-}
-
-// SetDesktopMetrics sets whether the desktop sends aggregate desktop metrics,
-// starting or stopping the live aggregator so the toggle takes effect immediately.
-func (a *App) SetDesktopMetrics(enabled bool) error {
-	if err := a.applyConfigOnly(func(c *config.Config) error { return c.SetDesktopMetrics(enabled) }); err != nil {
-		return err
-	}
-	switch {
-	case enabled && a.metrics.Load() == nil && version != "dev":
-		a.metrics.Store(newMetricsAggregator(config.MemoryUserDir()))
-		if cfg, err := config.Load(); err == nil {
-			a.recordSettingsMetricsSnapshot(cfg)
-		}
-	case !enabled:
-		a.metrics.Store(nil)
 	}
 	return nil
 }

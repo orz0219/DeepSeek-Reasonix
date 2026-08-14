@@ -120,7 +120,6 @@ func (a *App) Settings() SettingsView {
 			CompactRatio:           cfg.Agent.CompactRatio,
 			EffectiveCompactRatio:  cfg.Agent.CompactRatio,
 		},
-		Bot:                          botSettingsView(cfg.Bot),
 		DesktopLanguage:              cfg.DesktopLanguage(),
 		DesktopCurrency:              cfg.DesktopCurrency(),
 		DesktopLayoutStyle:           cfg.DesktopLayoutStyle(),
@@ -134,10 +133,6 @@ func (a *App) Settings() SettingsView {
 		StatusBarStyle:               cfg.DesktopStatusBarStyle(),
 		StatusBarItems:               cfg.DesktopStatusBarItems(),
 		DefaultToolApprovalMode:      cfg.DesktopDefaultToolApprovalMode(),
-		CheckUpdates:                 cfg.DesktopCheckUpdates(),
-		UpdateChannel:                cfg.DesktopUpdateChannel(),
-		Telemetry:                    cfg.DesktopTelemetry(),
-		Metrics:                      cfg.DesktopMetrics(),
 		ExpandThinking:               cfg.Desktop.ExpandThinking,
 		ConversationWidth:            cfg.DesktopConversationWidth(),
 		ConfigPath:                   cfgPath,
@@ -180,170 +175,9 @@ func sandboxEffectiveShellView(sh sandbox.Shell) string {
 	return "bash"
 }
 
-func botSettingsView(b config.BotConfig) BotSettingsView {
-	mode := strings.TrimSpace(b.Feishu.Mode)
-	if mode == "" {
-		mode = "webhook"
-	}
-	return BotSettingsView{
-		Enabled:            b.Enabled,
-		Model:              b.Model,
-		ToolApprovalMode:   normalizeBotConnectionToolApprovalMode(b.ToolApprovalMode),
-		MaxSteps:           b.MaxSteps,
-		DebounceMs:         b.DebounceMs,
-		QueueMode:          b.QueueMode,
-		QueueCap:           b.QueueCap,
-		QueueDrop:          b.QueueDrop,
-		IgnoreSelfMessages: b.IgnoreSelfMessages,
-		SelfUserIDs: BotSelfUserIDsView{
-			QQ:     nonNil(b.SelfUserIDs.QQ),
-			Feishu: nonNil(b.SelfUserIDs.Feishu),
-			Weixin: nonNil(b.SelfUserIDs.Weixin),
-		},
-		Control: BotControlView{
-			Enabled:  b.Control.Enabled,
-			Addr:     b.Control.Addr,
-			TokenEnv: b.Control.TokenEnv,
-		},
-		Pairing: BotPairingView{
-			Enabled:               b.Pairing.Enabled,
-			RequestTTLMinutes:     b.Pairing.RequestTTLMinutes,
-			MaxPendingPerPlatform: b.Pairing.MaxPendingPerPlatform,
-		},
-		Routes: botRouteViews(b.Routes),
-		Allowlist: BotAllowlistView{
-			Enabled:         b.Allowlist.Enabled,
-			AllowAll:        b.Allowlist.AllowAll,
-			QQUsers:         nonNil(b.Allowlist.QQUsers),
-			FeishuUsers:     nonNil(b.Allowlist.FeishuUsers),
-			WeixinUsers:     nonNil(b.Allowlist.WeixinUsers),
-			QQApprovers:     nonNil(b.Allowlist.QQApprovers),
-			FeishuApprovers: nonNil(b.Allowlist.FeishuApprovers),
-			WeixinApprovers: nonNil(b.Allowlist.WeixinApprovers),
-			QQAdmins:        nonNil(b.Allowlist.QQAdmins),
-			FeishuAdmins:    nonNil(b.Allowlist.FeishuAdmins),
-			WeixinAdmins:    nonNil(b.Allowlist.WeixinAdmins),
-			QQGroups:        nonNil(b.Allowlist.QQGroups),
-			FeishuGroups:    nonNil(b.Allowlist.FeishuGroups),
-			WeixinGroups:    nonNil(b.Allowlist.WeixinGroups),
-		},
-		QQ: QQBotView{
-			Enabled:          b.QQ.Enabled,
-			AppID:            b.QQ.AppID,
-			AppSecretEnv:     b.QQ.AppSecretEnv,
-			SecretSet:        strings.TrimSpace(b.QQ.AppSecretEnv) != "" && os.Getenv(b.QQ.AppSecretEnv) != "",
-			Sandbox:          b.QQ.Sandbox,
-			Model:            b.QQ.Model,
-			ToolApprovalMode: normalizeBotConnectionToolApprovalMode(b.QQ.ToolApprovalMode),
-			WorkspaceRoot:    b.QQ.WorkspaceRoot,
-			Access:           botAccessViewFromConfig(b.QQ.Access),
-		},
-		Feishu: FeishuBotView{
-			Enabled:           b.Feishu.Enabled,
-			Domain:            orDefault(strings.TrimSpace(b.Feishu.Domain), "feishu"),
-			AppID:             b.Feishu.AppID,
-			AppSecretEnv:      b.Feishu.AppSecretEnv,
-			SecretSet:         strings.TrimSpace(b.Feishu.AppSecretEnv) != "" && os.Getenv(b.Feishu.AppSecretEnv) != "",
-			VerificationToken: b.Feishu.VerificationToken,
-			Mode:              mode,
-			WebhookPort:       b.Feishu.WebhookPort,
-			RequireMention:    b.Feishu.RequireMention,
-		},
-		Weixin: WeixinBotView{
-			Enabled:   b.Weixin.Enabled,
-			AccountID: b.Weixin.AccountID,
-			TokenEnv:  b.Weixin.TokenEnv,
-			TokenSet:  strings.TrimSpace(b.Weixin.TokenEnv) != "" && os.Getenv(b.Weixin.TokenEnv) != "",
-			APIBase:   b.Weixin.APIBase,
-		},
-		Connections: botConnectionViews(b.Connections),
-	}
-}
-
 func orDefault(s, def string) string {
 	if strings.TrimSpace(s) == "" {
 		return def
 	}
 	return s
-}
-
-func botRouteViews(routes []config.BotRouteConfig) []BotRouteView {
-	if len(routes) == 0 {
-		return []BotRouteView{}
-	}
-	out := make([]BotRouteView, 0, len(routes))
-	for _, route := range routes {
-		out = append(out, BotRouteView{
-			ConnectionID:     route.ConnectionID,
-			Platform:         route.Platform,
-			ChatType:         route.ChatType,
-			ChatID:           route.ChatID,
-			UserID:           route.UserID,
-			ThreadID:         route.ThreadID,
-			Model:            route.Model,
-			ToolApprovalMode: normalizeBotConnectionToolApprovalMode(route.ToolApprovalMode),
-			WorkspaceRoot:    route.WorkspaceRoot,
-		})
-	}
-	return out
-}
-
-func botRouteConfigs(routes []BotRouteView) []config.BotRouteConfig {
-	if len(routes) == 0 {
-		return nil
-	}
-	out := make([]config.BotRouteConfig, 0, len(routes))
-	for _, route := range routes {
-		cfg := config.BotRouteConfig{
-			ConnectionID:     strings.TrimSpace(route.ConnectionID),
-			Platform:         strings.TrimSpace(route.Platform),
-			ChatType:         strings.TrimSpace(route.ChatType),
-			ChatID:           strings.TrimSpace(route.ChatID),
-			UserID:           strings.TrimSpace(route.UserID),
-			ThreadID:         strings.TrimSpace(route.ThreadID),
-			Model:            strings.TrimSpace(route.Model),
-			ToolApprovalMode: normalizeBotConnectionToolApprovalMode(route.ToolApprovalMode),
-			WorkspaceRoot:    strings.TrimSpace(route.WorkspaceRoot),
-		}
-		if cfg.ConnectionID == "" && cfg.Platform == "" && cfg.ChatType == "" && cfg.ChatID == "" && cfg.UserID == "" && cfg.ThreadID == "" &&
-			cfg.Model == "" && cfg.ToolApprovalMode == "" && cfg.WorkspaceRoot == "" {
-			continue
-		}
-		out = append(out, cfg)
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
-func botAccessViewFromConfig(access config.BotAccessConfig) BotAccessView {
-	return BotAccessView{
-		Enabled:        access.Enabled,
-		AllowAll:       access.AllowAll,
-		PairingEnabled: access.PairingEnabled,
-		Users:          nonNil(access.Users),
-		Groups:         nonNil(access.Groups),
-		Approvers:      nonNil(access.Approvers),
-		Admins:         nonNil(access.Admins),
-	}
-}
-
-func botAccessConfigFromView(access BotAccessView) config.BotAccessConfig {
-	return config.BotAccessConfig{
-		Enabled:        access.Enabled,
-		AllowAll:       access.AllowAll,
-		PairingEnabled: access.PairingEnabled,
-		Users:          trimList(access.Users),
-		Groups:         trimList(access.Groups),
-		Approvers:      trimList(access.Approvers),
-		Admins:         trimList(access.Admins),
-	}
-}
-
-func botDomainOrDefault(domain string) string {
-	if strings.EqualFold(strings.TrimSpace(domain), "lark") {
-		return "lark"
-	}
-	return "feishu"
 }

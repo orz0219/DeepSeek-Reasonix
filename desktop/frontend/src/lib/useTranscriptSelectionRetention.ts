@@ -245,7 +245,22 @@ export function useTranscriptSelectionRetention({
   useEffect(() => {
     const onSelectionChange = () => {
       const tracked = selectionRef.current;
-      if (!tracked || tracked.logical) return;
+      if (tracked?.logical) return;
+      // Ghost selection: a non-collapsed selection that no pointer-down ever
+      // started (tracked is null) yet lives inside the transcript scroller.
+      // WebKit/Chromium can leave one behind while streaming updates rebuild
+      // text nodes, which paints an unwanted blue highlight over streamed text
+      // until the next interaction. Clear it immediately; real mouse
+      // selections always set `tracked` on pointer-down, so they never reach
+      // this branch.
+      if (!tracked) {
+        const selection = document.getSelection();
+        const scroller = scrollRef.current;
+        if (selection && !selection.isCollapsed && selection.anchorNode && scroller && scroller.contains(selection.anchorNode)) {
+          selection.removeAllRanges();
+        }
+        return;
+      }
       const selection = document.getSelection();
       if (!selection || selection.isCollapsed) {
         if (!tracked.dragging) clear("selection-collapsed");

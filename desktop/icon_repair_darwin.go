@@ -26,6 +26,25 @@ import (
 	"unsafe"
 )
 
+// currentMacAppBundle returns the running executable's .app bundle path.
+func currentMacAppBundle() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	exe, _ = filepath.EvalSymlinks(exe)
+	const marker = ".app/Contents/MacOS/"
+	idx := strings.Index(exe, marker)
+	if idx < 0 {
+		return "", fmt.Errorf("current executable is not inside a macOS .app bundle")
+	}
+	app := exe[:idx+len(".app")]
+	if _, err := os.Stat(filepath.Join(app, "Contents", "Info.plist")); err != nil {
+		return "", fmt.Errorf("current app bundle is invalid: %w", err)
+	}
+	return app, nil
+}
+
 func repairDesktopIconIntegration() error {
 	currentApp, err := currentMacAppBundle()
 	if err != nil {

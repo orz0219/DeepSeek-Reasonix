@@ -1,5 +1,5 @@
-import type { RemoteConnectionStatus, RemoteServerView, RemoteForwardsEvent, TabMetaRefreshEvent, TopicActivationEvent, SessionRecoveryEvent, UpdateProgress, WireEvent } from "./types";
-import { realApp, mockSubscribe, updaterListeners } from "./bridge";
+import type { RemoteConnectionStatus, RemoteServerView, RemoteForwardsEvent, TabMetaRefreshEvent, TopicActivationEvent, SessionRecoveryEvent, WireEvent } from "./types";
+import { realApp, mockSubscribe } from "./bridge";
 // Must match desktop/app.go's eventChannel constant.
 export const EVENT_CHANNEL = "agent:event";
 const RECENT_NATIVE_FILE_DRAG_MS = 2000;
@@ -57,18 +57,6 @@ export function __emitMockTerminalOutput(event: TerminalOutputEvent): void {
 }
 export function __emitMockTerminalExit(event: TerminalExitEvent): void {
     mockTerminalExitListeners.forEach((listener) => listener(event));
-}
-// onUpdaterProgress subscribes to the auto-updater's progress events (a separate
-// channel from the agent stream); returns an unsubscribe. Must match the event
-// name emitted in desktop/updater_app.go.
-export function onUpdaterProgress(cb: (p: UpdateProgress) => void): () => void {
-    if (realApp() && typeof window !== "undefined" && window.runtime) {
-        return window.runtime.EventsOn("updater:progress", (p) => cb(p as UpdateProgress));
-    }
-    updaterListeners.add(cb);
-    return () => {
-        updaterListeners.delete(cb);
-    };
 }
 export function errorMessage(err: unknown): string {
     if (err && typeof err === "object" && "message" in err) {
@@ -270,8 +258,6 @@ export function __emitMockRemote(ch: MockRemoteChannel, payload: unknown): void 
 // app proxies each call to the live binding (or the dev mock only when truly
 // outside the shell), so a late-injected window.go is picked up transparently.
 export function bridgeBreadcrumb(method: string): string {
-    if (method === "ReportCrash" || method === "RecordUIPerf")
-        return "";
     if (/^(Submit|SubmitDisplay|RunShell|Steer|Cancel|Approve|AnswerQuestion|ReplayPendingPrompts)/.test(method))
         return `turn ${method}`;
     if (/^(SetModel|SetEffort|SetTokenMode|SetDefaultModel|SetPlannerModel|SetSubagentModel|SetSubagentEffort|SetMaxSubagentDepth|SetMaxSubagentConcurrency|SetMaxParallelWriters)/.test(method))
@@ -280,8 +266,8 @@ export function bridgeBreadcrumb(method: string): string {
         return `settings ${method}`;
     if (/^(SaveProvider|SetProviderWebSearch|SaveProviderModelCatalogs|AddOfficialProviderAccess|UpgradeDeepSeekProviderAccess|AddProviderPresetAccess|ResetProviderPresetAccess|RemoveProviderAccess|RemoveProviderAccesses|DeleteProvider|SaveProviderKey|SetProviderKey|ClearProviderKey|FetchProviderModels|FetchAllProviderModels|ConnectKey)/.test(method))
         return `provider ${method}`;
-    if (/^(CheckUpdate|ApplyUpdateRequest|OpenDownloadPage|OpenUserConfigPath|ReloadUserConfig)/.test(method))
-        return `update ${method}`;
+    if (/^(OpenUserConfigPath|ReloadUserConfig)/.test(method))
+        return `config ${method}`;
     if (/^(AddMCPServer|InstallMCPServer|UpdateMCPServer|RemoveMCPServer|AuthorizeAndConnectMCPServer|AuthenticateMCPServer|ReconnectMCPServer|ClearMCPServerAuthentication|SetMCPServer)/.test(method))
         return `mcp ${method}`;
     if (/^(AddSkillPath|RemoveSkillPath|SetSkillPathEnabled|RefreshSkills|SetSkillEnabled|SetSkillImplicitInvocation|AcceptSkillSuggestion|AvailableSubagentTools|CreateSubagentProfile|UpdateSubagentProfile|DeleteSubagentProfile|SetSubagentProfileModel|SetSubagentProfileEffort|TrySubagentProfile|CancelTrySubagentProfile)/.test(method))

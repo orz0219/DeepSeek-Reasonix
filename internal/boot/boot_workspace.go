@@ -169,7 +169,7 @@ func appendUniquePaths(base []string, extra ...string) []string {
 // assemblers outside Build must use this helper instead of reading the config
 // roots directly.
 //
-// Provider and bot credentials are loaded into the parent process from this
+// Provider credentials are loaded into the parent process from this
 // file, so readers, shell commands, and MCP servers must not be able to recover
 // them even when the optional broad sensitive-file denylist is off. Project
 // .env files retain their existing behavior.

@@ -1,7 +1,7 @@
 import { addBreadcrumb } from "./breadcrumbs";
 import { maybeShare } from "./queryCoalesce";
 import { modeHasAutoApproveTools, normalizeToolApprovalMode } from "./types";
-import type { Mode, ToolApprovalMode, UpdateProgress, WireEvent } from "./types";
+import type { Mode, ToolApprovalMode, WireEvent } from "./types";
 import { bridgeBreadcrumb, elapsedMs } from "./bridge_events";
 import { MockProviderPresetTemplate, mockProviderTemplate, mockPreset } from "./bridge_mock_helpers";
 import { makeMockApp } from "./bridge_mock";
@@ -128,12 +128,6 @@ export async function withMockTabScope<T>(tabId: string, fn: () => Promise<T>): 
         mockScopedTabId = previous;
     }
 }
-// Updater progress has its own listener set so the browser dev mock can stream a
-// fake download/install flow through onUpdaterProgress.
-export const updaterListeners = new Set<(p: UpdateProgress) => void>();
-export function emitUpdater(p: UpdateProgress) {
-    updaterListeners.forEach((l) => l(p));
-}
 // Test seam for the browser-dev updater state machine. Production Wails builds
 // receive the same payloads through runtime.EventsOn("updater:progress").
 export function delay(ms: number): Promise<void> {
@@ -218,7 +212,6 @@ export { onTerminalOutput as onTerminalOutput } from "./bridge_events";
 export { onTerminalExit as onTerminalExit } from "./bridge_events";
 export { __emitMockTerminalOutput as __emitMockTerminalOutput } from "./bridge_events";
 export { __emitMockTerminalExit as __emitMockTerminalExit } from "./bridge_events";
-export { onUpdaterProgress as onUpdaterProgress } from "./bridge_events";
 export { isWailsNonFileDragError as isWailsNonFileDragError } from "./bridge_events";
 export { isWailsNonFileDragErrorEvent as isWailsNonFileDragErrorEvent } from "./bridge_events";
 export { isTransientWailsIPCError as isTransientWailsIPCError } from "./bridge_events";

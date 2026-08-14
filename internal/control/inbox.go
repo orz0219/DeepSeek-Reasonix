@@ -495,7 +495,7 @@ func (c *Controller) SetInboxPaused(paused bool) error {
 }
 
 // SetInboxPausedPassive changes pause state without starting a background turn.
-// Blocking transports such as Bot own their render sink and drain explicitly.
+// Blocking transports own their render sink and drain explicitly.
 func (c *Controller) SetInboxPausedPassive(paused bool) error {
 	return c.setInboxPaused(paused, false)
 }
