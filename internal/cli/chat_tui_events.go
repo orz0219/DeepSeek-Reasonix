@@ -340,10 +340,6 @@ func elapsedTick() tea.Cmd {
 
 // notice queues a dim informational line to scrollback.
 
-// showRemoteHosts renders a read-only summary of configured remote hosts. The
-// remote session lives in a `reasonix serve` on the remote host, so connecting
-// happens from a terminal (`reasonix remote connect`), not inside this chat.
-
 // resolveRefs resolves a line's @references off the event loop via the
 // controller, delivering a refsResolvedMsg with the tagged context block.
 

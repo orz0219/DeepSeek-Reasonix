@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ShellExpandProvider } from "./lib/shellExpand";
-import { Activity, Command, Download, Search, Server, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, AlarmClock, BarChart3, Brain, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
+import { Activity, Command, Download, Search, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, AlarmClock, BarChart3, Brain, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
 import { useToast } from "./lib/toast";
 import { useGoalActionHandler } from "./lib/goalAction";
 import { useWailsResizeFix } from "./lib/useWailsResizeFix";
@@ -8,7 +8,7 @@ import { asArray } from "./lib/array";
 import { createBoundedRefreshCoordinator, sameTabMetaLists, shouldRefreshTabMetaForEvent, TAB_META_MAX_IN_FLIGHT } from "./lib/tabMetaRefresh";
 import { clearLegacyLangPref, normalizeLangPref, readLegacyLangPref, useI18n, useT } from "./lib/i18n";
 import { useController, type Item } from "./lib/useController";
-import { app, onEvent, onProjectTreeChanged, onReady, onRemoteForwards, onRemoteServer, onRemoteStatus, onRuntimeRebuilt, onSessionRecovered } from "./lib/bridge";
+import { app, onEvent, onProjectTreeChanged, onReady, onRuntimeRebuilt, onSessionRecovered } from "./lib/bridge";
 import { useConfigLoadWarnings } from "./lib/useConfigLoadWarnings";
 import { generativeMusic, isGenerativeMusicEnabled } from "./lib/generative-music";
 import { clearAttentionChimeKeys, playAttentionChime, playSuccessChime, shouldPlayAttentionChimeForEvent } from "./lib/sound";
@@ -22,10 +22,6 @@ import { ClearContextCard } from "./components/ClearContextCard";
 import { RuntimeDecisionCard } from "./components/RuntimeDecisionCard";
 import { decisionSurfaceMockFromInput } from "./lib/decisionSurfaceMock";
 import { StatusBar } from "./components/StatusBar";
-import { RemoteHostKeyDialog } from "./components/RemoteHostKeyDialog";
-import { RemoteSecretDialog } from "./components/RemoteSecretDialog";
-import { RemoteConnectionTimeoutError, useRemoteStore, waitForRemoteConnection } from "./store/remote";
-import { RemoteWorkspaceLaunchGate, resolveRemoteWorkspace } from "./lib/remoteWorkspace";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
 import { Tooltip } from "./components/Tooltip";
 import { StartupSplash } from "./components/StartupSplash";
@@ -45,7 +41,7 @@ import { useTerminalStore } from "./store/terminal";
 import { hydrateReasoningDisplayMode, setReasoningDisplayPending } from "./lib/reasoningDisplayPreference";
 import { parseTodos } from "./lib/tools";
 import { dismissedTodoKeyForScope, resolveTodoPanelTodos, scopedTodoBatchKey, scopedTodoDismissalKey, shouldShowTodoPanel, signedTodoStepsFromItems, todoBatchKey, todoDismissalKey, todoPanelScope } from "./lib/todoVisibility";
-import { type ActiveWorkView, type BackgroundRuntimeView, type CollaborationMode, type ComposerInsertRequest, type Mode, modeHasPlan, type RewindResultView, type RemoteHostView, type SessionMeta, type SettingsView, type TabMeta, type TokenMode, type ToolApprovalMode, type WorkspaceConflictView } from "./lib/types";
+import { type ActiveWorkView, type BackgroundRuntimeView, type CollaborationMode, type ComposerInsertRequest, type Mode, modeHasPlan, type RewindResultView, type SessionMeta, type SettingsView, type TabMeta, type TokenMode, type ToolApprovalMode, type WorkspaceConflictView } from "./lib/types";
 import type { InvocationMetadataMap, StructuredInvocationSubmit } from "./lib/invocationDisplay";
 import { formatSelectionReference, type SelectedTextInsertRequest } from "./lib/selectedTextContext";
 import { workspaceTreeVisitId } from "./lib/workspaceTreeMemory";
@@ -82,7 +78,6 @@ const TranscriptSelectionMenu = lazy(() => import("./components/TranscriptSelect
 const ContextPanel = lazy(() => import("./components/ContextPanel").then((module) => ({ default: module.ContextPanel })));
 const HistoryPanel = lazy(() => import("./components/HistoryPanel").then((module) => ({ default: module.HistoryPanel })));
 const SettingsPanel = lazy(() => import("./components/SettingsPanelEntry").then((module) => ({ default: module.SettingsPanel })));
-const RemotePanel = lazy(() => import("./components/RemotePanel").then((module) => ({ default: module.RemotePanel })));
 const TerminalPanel = lazy(() => import("./components/TerminalPanel").then((module) => ({ default: module.TerminalPanel })));
 const TaskMonitorPanel = lazy(() => import("./components/TaskMonitorPanel").then((module) => ({ default: module.TaskMonitorPanel })));
 const WorkspacePanel = lazy(() => import("./components/WorkspacePanel").then((module) => ({ default: module.WorkspacePanel })));
@@ -117,20 +112,8 @@ export default function App() {
     const setPaletteOpen = useOverlayStore((s) => s.setPaletteOpen);
     const paletteExtensionActions = useOverlayStore((s) => s.paletteExtensionActions);
     const setPaletteExtensionActions = useOverlayStore((s) => s.setPaletteExtensionActions);
-    const remoteExplorerOpen = useRemoteStore((s) => s.explorerOpen);
-    const remoteExplorerHostId = useRemoteStore((s) => s.explorerHostId);
-    const remoteHosts = useRemoteStore((s) => s.hosts);
-    const remoteStatuses = useRemoteStore((s) => s.statuses);
     const { showToast } = useToast();
     const { runGoalAction, handleGoalActionError } = useGoalActionHandler();
-    const setRemoteHosts = useRemoteStore((s) => s.setHosts);
-    const hydrateRemoteStatuses = useRemoteStore((s) => s.hydrateStatuses);
-    const requestRemoteExplorer = useRemoteStore((s) => s.openExplorer);
-    const closeRemoteExplorerRequest = useRemoteStore((s) => s.closeExplorer);
-    const applyRemoteStatus = useRemoteStore((s) => s.applyStatus);
-    const requestRemoteStatusPopover = useRemoteStore((s) => s.requestStatusPopover);
-    const setRemoteForwards = useRemoteStore((s) => s.setForwards);
-    const setRemoteServer = useRemoteStore((s) => s.setServer);
     const shortcutsOpen = useOverlayStore((s) => s.shortcutsOpen);
     const setShortcutsOpen = useOverlayStore((s) => s.setShortcutsOpen);
     const paletteSessions = useOverlayStore((s) => s.paletteSessions);
@@ -1445,40 +1428,6 @@ export default function App() {
             void ready.then((stop) => stop?.());
         };
     }, [activeTabId, refreshTabMetas, workspaceScopeKey]);
-    // Bridge remote:* events into the remote store once, app-wide, so the
-    // StatusBar chip, host manager, and explorer all see the same live state.
-    useEffect(() => {
-        const offStatus = onRemoteStatus((s) => {
-            applyRemoteStatus(s);
-            if (s.state === "stopped" && s.error)
-                requestRemoteStatusPopover(s.hostId);
-        });
-        const offForwards = onRemoteForwards((e) => setRemoteForwards(e.hostId, e.forwards));
-        const offServer = onRemoteServer((s) => setRemoteServer(s));
-        return () => {
-            offStatus();
-            offForwards();
-            offServer();
-        };
-    }, [applyRemoteStatus, requestRemoteStatusPopover, setRemoteForwards, setRemoteServer]);
-    useEffect(() => {
-        let cancelled = false;
-        void app.RemoteHosts()
-            .then((hosts) => {
-            if (!cancelled)
-                setRemoteHosts(hosts);
-        })
-            .catch(() => { });
-        void app.RemoteConnectionStatuses()
-            .then((statuses) => {
-            if (!cancelled)
-                hydrateRemoteStatuses(statuses);
-        })
-            .catch(() => { });
-        return () => {
-            cancelled = true;
-        };
-    }, [hydrateRemoteStatuses, setRemoteHosts]);
     const refreshProviderSetupState = useCallback(async () => {
         const needs = await app.NeedsOnboarding();
         setProviderSetupNeeded(needs);
@@ -1874,83 +1823,6 @@ export default function App() {
         saveTerminalPanelOpen(true);
         void useTerminalStore.getState().createSession(activeTabId, ".", "default").catch(() => { });
     }, [activeTabId, setTerminalPanelOpen]);
-    useEffect(() => {
-        if (!remoteExplorerOpen)
-            return;
-        openRightDockMode("remote");
-        closeRemoteExplorerRequest();
-    }, [closeRemoteExplorerRequest, openRightDockMode, remoteExplorerOpen]);
-    useEffect(() => {
-        if (remoteHosts.length > 0 || rightDockMode !== "remote")
-            return;
-        setRightDockMode("files");
-    }, [remoteHosts.length, rightDockMode, setRightDockMode]);
-    const openRemoteDock = useCallback(() => {
-        const fallback = remoteHosts.find((host) => {
-            const state = useRemoteStore.getState().statuses[host.id]?.state;
-            return state === "connected" || state === "degraded";
-        }) ?? remoteHosts[0];
-        const hostId = remoteExplorerHostId && remoteHosts.some((host) => host.id === remoteExplorerHostId)
-            ? remoteExplorerHostId
-            : fallback?.id;
-        if (hostId)
-            requestRemoteExplorer(hostId);
-    }, [remoteExplorerHostId, remoteHosts, requestRemoteExplorer]);
-    const remoteWorkspaceLaunchGate = useRef(new RemoteWorkspaceLaunchGate());
-    const launchRemoteWorkspace = useCallback(async (host: RemoteHostView, requestSeq: number) => {
-        const lastWorkspace = await app.RemoteLastWorkspace(host.id).catch(() => "");
-        const workspace = resolveRemoteWorkspace(lastWorkspace, host.defaultWorkspace);
-        if (!remoteWorkspaceLaunchGate.current.isCurrent(host.id, requestSeq))
-            return;
-        await app.OpenRemoteWorkspace(host.id, workspace);
-    }, []);
-    const openRemoteWorkspaceFromStatus = useCallback((host: RemoteHostView) => {
-        const requestSeq = remoteWorkspaceLaunchGate.current.begin(host.id);
-        void launchRemoteWorkspace(host, requestSeq).catch((err) => {
-            showToast(err instanceof Error ? err.message : String(err), "error", { durationMs: 6000 });
-        });
-    }, [launchRemoteWorkspace, showToast]);
-    const connectAndOpenRemoteWorkspace = useCallback(function connectRemoteWorkspace(host: RemoteHostView) {
-        const requestSeq = remoteWorkspaceLaunchGate.current.begin(host.id);
-        void (async () => {
-            try {
-                const status = useRemoteStore.getState().statuses[host.id]?.state;
-                if (status !== "connected" && status !== "degraded") {
-                    // Clear any stale failure before the new generation starts; otherwise a
-                    // previous stopped+error snapshot could make the waiter reject before
-                    // the kernel's fresh connecting event reaches the frontend.
-                    useRemoteStore.getState().applyStatus({ hostId: host.id, state: "connecting" });
-                    await app.ConnectRemoteHost(host.id);
-                    await waitForRemoteConnection(host.id);
-                }
-            }
-            catch (err) {
-                if (err instanceof RemoteConnectionTimeoutError) {
-                    showToast(t("remote.error.timeout", { host: host.label }), "error", {
-                        actionLabel: t("remote.error.stopAndRetry"),
-                        durationMs: 10000,
-                        onAction: () => {
-                            void app.DisconnectRemoteHost(host.id)
-                                .catch(() => undefined)
-                                .then(() => connectRemoteWorkspace(host));
-                        },
-                    });
-                    return;
-                }
-                // Connection failures are host-scoped. Keep the persistent error and its
-                // recovery actions beside the Remote SSH status entry instead of
-                // stretching a raw backend error across the native titlebar.
-                requestRemoteStatusPopover(host.id);
-                return;
-            }
-            try {
-                await launchRemoteWorkspace(host, requestSeq);
-            }
-            catch (err) {
-                showToast(err instanceof Error ? err.message : String(err), "error", { durationMs: 6000 });
-            }
-        })();
-    }, [launchRemoteWorkspace, requestRemoteStatusPopover, showToast, t]);
     const handleWorkspacePreviewModeChange = useCallback((active: boolean) => {
         if (workspacePreviewActive === active)
             return;
@@ -2776,27 +2648,6 @@ export default function App() {
             badge: t(s.turns === 1 ? "history.turnOne" : "history.turnOther", { n: s.turns }),
             run: () => void onResumeSession(s),
         }));
-        const remoteItems: PaletteItem[] = remoteHosts.map((host) => {
-            const status = remoteStatuses[host.id];
-            const connected = status?.state === "connected" || status?.state === "degraded";
-            const target = `${host.user ? `${host.user}@` : ""}${host.host}${host.port && host.port !== 22 ? `:${host.port}` : ""}`;
-            return {
-                id: `remote-${host.id}`,
-                group: t("palette.group.remote"),
-                title: connected
-                    ? t("palette.remote.open", { host: host.label })
-                    : t("palette.remote.connect", { host: host.label }),
-                hint: host.defaultWorkspace || target,
-                icon: <Server size={15}/>,
-                keywords: ["ssh", "remote", "远程", "连接", host.label, host.host],
-                run: () => {
-                    if (connected)
-                        openRemoteWorkspaceFromStatus(host);
-                    else
-                        connectAndOpenRemoteWorkspace(host);
-                },
-            };
-        });
         const extensionItems: PaletteItem[] = paletteExtensionActions.map((action) => ({
             id: `ext-${action.slash}`,
             group: t("palette.group.extensions"),
@@ -2818,8 +2669,8 @@ export default function App() {
                     .catch((err) => showToast(err instanceof Error ? err.message : String(err), "error"));
             },
         }));
-        return [...cmds, ...extensionItems, ...remoteItems, ...sessionItems];
-    }, [t, paletteSessions, paletteExtensionActions, remoteHosts, remoteStatuses, activeTab?.id, handleNewTab, openTrash, onResumeSession, openRemoteWorkspaceFromStatus, connectAndOpenRemoteWorkspace, openRightDockMode, showToast]);
+        return [...cmds, ...extensionItems, ...sessionItems];
+    }, [t, paletteSessions, paletteExtensionActions, activeTab?.id, handleNewTab, openTrash, onResumeSession, showToast]);
     // Delete / rename act on disk, then re-fetch so the panel reflects the change.
     const onDeleteSession = useCallback(async (path: string) => {
         if (state.running)
@@ -3461,16 +3312,11 @@ export default function App() {
                   <GitBranch size={13}/>
                   <span className="workbench-dock__tab-label">{t("workspace.changedTab")}</span>
                 </button>
-                {remoteHosts.length > 0 && (<button type="button" role="tab" aria-selected={rightDockMode === "remote"} className={`workbench-dock__tab${rightDockMode === "remote" ? " workbench-dock__tab--active" : ""}`} onClick={openRemoteDock}>
-                    <Server size={13}/>
-                    <span className="workbench-dock__tab-label">{t("rightDock.remote")}</span>
-                  </button>)}
+
               </div>
             </div>
             <div className="workbench-dock__body">
-              {rightDockMode === "remote" ? (<Suspense fallback={null}>
-                  <RemotePanel onClose={() => setWorkspacePanel(false)}/>
-                </Suspense>) : rightDockMode === "context" && desktopLayoutStyle !== "creation" ? (<Suspense fallback={null}>
+              {rightDockMode === "context" && desktopLayoutStyle !== "creation" ? (<Suspense fallback={null}>
                   <ContextPanel tabId={activeTabId} context={state.context} usage={state.usage} sessionTokens={state.sessionTokens} sessionCost={state.sessionCost} sessionCurrency={state.sessionCurrency} sessionTurns={sessionTurns} turnTokens={state.turnTotalTokens} turnCost={state.turnCost} balance={state.balance} sessionGen={state.sessionGen} refreshKey={dockRefreshKey + state.contextPanelSeq} usageSeq={state.usageSeq}/>
                 </Suspense>) : (<Suspense fallback={null}>
                   <WorkspacePanel open={workspacePanelRenderable} tabId={activeTabId} cwd={state.meta?.cwd} workspaceScopeKey={workspaceScopeKey} workspaceMemoryKey={workspaceTreeMemoryKey} workspaceMemoryVisitId={workspaceTreeMemoryVisitId} maximized={workspacePanelMaximized} panelWidth={workspacePanelRenderWidth} onClose={() => setWorkspacePanel(false)} onToggleMaximized={() => {
@@ -3494,7 +3340,7 @@ export default function App() {
         }}/>
         </>
 
-        <StatusBar context={state.context} usage={state.usage} balance={state.balance} running={state.running || rewindCommitting} jobs={state.jobs} onCancelJob={cancelJob} backgroundRuntimes={backgroundRuntimes} onCancelRuntimeJob={cancelRuntimeJob} onRevealRuntime={revealBackgroundRuntime} sessionTurns={sessionTurns} sessionTokens={state.sessionTokens} turnTokens={state.turnTotalTokens} lastTurnOutputTokens={state.lastTurnOutputTokens} lastTurnModelMs={state.lastTurnModelMs} lastTurnOutputEstimated={state.lastTurnOutputEstimated} lastRequestTps={state.lastRequestTps} turnCost={state.turnCost} cost={state.sessionCost} currency={state.sessionCurrency} modelLabel={state.meta?.label} labelStyle={statusBarStyle} items={statusBarItems} extensionStatuses={extensionStatusList} workspacePath={state.meta?.workspacePath || state.meta?.workspaceRoot || state.meta?.cwd} workspaceName={state.meta?.workspaceName} gitBranch={state.meta?.gitBranch} onConnectRemote={connectAndOpenRemoteWorkspace} onDisconnectRemote={(hostId) => void app.DisconnectRemoteHost(hostId).catch(() => { })} onManageRemote={() => setSettingsTarget("remote")} onOpenRemote={requestRemoteExplorer} onOpenRemoteWorkspace={openRemoteWorkspaceFromStatus} remoteHosts={remoteHosts} remoteStatuses={remoteStatuses}/>
+        <StatusBar context={state.context} usage={state.usage} balance={state.balance} running={state.running || rewindCommitting} jobs={state.jobs} onCancelJob={cancelJob} backgroundRuntimes={backgroundRuntimes} onCancelRuntimeJob={cancelRuntimeJob} onRevealRuntime={revealBackgroundRuntime} sessionTurns={sessionTurns} sessionTokens={state.sessionTokens} turnTokens={state.turnTotalTokens} lastTurnOutputTokens={state.lastTurnOutputTokens} lastTurnModelMs={state.lastTurnModelMs} lastTurnOutputEstimated={state.lastTurnOutputEstimated} lastRequestTps={state.lastRequestTps} turnCost={state.turnCost} cost={state.sessionCost} currency={state.sessionCurrency} modelLabel={state.meta?.label} labelStyle={statusBarStyle} items={statusBarItems} extensionStatuses={extensionStatusList} workspacePath={state.meta?.workspacePath || state.meta?.workspaceRoot || state.meta?.cwd} workspaceName={state.meta?.workspaceName} gitBranch={state.meta?.gitBranch}/>
       </div>
 
       {histView !== null && (<Suspense fallback={null}>
@@ -3518,8 +3364,6 @@ export default function App() {
             }}/>
         </Suspense>)}
 
-      <RemoteHostKeyDialog />
-      <RemoteSecretDialog />
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} items={paletteItems} placeholder={t("palette.placeholder")} emptyText={t("palette.empty")}/>
 

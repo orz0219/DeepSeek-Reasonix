@@ -5,7 +5,7 @@ import type * as GeneratedApp from "../../wailsjs/go/main/App";
 import type { InvocationRequest } from "./invocationDisplay";
 import { type HistoryCatalogBindings } from "./historyCatalogBridge";
 import { type TaskCatalogBindings } from "./taskCatalogBridge";
-import type { RemoteHostView, RemoteHostInput, RemoteConnectionStatus, RemoteDirEntry, RemoteFilePreview, RemoteWriteResult, RemoteForwardInput, RemoteForwardView, RemoteServerView, RemoteLegacyWorkbenchData, BalanceInfo, UsageStatsRange, UsageStatsRequest, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, MemoryFact, MemorySuggestion, MemorySuggestionsView, MemoryView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
+import type { BalanceInfo, UsageStatsRange, UsageStatsRequest, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, MemoryFact, MemorySuggestion, MemorySuggestionsView, MemoryView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
 // AppBindings is derived from the Wails-generated Go → TS method signatures, so
 // the compiler catches drift between the Go binding surface and the frontend mock.
 // Run `wails generate module` after adding/renaming a bound method on App, then
@@ -518,33 +518,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     // New native-feel bindings (added with the desktop native-feel plan).
     ConfirmAction(req: NativeConfirmRequest): Promise<boolean>;
     SaveWindowState(state: DesktopWindowState): Promise<void>;
-    // ── Remote (SSH) ──
-    RemoteHosts(): Promise<RemoteHostView[]>;
-    AddRemoteHost(input: RemoteHostInput): Promise<RemoteHostView>;
-    UpdateRemoteHost(id: string, input: RemoteHostInput): Promise<RemoteHostView>;
-    RemoveRemoteHost(id: string): Promise<void>;
-    ScanSSHConfig(): Promise<RemoteHostInput[]>;
-    ConnectRemoteHost(id: string): Promise<void>;
-    DisconnectRemoteHost(id: string): Promise<void>;
-    RemoteConnectionStatuses(): Promise<RemoteConnectionStatus[]>;
-    ConfirmRemoteHostKey(hostId: string, accept: boolean): Promise<void>;
-    ConfirmRemoteSecret(hostId: string, promptId: string, secret: string, accept: boolean): Promise<void>;
-    ListRemoteDir(hostId: string, path: string): Promise<RemoteDirEntry[]>;
-    ReadRemoteFile(hostId: string, path: string): Promise<RemoteFilePreview>;
-    WriteRemoteFile(hostId: string, path: string, body: string, expectMtimeUnix: number): Promise<RemoteWriteResult>;
-    MkdirRemote(hostId: string, path: string): Promise<void>;
-    RenameRemotePath(hostId: string, oldPath: string, newPath: string): Promise<void>;
-    DeleteRemotePath(hostId: string, path: string, recursive: boolean): Promise<void>;
-    RemoteForwards(hostId: string): Promise<RemoteForwardView[]>;
-    AddRemoteForward(hostId: string, input: RemoteForwardInput): Promise<RemoteForwardView>;
-    RemoveRemoteForward(hostId: string, forwardId: string): Promise<void>;
-    OpenRemoteWorkspace(hostId: string, workspace: string): Promise<void>;
-    StopRemoteServer(hostId: string): Promise<void>;
-    RemoteServerStatus(hostId: string): Promise<RemoteServerView>;
-    RemoteServerLogs(hostId: string, tailLines: number): Promise<string>;
-    RemoteLastWorkspace(hostId: string): Promise<string>;
-    ScanRemoteLegacyWorkbenchData(): Promise<RemoteLegacyWorkbenchData>;
-    CleanRemoteLegacyWorkbenchData(target: "mirrors" | "trust"): Promise<void>;
 }
 // Compile-time drift check. Exclude<A, B> extracts keys in A that are missing
 // from B. If that set is non-empty, AssertNever<non-never> fails with

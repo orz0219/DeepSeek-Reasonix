@@ -7,11 +7,11 @@ import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems } from "./statusBarIt
 import { registerTrustedThemeBackgroundURLs } from "./themePack";
 import { modeWithAutoApproveTools, modeWithPlan, normalizeCollaborationMode, normalizeMode, normalizeTokenMode, normalizeToolApprovalMode } from "./types";
 import { decisionSurfaceMockFromInput, isLongDecisionOptionsMockInput } from "./decisionSurfaceMock";
-import type { RemoteHostView, RemoteHostInput, RemoteConnectionStatus, RemoteForwardView, UsageStatsRange, CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, MemorySuggestion, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
+import type { UsageStatsRange, CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, MemorySuggestion, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
 import { withMockTabScope, delay, emit, mockScopedTabId, stripLegacyGoalBudgetFlags, mockToolApprovalModeAfterModeChange, mockPreviewImageDataURL, bumpMockTopicActivationCounter, setMockPendingTopicActivation, mockPendingTopicActivation, GLOBAL_PROJECT_ORDER_KEY } from "./bridge";
 import { AppBindings } from "./bridge_types";
 import { mockScenario, baseName, mockProviderPresetViews, browserPreviewBashSandboxMode, browserPreviewEffectiveShell, browserPlatformOverride, mockExternalOpenerIconDataURL, cloneMockProviderTemplate } from "./bridge_mock_helpers";
-import { EVENT_CHANNEL, __emitMockTopicActivation, __emitMockTerminalExit, __emitMockTerminalOutput, __emitMockRemote } from "./bridge_events";
+import { EVENT_CHANNEL, __emitMockTopicActivation, __emitMockTerminalExit, __emitMockTerminalOutput } from "./bridge_events";
 export function makeMockApp(): AppBindings {
     const scenario = mockScenario();
     const freshMock = scenario === "fresh";
@@ -3982,98 +3982,6 @@ export function makeMockApp(): AppBindings {
                 ],
             };
         },
-        // ── Remote (SSH) mock ──
-        async RemoteHosts() {
-            return mockRemoteHosts.slice();
-        },
-        async AddRemoteHost(input) {
-            const view = mockRemoteHostView(input.label, input);
-            mockRemoteHosts = [...mockRemoteHosts.filter((h) => h.id !== view.id), view];
-            return view;
-        },
-        async UpdateRemoteHost(id, input) {
-            const previous = mockRemoteHosts.find((h) => h.id === id);
-            const view = mockRemoteHostView(id, input, previous);
-            mockRemoteHosts = mockRemoteHosts.map((h) => (h.id === id ? view : h));
-            return view;
-        },
-        async RemoveRemoteHost(id) {
-            mockRemoteHosts = mockRemoteHosts.filter((h) => h.id !== id);
-            delete mockRemoteConn[id];
-        },
-        async ScanSSHConfig() {
-            return [
-                { label: "gpu-box", host: "gpu-box", port: 0, user: "", identityFile: "", proxyJump: "", defaultWorkspace: "", serveInstall: "auto", useSSHConfig: true, preserveExistingSettings: true },
-            ];
-        },
-        async ConnectRemoteHost(id) {
-            mockRemoteConn[id] = "connecting";
-            __emitMockRemote("status", { hostId: id, state: "connecting" });
-            setTimeout(() => {
-                mockRemoteConn[id] = "connected";
-                __emitMockRemote("status", { hostId: id, state: "connected" });
-            }, 300);
-        },
-        async DisconnectRemoteHost(id) {
-            mockRemoteConn[id] = "stopped";
-            __emitMockRemote("status", { hostId: id, state: "stopped" });
-        },
-        async RemoteConnectionStatuses() {
-            return Object.entries(mockRemoteConn).map(([hostId, state]) => ({ hostId, state: state as RemoteConnectionStatus["state"] }));
-        },
-        async ConfirmRemoteHostKey(hostId, accept) {
-            mockRemoteConn[hostId] = accept ? "connected" : "stopped";
-            __emitMockRemote("status", { hostId, state: mockRemoteConn[hostId] });
-        },
-        async ConfirmRemoteSecret(hostId, _promptId, _secret, accept) {
-            mockRemoteConn[hostId] = accept ? "connected" : "stopped";
-            __emitMockRemote("status", { hostId, state: mockRemoteConn[hostId] });
-        },
-        async ListRemoteDir(_hostId, path) {
-            const base = path.replace(/\/$/, "");
-            return [
-                { name: "src", path: `${base}/src`, isDir: true, size: 0, mtimeUnix: 1700000000, symlink: false },
-                { name: "README.md", path: `${base}/README.md`, isDir: false, size: 1024, mtimeUnix: 1700000500, symlink: false },
-            ];
-        },
-        async ReadRemoteFile(_hostId, path) {
-            return { path, body: `# Mock remote file\n${path}\n`, size: 40, mtimeUnix: 1700000500, truncated: false, binary: false };
-        },
-        async WriteRemoteFile(_hostId, _path, _body, _expectMtimeUnix) {
-            return { ok: true, conflict: false, newMtimeUnix: 1700000900 };
-        },
-        async MkdirRemote() { },
-        async RenameRemotePath() { },
-        async DeleteRemotePath() { },
-        async RemoteForwards(hostId) {
-            return mockRemoteForwards[hostId] ?? [];
-        },
-        async AddRemoteForward(hostId, input) {
-            const view: RemoteForwardView = { id: `L:${input.localPort}`, hostId, ...input, state: "active" };
-            mockRemoteForwards[hostId] = [...(mockRemoteForwards[hostId] ?? []), view];
-            __emitMockRemote("forwards", { hostId, forwards: mockRemoteForwards[hostId] });
-            return view;
-        },
-        async RemoveRemoteForward(hostId, forwardId) {
-            mockRemoteForwards[hostId] = (mockRemoteForwards[hostId] ?? []).filter((f) => f.id !== forwardId);
-            __emitMockRemote("forwards", { hostId, forwards: mockRemoteForwards[hostId] });
-        },
-        async OpenRemoteWorkspace() { },
-        async StopRemoteServer(hostId) {
-            __emitMockRemote("server", { hostId, workspace: "", state: "stopped" });
-        },
-        async RemoteServerStatus(hostId) {
-            return { hostId, workspace: "~/app", state: "stopped" };
-        },
-        async RemoteServerLogs() {
-            return "mock serve log line 1\nmock serve log line 2\n";
-        },
-        async RemoteLastWorkspace() {
-            return "~/app";
-        },
-        async ScanRemoteLegacyWorkbenchData() {
-            return { mirrorCount: 0, mirrorBytes: 0, trustFile: false };
-        },
         async ExtensionActions() {
             return [];
         },
@@ -4081,29 +3989,6 @@ export function makeMockApp(): AppBindings {
             return "";
         },
         async SubmitExtensionForm() { },
-        async CleanRemoteLegacyWorkbenchData() { },
-    };
-}
-// Mock remote state, module-scoped so it survives across mock method calls.
-function mockRemoteHostView(id: string, input: RemoteHostInput, previous?: RemoteHostView): RemoteHostView {
-    return {
-        id,
-        label: input.label,
-        host: input.host,
-        port: input.port,
-        user: input.user,
-        identityFile: input.identityFile,
-        proxyJump: input.proxyJump,
-        defaultWorkspace: input.defaultWorkspace,
-        serveInstall: input.serveInstall,
-        useSSHConfig: input.useSSHConfig,
-        passwordSet: input.password ? true : input.clearPassword ? false : previous?.passwordSet,
-        keyPassphraseSet: input.keyPassphrase ? true : input.clearPassphrase ? false : previous?.keyPassphraseSet,
-    };
-}
-let mockRemoteHosts: RemoteHostView[] = [
-    { id: "demo", label: "demo", host: "192.168.1.10", port: 22, user: "dev", identityFile: "", proxyJump: "", defaultWorkspace: "~/app", serveInstall: "auto", useSSHConfig: false },
-];
-const mockRemoteConn: Record<string, RemoteConnectionStatus["state"]> = {};
-const mockRemoteForwards: Record<string, RemoteForwardView[]> = {};
 
+    };
+}

@@ -8,9 +8,7 @@ export async function commitRewindWithPreview(
   scope: "conversation" | "code" | "both",
 ): Promise<RewindResultView> {
   const plan = await app.PreviewRewindForTab(sourceTabId, turn, scope);
-  const remoteLegacy = !plan?.ok && /remote host uses legacy rewind semantics/i.test(plan?.error || "");
-  if (!remoteLegacy) {
-    const canCommit = scope === "conversation"
+  const canCommit = scope === "conversation"
       ? plan?.canConversation
       : scope === "both"
         ? plan?.canConversation && plan?.canFiles
@@ -31,10 +29,8 @@ export async function commitRewindWithPreview(
         return { ok: false, error: "rewind cancelled" };
       }
     }
-  }
-  return app.CommitRewindForTab(sourceTabId, remoteLegacy ? "" : (plan.planId || ""), turn, scope);
+  return app.CommitRewindForTab(sourceTabId, plan.planId || "", turn, scope);
 }
-
 export function undoCommittedRewind(sourceTabId: string, transactionId: string): Promise<RewindResultView> {
   return app.UndoRewindForTab(sourceTabId, transactionId);
 }

@@ -38,7 +38,7 @@ export function isChannelSession(s: SessionMeta): boolean {
 }
 export function sessionLocation(s: SessionMeta, tr: ReturnType<typeof useT>): string {
     if (isChannelSession(s)) {
-        return [s.channelLabel || s.channel || tr("history.channel"), s.remoteId].filter(Boolean).join(" · ");
+        return s.channelLabel || s.channel || tr("history.channel");
     }
     if (s.workspaceRoot) {
         const parts = s.workspaceRoot.split(/[\\/]/).filter(Boolean);

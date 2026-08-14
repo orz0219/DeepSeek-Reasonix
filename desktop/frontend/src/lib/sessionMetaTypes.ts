@@ -18,7 +18,6 @@ export interface SessionMeta {
   kind?: "session" | "channel" | string;
   channel?: string;
   channelLabel?: string;
-  remoteId?: string;
   chatType?: string;
   userId?: string;
   threadId?: string;

@@ -38,10 +38,6 @@ reasonix/
     ├── permission/
     ├── command/
     ├── plugin/
-    ├── remote/
-    │   ├── forward/
-    │   ├── sftpfs/
-    │   └── bootstrap/
     └── agent/
 ```
 
@@ -51,7 +47,7 @@ reasonix/
 cli → {agent, plugin, config} → {tool, provider}
 ```
 
-`provider/openai`、`tool/builtin` 等 built-in 子包导入父包完成自注册，父包不反向导入子包。Remote-SSH 采用 `cli → remote/bootstrap → remote` 的分层，`remote` 及其子包不依赖 `cli`、`agent` 或 `serve`；host key 和 secret prompt 等交互都通过 callback 暴露，供桌面端复用。
+`provider/openai`、`tool/builtin` 等 built-in 子包导入父包完成自注册，父包不反向导入子包。
 
 ## 3. 核心抽象
 

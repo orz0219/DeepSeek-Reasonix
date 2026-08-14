@@ -22,7 +22,6 @@ type SessionMeta struct {
 	Kind           string `json:"kind,omitempty"` // "channel" for external IM transcripts
 	Channel        string `json:"channel,omitempty"`
 	ChannelLabel   string `json:"channelLabel,omitempty"`
-	RemoteID       string `json:"remoteId,omitempty"`
 	ChatType       string `json:"chatType,omitempty"`
 	UserID         string `json:"userId,omitempty"`
 	ThreadID       string `json:"threadId,omitempty"`

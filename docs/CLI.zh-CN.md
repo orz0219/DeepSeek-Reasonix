@@ -456,9 +456,7 @@ reasonix catalogs reindex tasks [--project PATH ...] [--json]
 | `/memory archived` | 列出 archive facts 及其受管路径。 |
 | `/memory recover <archive-path>` | 不覆盖 active data，把 archive 恢复为新 revision。 |
 
-这些命令始终作用于当前 session controller。当会话位于远端主机上（`reasonix remote
-connect` 或桌面的远程网页窗口）时，它们使用远程 memory catalog，绝不回退读取桌面本机
-记忆。权限、自动召回、写入确认和迁移行为见
+这些命令始终作用于当前 session controller。权限、自动召回、写入确认和迁移行为见
 [Context Engine v2](./SESSION_MEMORY_RETRIEVAL.zh-CN.md)。
 
 契约见 [Session Catalog and Desktop Startup](./SESSION_CATALOG.md)。

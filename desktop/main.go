@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	goruntime "runtime"
-	"strconv"
 	"strings"
 
 	"github.com/wailsapp/wails/v2"
@@ -98,8 +97,6 @@ func main() {
 	capturePreviousFatalCrash()
 	installFatalCrashOutput()
 
-	launch := parseDesktopLaunchArgs(os.Args[1:])
-
 	app := NewApp()
 	title := "Reasonix"
 	singleInstance := singleInstanceLock(app)
@@ -107,31 +104,9 @@ func main() {
 	dragAndDrop := &options.DragAndDrop{EnableFileDrop: true}
 	bindings := []any{app}
 
-	if launch.RemoteWindowTicket != "" {
-		// A remote web child window: a second Reasonix process that hosts the
-		// SSH Serve page for one remote host. It deliberately skips local
-		// runtimes (tabs, tray, heartbeat, providers) and exposes no Wails
-		// bindings, local menus, or file drops, so it can never act as a second
-		// local app. Its single-instance identity is per owner and host, so one
-		// Desktop reuses its window while a restarted Desktop cannot adopt an
-		// unregistered survivor from the prior process.
-		if launch.RemoteWindowHostKey == "" || !isRemoteWindowOwnerID(launch.RemoteWindowOwnerID) || launch.RemoteWindowParentPID <= 0 {
-			println("Error: remote window ticket requires valid host and owner identities")
-			return
-		}
-		app.remoteWindowTicket = launch.RemoteWindowTicket
-		app.remoteWindowHostKey = launch.RemoteWindowHostKey
-		app.remoteWindowOwnerID = launch.RemoteWindowOwnerID
-		app.remoteWindowParentPID = launch.RemoteWindowParentPID
-		singleInstance = remoteWindowSingleInstanceLock(app)
-		appMenu = nil
-		dragAndDrop = &options.DragAndDrop{DisableWebViewDrop: true}
-		bindings = nil
-	} else {
-		// Claim diagnostics before Wails so second processes cannot create evidence.
-		prepareDesktopDiagnostics(app)
-		defer app.releaseDesktopDiagnosticsOwnership()
-	}
+	// Claim diagnostics before Wails so second processes cannot create evidence.
+	prepareDesktopDiagnostics(app)
+	defer app.releaseDesktopDiagnosticsOwnership()
 
 	width, height := initialDesktopWindowSize()
 
@@ -159,9 +134,8 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 			Middleware: assetserver.ChainMiddleware(
-				app.remoteWindowAssetMiddleware(),
-				app.jsProfilingMiddleware(),
 				app.remoteMarkdownImageMiddleware(),
+				app.jsProfilingMiddleware(),
 				app.workspaceMediaMiddleware(),
 				app.themeAssetMiddleware(),
 			),
@@ -223,17 +197,6 @@ func main() {
 type desktopLaunchOptions struct {
 	// LegacySafeModeArg is true when --safe-mode was present. v1.20+ ignores it.
 	LegacySafeModeArg bool
-	// RemoteWindowTicket is the one-shot ticket name for an SSH remote web
-	// window child process. The URL and Serve token never appear in argv.
-	RemoteWindowTicket string
-	// RemoteWindowHostKey is the non-secret per-host digest that derives the
-	// child window's single-instance identity and validates the ticket.
-	RemoteWindowHostKey string
-	// RemoteWindowOwnerID scopes same-host reuse to the primary Desktop process
-	// that spawned the child. RemoteWindowParentPID lets the child close when
-	// that owner and its loopback SSH tunnel disappear.
-	RemoteWindowOwnerID   string
-	RemoteWindowParentPID int
 }
 
 func parseDesktopLaunchArgs(args []string) desktopLaunchOptions {
@@ -244,14 +207,6 @@ func parseDesktopLaunchArgs(args []string) desktopLaunchOptions {
 			out.LegacySafeModeArg = true
 		case arg == "launch" || arg == "--detach":
 			// Legacy launch tokens from old shortcuts. They produce no behavior.
-		case strings.HasPrefix(arg, remoteWindowTicketArgPrefix):
-			out.RemoteWindowTicket = strings.TrimPrefix(arg, remoteWindowTicketArgPrefix)
-		case strings.HasPrefix(arg, remoteWindowHostArgPrefix):
-			out.RemoteWindowHostKey = strings.TrimPrefix(arg, remoteWindowHostArgPrefix)
-		case strings.HasPrefix(arg, remoteWindowOwnerArgPrefix):
-			out.RemoteWindowOwnerID = strings.TrimPrefix(arg, remoteWindowOwnerArgPrefix)
-		case strings.HasPrefix(arg, remoteWindowParentArgPrefix):
-			out.RemoteWindowParentPID, _ = strconv.Atoi(strings.TrimPrefix(arg, remoteWindowParentArgPrefix))
 		}
 	}
 	return out

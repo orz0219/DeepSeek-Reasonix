@@ -6,11 +6,27 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
 	"reasonix/internal/serve"
 )
+
+// openInBrowser opens url in the host's default browser without blocking.
+func openInBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	return cmd.Start()
+}
 
 // runServeListenerAfterReady opens the browser only after HTTP responds.
 func runServeListenerAfterReady(ctx context.Context, srv *serve.Server, ln net.Listener, addr string, onReady func()) error {

@@ -26,7 +26,6 @@ function settingsPageKind(tab: SettingsTab): "form" | "manager" {
     switch (tab) {
         case "models":
         case "mcp":
-        case "remote":
         case "skills":
         case "subagents":
         case "plugins":
@@ -110,8 +109,6 @@ export function settingsTabLabel(id: SettingsTab, t: ReturnType<typeof useT>): s
             return t("settings.tab.providers");
         case "mcp":
             return t("settings.tab.mcp");
-        case "remote":
-            return t("settings.tab.remote");
         case "skills":
             return t("settings.tab.skills");
         case "subagents":
@@ -148,8 +145,6 @@ export function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<
             return t("settings.providerCount", { n: s.providers.length });
         case "mcp":
             return t("caps.connectorsTab");
-        case "remote":
-            return t("remote.tabHint");
         case "skills":
             return t("settings.tabSub.skills");
         case "subagents":

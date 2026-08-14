@@ -29,7 +29,6 @@ const (
 
 var (
 	errTerminalStaleTab   = errors.New("terminal request is no longer for the active tab")
-	errTerminalRemote     = errors.New("integrated terminal is unavailable for remote workspaces")
 	errTerminalOutside    = errors.New("terminal directory is outside the workspace")
 	errTerminalManagerOff = errors.New("terminal manager is not available")
 )
@@ -138,10 +137,6 @@ func (a *App) TerminalWorkspaceForTab(tabID string) (TerminalWorkspaceView, erro
 	view := emptyTerminalWorkspaceView()
 	target, err := a.terminalTargetForTab(tabID, false)
 	if err != nil {
-		if errors.Is(err, errTerminalRemote) {
-			view.Reason = err.Error()
-			return view, nil
-		}
 		return view, err
 	}
 	view.ReadOnly = target.readOnly

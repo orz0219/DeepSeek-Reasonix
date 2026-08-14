@@ -110,9 +110,6 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 	case "mcp":
 		configureCLIThemeFromConfig()
 		return mcpCommand(rest)
-	case "remote":
-		configureCLIThemeFromConfig()
-		return remoteCommand(rest, version)
 	case "plugin":
 		configureCLIThemeFromConfig()
 		return pluginCommand(rest)

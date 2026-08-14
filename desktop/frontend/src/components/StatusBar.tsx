@@ -1,18 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Activity, CircleDollarSign, CircleGauge, Database, FileOutput, Folder, Gauge, GitBranch, HardDrive, Layers, Percent, Puzzle, RefreshCw, Server, Settings, Square, Unplug, Wallet, Zap } from "lucide-react";
+import { Activity, CircleDollarSign, CircleGauge, Database, FileOutput, Folder, Gauge, GitBranch, HardDrive, Layers, Percent, Puzzle, RefreshCw, Square, Wallet, Zap } from "lucide-react";
 import { AnchoredPopover } from "./AnchoredPopover";
-import { RemoteConnectionErrorDialog } from "./RemoteConnectionErrorDialog";
 import { Tooltip } from "./Tooltip";
 import { contextWindowPercentages } from "../lib/contextWindow";
 import { useI18n } from "../lib/i18n";
 import { formatMoneyLocalized } from "../lib/money";
 import { normalizeStatusBarItems, type StatusBarItemId } from "../lib/statusBarItems";
-import { isRemoteDegradedWarning, isRemoteHostKeyMismatch, isRemoteTerminalFailure, remoteConnectionErrorSummaryKey } from "../lib/remoteErrors";
 import type { ExtensionStatusEntry } from "../lib/useController";
-import { type BackgroundRuntimeView, type BalanceInfo, type ContextInfo, type JobView, type RemoteConnectionStatus, type RemoteHostView, type WireUsage } from "../lib/types";
-import { useRemoteStore } from "../store/remote";
+import { type BackgroundRuntimeView, type BalanceInfo, type ContextInfo, type JobView, type WireUsage } from "../lib/types";
 import { StatusBarLabelStyle, nowRate, avgRate, contextAvgRate, rateValueClass, formatTokenCount, formatTurnCount, formatTps, sourceCacheTooltip, MetricLabel, compactPath, workspaceTooltip } from "./status_bar_helpers";
-export function StatusBar({ context, usage, balance, running, sessionTurns, sessionTokens, turnTokens, lastTurnOutputTokens, lastTurnModelMs, lastTurnOutputEstimated = false, lastRequestTps, turnCost, cost, currency, modelLabel, labelStyle = "text", items, workspacePath, workspaceName, gitBranch, onConnectRemote, onDisconnectRemote, onManageRemote, onOpenRemote, onOpenRemoteWorkspace, remoteHosts = [], remoteStatuses = {}, jobs = [], onCancelJob, backgroundRuntimes = [], onCancelRuntimeJob, onRevealRuntime, extensionStatuses = [], }: {
+export function StatusBar({ context, usage, balance, running, sessionTurns, sessionTokens, turnTokens, lastTurnOutputTokens, lastTurnModelMs, lastTurnOutputEstimated = false, lastRequestTps, turnCost, cost, currency, modelLabel, labelStyle = "text", items, workspacePath, workspaceName, gitBranch, jobs = [], onCancelJob, backgroundRuntimes = [], onCancelRuntimeJob, onRevealRuntime, extensionStatuses = [], }: {
     context: ContextInfo;
     usage?: WireUsage;
     balance?: BalanceInfo;
@@ -33,13 +30,6 @@ export function StatusBar({ context, usage, balance, running, sessionTurns, sess
     workspacePath?: string;
     workspaceName?: string;
     gitBranch?: string;
-    onConnectRemote?: (host: RemoteHostView) => void;
-    onDisconnectRemote?: (hostId: string) => void;
-    onManageRemote?: () => void;
-    onOpenRemote?: (hostId: string) => void;
-    onOpenRemoteWorkspace?: (host: RemoteHostView) => void;
-    remoteHosts?: RemoteHostView[];
-    remoteStatuses?: Record<string, RemoteConnectionStatus>;
     jobs?: JobView[];
     onCancelJob?: (jobID: string) => Promise<boolean>;
     backgroundRuntimes?: BackgroundRuntimeView[];
@@ -229,7 +219,6 @@ export function StatusBar({ context, usage, balance, running, sessionTurns, sess
     }, []);
     return (<div className={`statusbar statusbar--${metricLabelStyle}`} ref={statusbarRef}>
       <div className="statusbar__group statusbar__group--items">
-        <RemoteStatusBarChip hosts={remoteHosts} statuses={remoteStatuses} onOpen={onOpenRemote} onOpenWorkspace={onOpenRemoteWorkspace} onConnect={onConnectRemote} onDisconnect={onDisconnectRemote} onManage={onManageRemote}/>
         <JobsStatusBarChip jobs={jobs} activeJobsRemote={false} onCancelJob={onCancelJob} runtimes={backgroundRuntimes} onCancelRuntimeJob={onCancelRuntimeJob} onRevealRuntime={onRevealRuntime}/>
         <ExtensionStatusBarChips statuses={extensionStatuses}/>
         {renderedItems.map(({ id, node }) => (<span className="statusbar__item" data-statusbar-item={id} key={id}>
@@ -353,145 +342,6 @@ function JobsStatusBarChip({ jobs, activeJobsRemote, onCancelJob, runtimes, onCa
       </AnchoredPopover>
     </span>);
 }
-// This entry remains visible whenever an SSH host is configured. The popover
-// owns quick connection actions; remote files and services live in the dock.
-const REMOTE_STATE_SEVERITY: Record<string, number> = {
-    error: 5,
-    reconnecting: 4,
-    pending_hostkey: 4,
-    pending_secret: 4,
-    connecting: 3,
-    degraded: 2,
-    connected: 1,
-    stopped: 0,
-};
-function RemoteStatusBarChip({ hosts, statuses, onOpen, onOpenWorkspace, onConnect, onDisconnect, onManage, }: {
-    hosts: RemoteHostView[];
-    statuses: Record<string, RemoteConnectionStatus>;
-    onOpen?: (hostId: string) => void;
-    onOpenWorkspace?: (host: RemoteHostView) => void;
-    onConnect?: (host: RemoteHostView) => void;
-    onDisconnect?: (hostId: string) => void;
-    onManage?: () => void;
-}) {
-    const { t } = useI18n();
-    const [open, setOpen] = useState(false);
-    const [detailHostId, setDetailHostId] = useState<string | null>(null);
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const revealRequest = useRemoteStore((state) => state.statusPopoverRequest);
-    const clearRevealRequest = useRemoteStore((state) => state.clearStatusPopoverRequest);
-    useEffect(() => {
-        if (!revealRequest || !hosts.some((host) => host.id === revealRequest.hostId))
-            return;
-        setOpen(true);
-        clearRevealRequest(revealRequest);
-    }, [clearRevealRequest, hosts, revealRequest]);
-    if (hosts.length === 0)
-        return null;
-    const entries = hosts.map((host) => statuses[host.id] ?? { hostId: host.id, state: "stopped" as const });
-    const worst = entries.reduce((a, b) => {
-        const aSeverity = isRemoteTerminalFailure(a) ? 6 : REMOTE_STATE_SEVERITY[a.state] ?? 0;
-        const bSeverity = isRemoteTerminalFailure(b) ? 6 : REMOTE_STATE_SEVERITY[b.state] ?? 0;
-        return bSeverity > aSeverity ? b : a;
-    });
-    const worstHost = hosts.find((host) => host.id === worst.hostId) ?? hosts[0];
-    const triggerState = isRemoteTerminalFailure(worst) ? "error" : worst.state;
-    const triggerStatus = isRemoteTerminalFailure(worst) ? t("remote.status.failed") : t(`remote.status.${worst.state}`);
-    const idleDisconnected = worst.state === "stopped" && !worst.error;
-    const triggerLabel = idleDisconnected ? t("remote.statusBar.disconnected") : t("remote.statusBar.summary", { host: worstHost.label, status: triggerStatus });
-    const triggerText = idleDisconnected ? "SSH" : triggerState === "connected" ? worstHost.label : triggerLabel;
-    return (<span className="statusbar__remote-wrap">
-      <button ref={triggerRef} type="button" className={`statusbar__remote remote-chip remote-chip--${triggerState}${idleDisconnected ? " statusbar__remote--idle" : ""}`} onClick={() => setOpen((value) => !value)} aria-label={triggerLabel} aria-haspopup="dialog" aria-expanded={open} title={triggerLabel}>
-        {triggerState === "connected" ? <span className="statusbar__remote-state-dot" aria-hidden="true"/> : <Server size={11} aria-hidden="true"/>}
-        <span className="statusbar__remote-label">{triggerText}</span>
-      </button>
-      <AnchoredPopover open={open} anchorRef={triggerRef} onClose={() => setOpen(false)} className="remote-switcher" align="start">
-        <section role="dialog" aria-label={t("remote.switcher.title")}>
-          <header className="remote-switcher__header">{t("remote.switcher.title")}</header>
-          <div className="remote-switcher__section-label">{t("remote.switcher.hosts")}</div>
-          <div className="remote-switcher__hosts">
-            {hosts.map((host) => {
-            const status = statuses[host.id] ?? { hostId: host.id, state: "stopped" as const };
-            const connected = status.state === "connected" || status.state === "degraded";
-            const busy = status.state === "connecting" || status.state === "reconnecting" || status.state === "pending_hostkey" || status.state === "pending_secret";
-            const terminalFailure = isRemoteTerminalFailure(status);
-            const degradedWarning = isRemoteDegradedWarning(status);
-            const stateClass = terminalFailure ? "error" : status.state;
-            const stateLabel = terminalFailure ? t("remote.status.failed") : t(`remote.status.${status.state}`);
-            const errorSummary = status.error ? t(remoteConnectionErrorSummaryKey(status), { host: host.label }) : "";
-            const target = `${host.user ? `${host.user}@` : ""}${host.host}${host.port && host.port !== 22 ? `:${host.port}` : ""}`;
-            return (<div className={`remote-switcher__host remote-switcher__host--${stateClass}`} key={host.id}>
-                  <button type="button" className="remote-switcher__host-main" onClick={() => {
-                    setOpen(false);
-                    onOpen?.(host.id);
-                }}>
-                    <span className={`remote-switcher__state remote-switcher__state--${stateClass}`} aria-hidden="true"/>
-                    <span className="remote-switcher__copy">
-                      <strong>{host.label}</strong>
-                      <small>{stateLabel} · {host.defaultWorkspace || target}</small>
-                    </span>
-                  </button>
-                    <span className="remote-switcher__actions">
-                    <button type="button" className="btn btn--small btn--primary" disabled={busy} onClick={() => {
-                    if (connected) {
-                        setOpen(false);
-                        onOpenWorkspace?.(host);
-                    }
-                    else {
-                        setOpen(false);
-                        onConnect?.(host);
-                    }
-                }}>
-                      {connected ? t("remote.openWorkspace") : busy ? stateLabel : terminalFailure ? t("remote.error.retry") : t("remote.connectAndOpen")}
-                    </button>
-                    {connected && (<button type="button" className="remote-switcher__disconnect" onClick={() => onDisconnect?.(host.id)} aria-label={t("remote.disconnectHost", { host: host.label })} title={t("remote.disconnect")}>
-                        <Unplug size={13} aria-hidden="true"/>
-                      </button>)}
-                  </span>
-                  {(terminalFailure || degradedWarning) && (<div className={`remote-switcher__error-card ${degradedWarning ? "remote-switcher__error-card--warning" : ""}`} role="alert">
-                      <strong>{t(degradedWarning ? "remote.status.degraded" : "remote.status.failed")}</strong>
-                      <span>{errorSummary}</span>
-                      <div className="remote-switcher__error-actions">
-                        <button type="button" className="btn btn--small" onClick={() => {
-                        setOpen(false);
-                        setDetailHostId(host.id);
-                    }}>
-                          {t(isRemoteHostKeyMismatch(status) ? "remote.error.hostKeyDetails" : "remote.error.details")}
-                        </button>
-                        <button type="button" className="btn btn--small" onClick={() => {
-                        setOpen(false);
-                        onManage?.();
-                    }}>
-                          {t("remote.error.manage")}
-                        </button>
-                      </div>
-                    </div>)}
-                </div>);
-        })}
-          </div>
-          <button type="button" className="remote-switcher__manage" onClick={() => {
-            setOpen(false);
-            onManage?.();
-        }}>
-            <Settings size={13} aria-hidden="true"/>
-            {t("remote.switcher.manage")}
-          </button>
-        </section>
-      </AnchoredPopover>
-      {detailHostId && (() => {
-            const host = hosts.find((item) => item.id === detailHostId);
-            const status = statuses[detailHostId];
-            if (!host || !status?.error)
-                return null;
-            return (<RemoteConnectionErrorDialog host={host} status={status} onClose={() => setDetailHostId(null)} onManage={onManage} onRetry={() => onConnect?.(host)}/>);
-        })()}
-    </span>);
-}
-export type { StatusBarLabelStyle as StatusBarLabelStyle } from "./status_bar_helpers";
-export { nowRate as nowRate } from "./status_bar_helpers";
-export { avgRate as avgRate } from "./status_bar_helpers";
-export { contextAvgRate as contextAvgRate } from "./status_bar_helpers";
-export { rateValueClass as rateValueClass } from "./status_bar_helpers";
 export { formatTokenCount as formatTokenCount } from "./status_bar_helpers";
 export { formatTurnCount as formatTurnCount } from "./status_bar_helpers";
 export { formatTps as formatTps } from "./status_bar_helpers";

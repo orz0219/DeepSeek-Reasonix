@@ -225,10 +225,18 @@ func runOne(ctx context.Context, command string, opts ProbeOptions) ProbeResult 
 	} else {
 		found, err := exec.LookPath(parts[0])
 		if err != nil {
-			res.Error = "not found"
-			return res
+			// GUI-launched processes inherit a minimal PATH, so tools outside
+			// the system paths are missed; resolve via the login shell before
+			// declaring the tool missing (the result still passes DenyRoots).
+			if alt := loginShellLookup(ctx, parts[0], opts); alt != "" {
+				exe = alt
+			} else {
+				res.Error = "not found"
+				return res
+			}
+		} else {
+			exe = found
 		}
-		exe = found
 	}
 	if blockedExecutable(exe, opts.DenyRoots) {
 		res.Error = "not trusted"
@@ -269,6 +277,106 @@ func runOne(ctx context.Context, command string, opts ProbeOptions) ProbeResult 
 	res.Found = true
 	res.Output = firstLine(out)
 	return res
+}
+
+// loginShellLookup resolves bin through the login environment when the direct
+// PATH lookup fails: on darwin/linux a login shell loads the profile PATH
+// (Homebrew, cargo) that GUI processes lack; on windows the direct lookup
+// almost always succeeds and where.exe is a safety net. Returns "" when the
+// tool is genuinely unavailable.
+func loginShellLookup(ctx context.Context, bin string, opts ProbeOptions) string {
+	switch runtime.GOOS {
+	case "windows":
+		return lookupWindows(ctx, bin, opts)
+	default:
+		return lookupLoginShell(ctx, bin, defaultLoginShells(), opts)
+	}
+}
+
+// defaultLoginShells are the login shells tried in order on POSIX hosts.
+// The list is intentionally conservative: no $SHELL env dependency (GUI
+// processes may not carry it), and no interactive-only shells.
+func defaultLoginShells() []string {
+	return []string{"/bin/zsh", "/bin/bash", "/bin/sh"}
+}
+
+// lookupLoginShell runs `shell -lc 'command -v <bin>'` for each shell until
+// one resolves an absolute executable path. bin is single-quoted so it can
+// never break out of the command line.
+func lookupLoginShell(ctx context.Context, bin string, shells []string, opts ProbeOptions) string {
+	cmdLine := "command -v " + shellQuote(bin)
+	for _, shell := range shells {
+		if !fileExecutable(shell) {
+			continue
+		}
+		out := runProbeCapture(ctx, opts, shell, "-lc", cmdLine)
+		if p := firstAbsoluteExecutable(out); p != "" {
+			return p
+		}
+	}
+	return ""
+}
+
+// lookupWindows resolves bin via where.exe, with a PowerShell Get-Command
+// fallback. where.exe prints localized "not found" notices on failure, so
+// output is validated as an absolute executable path rather than by exit
+// code.
+func lookupWindows(ctx context.Context, bin string, opts ProbeOptions) string {
+	out := runProbeCapture(ctx, opts, "where.exe", bin)
+	if p := firstAbsoluteExecutable(out); p != "" {
+		return p
+	}
+	escaped := strings.ReplaceAll(bin, "'", "''")
+	out = runProbeCapture(ctx, opts, "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+		"(Get-Command '"+escaped+"' -ErrorAction SilentlyContinue).Source")
+	return firstAbsoluteExecutable(out)
+}
+
+// runProbeCapture runs argv with the probe environment, timeout and process
+// hygiene, and returns trimmed stdout. Stderr is discarded: login shells may
+// write profile diagnostics there without affecting `command -v` output.
+func runProbeCapture(ctx context.Context, opts ProbeOptions, argv ...string) string {
+	if len(argv) == 0 {
+		return ""
+	}
+	cmdCtx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(cmdCtx, argv[0], argv[1:]...)
+	cmd.Env = secrets.ProcessEnv()
+	prepareProbeCommand(cmd)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stdout
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(stdout.String())
+}
+
+// firstAbsoluteExecutable returns the first line of out that is an absolute
+// path to a non-directory file (an executable on POSIX, any where.exe match
+// on Windows). It ignores diagnostics and localized "not found" notices.
+func firstAbsoluteExecutable(out string) string {
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || !filepath.IsAbs(line) {
+			continue
+		}
+		fi, err := os.Stat(line)
+		if err != nil || fi.IsDir() {
+			continue
+		}
+		if runtime.GOOS == "windows" || fi.Mode()&0o111 != 0 {
+			return line
+		}
+	}
+	return ""
+}
+
+// shellQuote wraps s in single quotes so it is a literal operand in sh
+// (`command -v '<s>'`), with embedded quotes escaped per POSIX rules.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 func prepareProbeCommand(cmd *exec.Cmd) {

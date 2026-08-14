@@ -1,4 +1,4 @@
-import type { RemoteConnectionStatus, RemoteServerView, RemoteForwardsEvent, TabMetaRefreshEvent, TopicActivationEvent, SessionRecoveryEvent, WireEvent } from "./types";
+import type { TabMetaRefreshEvent, TopicActivationEvent, SessionRecoveryEvent, WireEvent } from "./types";
 import { realApp, mockSubscribe } from "./bridge";
 // Must match desktop/app.go's eventChannel constant.
 export const EVENT_CHANNEL = "agent:event";
@@ -221,42 +221,6 @@ export function onSessionRecovered(cb: (payload: SessionRecoveryEvent) => void):
     }
     return () => { };
 }
-export function onRemoteStatus(cb: (s: RemoteConnectionStatus) => void): () => void {
-    if (realApp() && typeof window !== "undefined" && window.runtime) {
-        return window.runtime.EventsOn("remote:status", (payload?: unknown) => cb((payload ?? {}) as RemoteConnectionStatus));
-    }
-    return registerMockRemoteListener("status", cb as (v: unknown) => void);
-}
-export function onRemoteForwards(cb: (e: RemoteForwardsEvent) => void): () => void {
-    if (realApp() && typeof window !== "undefined" && window.runtime) {
-        return window.runtime.EventsOn("remote:forwards", (payload?: unknown) => cb((payload ?? {}) as RemoteForwardsEvent));
-    }
-    return registerMockRemoteListener("forwards", cb as (v: unknown) => void);
-}
-export function onRemoteServer(cb: (s: RemoteServerView) => void): () => void {
-    if (realApp() && typeof window !== "undefined" && window.runtime) {
-        return window.runtime.EventsOn("remote:server", (payload?: unknown) => cb((payload ?? {}) as RemoteServerView));
-    }
-    return registerMockRemoteListener("server", cb as (v: unknown) => void);
-}
-// Mock event fan-out so browser-dev and tsx tests can drive remote:* events
-// without a Wails runtime.
-type MockRemoteChannel = "status" | "forwards" | "server";
-const mockRemoteListeners: Record<MockRemoteChannel, Set<(v: unknown) => void>> = {
-    status: new Set(),
-    forwards: new Set(),
-    server: new Set(),
-};
-function registerMockRemoteListener(ch: MockRemoteChannel, cb: (v: unknown) => void): () => void {
-    mockRemoteListeners[ch].add(cb);
-    return () => mockRemoteListeners[ch].delete(cb);
-}
-export function __emitMockRemote(ch: MockRemoteChannel, payload: unknown): void {
-    for (const cb of mockRemoteListeners[ch])
-        cb(payload);
-}
-// app proxies each call to the live binding (or the dev mock only when truly
-// outside the shell), so a late-injected window.go is picked up transparently.
 export function bridgeBreadcrumb(method: string): string {
     if (/^(Submit|SubmitDisplay|RunShell|Steer|Cancel|Approve|AnswerQuestion|ReplayPendingPrompts)/.test(method))
         return `turn ${method}`;

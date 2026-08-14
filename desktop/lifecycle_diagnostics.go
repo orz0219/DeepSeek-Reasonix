@@ -92,7 +92,7 @@ func newDesktopLifecycleTracker(root, appVersion, appChannel string) *desktopLif
 }
 
 func prepareDesktopDiagnostics(app *App) {
-	if app == nil || app.remoteWindowTicket != "" || version == "dev" {
+	if app == nil || version == "dev" {
 		return
 	}
 	root := config.MemoryUserDir()
@@ -130,7 +130,7 @@ func (a *App) releaseDesktopDiagnosticsOwnership() {
 }
 
 func initializeLifecycleDiagnostics(app *App) {
-	if app == nil || app.remoteWindowTicket != "" || !app.diagnosticsOwner {
+	if app == nil || !app.diagnosticsOwner {
 		return
 	}
 	if !app.diagnosticsConfigLoaded || version == "dev" {

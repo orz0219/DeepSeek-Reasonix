@@ -185,31 +185,6 @@ func singleInstanceID() string {
 // from chat runtimes: terminal lifecycle must never acquire App.mu or the
 // controller rebuild locks while process I/O is blocked.
 
-// Remote SSH module: the manager is created lazily on the first remote
-// binding call and closed on shutdown.
-
-// Remote web windows (SSH Serve child processes). The main process tracks
-// the live child plus transient handoff processes for each host. Host-scoped
-// lifecycle operations are generation-fenced and serialized so an overlapping
-// disconnect/stop cannot miss a window that is still being spawned. Closing a
-// window releases only its registration, while the remote Serve and the SSH
-// connection keep running. The child deliberately skips local runtimes.
-
-// test-only injection
-// remoteWindowTicket/remoteWindowHostKey are set from argv before Wails
-// starts in a child process. They gate the blank-shell middleware and the
-// startup branches so the child never initializes local runtimes.
-
-// remoteWindowOwnerID scopes child single-instance locks to one primary
-// Desktop process. remoteWindowParentPID is set only in children and lets
-// them exit when that owner (and therefore its SSH tunnel) disappears.
-
-// remoteWindowMu serializes ticket consumption and navigation in a child
-// process so a handoff arriving before domReady cannot be overridden by the
-// initial ticket (or vice versa). remoteWindowTicketConsumed makes the
-// initial handoff idempotent because WebKit fires OnDomReady again after the
-// shell navigates to the remote Serve page.
-
 // promptHistoryTape is a lazy, cursor-addressed view of prompt history. It
 // stores session order and per-session parsed entries only after that session is
 // reached by ↑ navigation. See ScanPromptHistory.
@@ -256,8 +231,6 @@ func NewApp() *App {
 		runtimeBySessionKey: map[string]*desktopSessionRuntime{},
 		detachedSessions:    map[string]*WorkspaceTab{},
 		mediaTokens:         newMediaTokenStore(),
-		remoteWindows:       newRemoteWindowRegistry(),
-		remoteWindowOwnerID: newRemoteWindowOwnerID(),
 	}
 	a.workspaceHub = newWorkspaceChangeHub(a)
 	a.terminals = newTerminalManager(a)

@@ -33,7 +33,6 @@ type Config struct {
 	LSP              LSPConfig           `toml:"lsp"`
 	Serve            ServeConfig         `toml:"serve"`
 	Secrets          SecretsConfig       `toml:"secrets"`
-	Remote           RemoteConfig        `toml:"remote"`
 
 	systemPromptFileSource     promptFileSource
 	providerSources            map[string]providerSourceScope

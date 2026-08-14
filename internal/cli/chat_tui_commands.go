@@ -105,9 +105,6 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 	case "/mcp":
 		m.echoLocalCommand(input)
 		m.runMCPSubcommand(input)
-	case "/remote":
-		m.echoLocalCommand(input)
-		m.showRemoteHosts()
 	case "/plugin", "/plugins":
 		m.echoLocalCommand(input)
 		m.runPluginSubcommand(input)

@@ -193,39 +193,6 @@ type App struct {
 	// controller rebuild locks while process I/O is blocked.
 	terminals *terminalManager
 
-	// Remote SSH module: the manager is created lazily on the first remote
-	// binding call and closed on shutdown.
-	remoteMu      sync.Mutex
-	remoteRuntime remoteKernel
-
-	// Remote web windows (SSH Serve child processes). The main process tracks
-	// the live child plus transient handoff processes for each host. Host-scoped
-	// lifecycle operations are generation-fenced and serialized so an overlapping
-	// disconnect/stop cannot miss a window that is still being spawned. Closing a
-	// window releases only its registration, while the remote Serve and the SSH
-	// connection keep running. The child deliberately skips local runtimes.
-	remoteWindows          *remoteWindowRegistry
-	remoteWindowLifecycles remoteWindowLifecycleRegistry
-	remoteWindowOpener     func(remoteWindowLaunch) error // test-only injection
-	// remoteWindowTicket/remoteWindowHostKey are set from argv before Wails
-	// starts in a child process. They gate the blank-shell middleware and the
-	// startup branches so the child never initializes local runtimes.
-	remoteWindowTicket  string
-	remoteWindowHostKey string
-	// remoteWindowOwnerID scopes child single-instance locks to one primary
-	// Desktop process. remoteWindowParentPID is set only in children and lets
-	// them exit when that owner (and therefore its SSH tunnel) disappears.
-	remoteWindowOwnerID   string
-	remoteWindowParentPID int
-	// remoteWindowMu serializes ticket consumption and navigation in a child
-	// process so a handoff arriving before domReady cannot be overridden by the
-	// initial ticket (or vice versa). remoteWindowTicketConsumed makes the
-	// initial handoff idempotent because WebKit fires OnDomReady again after the
-	// shell navigates to the remote Serve page.
-	remoteWindowMu             sync.Mutex
-	remoteWindowTicketConsumed bool
-	remoteWindow               *remoteWindowLaunch
-
 	// promptHistoryTape is a lazy, cursor-addressed view of prompt history. It
 	// stores session order and per-session parsed entries only after that session is
 	// reached by ↑ navigation. See ScanPromptHistory.
@@ -270,11 +237,6 @@ func (a *App) startup(ctx context.Context) {
 	initializeLifecycleDiagnostics(a)
 	a.startWindowsWebView2StartupFallback(ctx)
 	a.lifecycle.tracker.markAsync("ready")
-	if a.remoteWindowTicket != "" {
-
-		a.watchRemoteWindowOwner(ctx)
-		return
-	}
 	installSystemQuitHook()
 	a.startTray()
 	a.enableDeferredRebuildRetry()
@@ -302,10 +264,6 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) beforeClose(ctx context.Context) bool {
-	if a.remoteWindowTicket != "" {
-
-		return false
-	}
 	if a.forceQuit.Swap(false) || consumeSystemQuitRequested() {
 		return false
 	}
@@ -554,11 +512,6 @@ func (a *App) snapshotAllTabs() {
 
 // shutdown snapshots all tabs, saves the final window geometry, and closes tabs.
 func (a *App) shutdown(context.Context) {
-	if a.remoteWindowTicket != "" {
-
-		return
-	}
-
 	a.shuttingDown.Store(true)
 	a.cancelAllTabBuilds()
 	a.stopSessionCatalog(250 * time.Millisecond)
@@ -572,11 +525,6 @@ func (a *App) shutdown(context.Context) {
 func (a *App) domReady(_ context.Context) {
 
 	repairWebKitSignalHandlers()
-
-	if a.remoteWindowTicket != "" {
-		a.domReadyRemoteWindow()
-		return
-	}
 
 	state, ok := loadWindowState()
 	if ok {

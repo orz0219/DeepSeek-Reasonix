@@ -8,7 +8,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"reasonix/internal/agent"
-	"reasonix/internal/config"
 	"reasonix/internal/control"
 	"reasonix/internal/i18n"
 	"reasonix/internal/provider"
@@ -141,34 +140,6 @@ func (m *chatTUI) showMCPStatus() {
 // notice queues a dim informational line to scrollback.
 func (m *chatTUI) notice(note string) {
 	m.commitLine(dim("  · " + note))
-}
-
-// showRemoteHosts renders a read-only summary of configured remote hosts. The
-// remote session lives in a `reasonix serve` on the remote host, so connecting
-// happens from a terminal (`reasonix remote connect`), not inside this chat.
-func (m *chatTUI) showRemoteHosts() {
-	cfg, err := config.Load()
-	if err != nil {
-		m.notice(err.Error())
-		return
-	}
-	if len(cfg.Remote.Hosts) == 0 {
-		m.notice(i18n.M.RemoteNoHostsHint)
-		return
-	}
-	var b strings.Builder
-	for _, h := range cfg.Remote.Hosts {
-		target := h.Host
-		if h.User != "" {
-			target = h.User + "@" + target
-		}
-		if h.Port != 0 && h.Port != 22 {
-			target = fmt.Sprintf("%s:%d", target, h.Port)
-		}
-		fmt.Fprintf(&b, "  · %s  %s\n", h.Name, target)
-	}
-	fmt.Fprintf(&b, "  run `reasonix remote connect <name>` in a terminal to open the remote workspace")
-	m.commitLine(dim(b.String()))
 }
 
 // resolveRefs resolves a line's @references off the event loop via the

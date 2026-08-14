@@ -25,10 +25,6 @@ func (a *App) shutdownBody() {
 	if a.workspaceHub != nil {
 		a.workspaceHub.close()
 	}
-	// A real quit terminates web windows whose tunnels die with this process.
-	// Remote Serve stays resident; background tray close never reaches shutdown
-	// and therefore keeps those windows alive.
-	a.closeAllRemoteWindows()
 	// Run after controller teardown (and after its deferred lifecycle unlocks)
 	// so every accepted usage record reaches disk before a normal app exit.
 	defer func() {
@@ -43,7 +39,6 @@ func (a *App) shutdownBody() {
 	if a.heartbeat != nil {
 		a.heartbeat.Stop()
 	}
-	a.stopRemoteRuntime()
 	a.stopTray()
 	// Terminal process shutdown is independent from controller teardown. Do it
 	// before acquiring runtime lifecycle locks so a slow PTY cannot delay while
