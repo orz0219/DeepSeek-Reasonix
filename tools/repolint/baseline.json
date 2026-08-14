@@ -81,10 +81,6 @@
     "desktop/external_opener_windows_helpers.go": {
       "essay": 6
     },
-    "desktop/heartbeat.go": {
-      "essay": 20,
-      "function-size": 23
-    },
     "desktop/history_slice.go": {
       "banner": 2,
       "essay": 54
@@ -1563,9 +1559,6 @@
       "essay": 13
     },
     "internal/skill/tools.go": {
-      "essay": 2
-    },
-    "internal/stats/query.go": {
       "essay": 2
     },
     "internal/stats/record.go": {

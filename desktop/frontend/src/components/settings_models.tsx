@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { app } from "../lib/bridge";
 import { useT } from "../lib/i18n";
@@ -7,22 +7,20 @@ import { cachedFetchProviderModels, shouldSkipAutoRefresh } from "../lib/provide
 import type { ProviderModelCatalogUpdate, ProviderView, SettingsView } from "../lib/types";
 import { AnchoredPopover } from "./AnchoredPopover";
 import { allRefs, toRef, EFFORT_PRESETS, COMPACT_RATIO_PRESETS, ProxyMode } from "./settings_normalize";
-import { ModelsSectionProps, providerAccessGroups, ProviderAccessGroup, SettingsSection, SettingsField, ProvidersSection, UsageStatsPanel, providerGroupID, providerGroupLabel } from "./SettingsPanel";
+import { ModelsSectionProps, providerAccessGroups, ProviderAccessGroup, SettingsSection, SettingsField, ProvidersSection, providerGroupID, providerGroupLabel } from "./SettingsPanel";
 export function ModelsSection({ s, busy, apply, backgroundApply, initialFocus }: ModelsSectionProps) {
     const t = useT();
-    const [subtab, setSubtab] = useState<"usage" | "access" | "stats">(initialFocus?.target === "model-access"
+    const [subtab, setSubtab] = useState<"usage" | "access">(initialFocus?.target === "model-access"
         ? "access"
-        : initialFocus?.target === "model-stats"
-            ? "stats"
-            : "usage");
+        : "usage");
     // The command palette may re-target this section while the settings panel is
     // already open (the subtab state is not remounted by a tab change). Each
     // freshly allocated focus request runs this effect once, including repeated
     // requests for the same target after the user changes subtabs.
     useEffect(() => {
-        if (initialFocus?.target !== "model-access" && initialFocus?.target !== "model-stats")
+        if (initialFocus?.target !== "model-access")
             return;
-        setSubtab(initialFocus.target === "model-access" ? "access" : "stats");
+        setSubtab("access");
     }, [initialFocus?.target, initialFocus?.requestId]);
     const autoRefreshKeyRef = useRef("");
     const autoRefreshGenerationRef = useRef(0);
@@ -207,9 +205,6 @@ export function ModelsSection({ s, busy, apply, backgroundApply, initialFocus }:
         <button type="button" className={`settings-subtab${subtab === "access" ? " settings-subtab--active" : ""}`} aria-selected={subtab === "access"} onClick={() => setSubtab("access")}>
           {t("settings.modelTab.access")}
         </button>
-        <button type="button" className={`settings-subtab${subtab === "stats" ? " settings-subtab--active" : ""}`} aria-selected={subtab === "stats"} onClick={() => setSubtab("stats")}>
-          {t("settings.modelTab.stats")}
-        </button>
       </div>
 
       {subtab === "usage" ? (<>
@@ -315,9 +310,7 @@ export function ModelsSection({ s, busy, apply, backgroundApply, initialFocus }:
             </SettingsField>
             {compactRatioOverrideHint && <div className="provider-fetch-banner provider-fetch-banner--warn">{compactRatioOverrideHint}</div>}
           </SettingsSection>
-        </>) : subtab === "access" ? (<ProvidersSection s={s} busy={busy} apply={apply}/>) : (<Suspense fallback={<div className="empty">{t("settings.loading")}</div>}>
-          <UsageStatsPanel />
-        </Suspense>)}
+        </>) : (<ProvidersSection s={s} busy={busy} apply={apply}/>)}
     </>);
 }
 type ModelPickerOption = {

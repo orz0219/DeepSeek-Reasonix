@@ -36,9 +36,6 @@ func (a *App) shutdownBody() {
 	a.stopDeferredRebuildRetry()
 	a.stopHistoryIndexMigration()
 	a.stopMainThreadWatchdog()
-	if a.heartbeat != nil {
-		a.heartbeat.Stop()
-	}
 	a.stopTray()
 	// Terminal process shutdown is independent from controller teardown. Do it
 	// before acquiring runtime lifecycle locks so a slow PTY cannot delay while

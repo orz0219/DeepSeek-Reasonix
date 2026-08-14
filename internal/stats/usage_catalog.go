@@ -152,6 +152,15 @@ func CloseUsageCatalogs(ctx context.Context) error {
 	return first
 }
 
+func providerOf(modelRef string) string {
+	// model refs are "provider/model"; a bare model name (legacy configs) has
+	// no slash and is attributed to provider "default".
+	if i := strings.IndexByte(modelRef, '/'); i > 0 {
+		return modelRef[:i]
+	}
+	return "default"
+}
+
 func usageEntry(day string, r record) usagecatalog.Entry {
 	turns := 0
 	if r.Turn {

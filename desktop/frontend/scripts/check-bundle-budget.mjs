@@ -31,8 +31,6 @@ function assertBudget(label, actual, budget) {
 const initialJS = initialAssetPaths(".js");
 const initialCSS = initialAssetPaths(".css");
 if (!initialJS.length) throw new Error("no initial JavaScript assets found in dist/index.html");
-if (!initialCSS.length) throw new Error("no initial CSS assets found in dist/index.html");
-
 // main.tsx intentionally loads styles.css before mounting React so the inline
 // boot shell can paint without waiting for the full application stylesheet.
 // Vite emits that entry as styles-<hash>.css; keep it in the startup budget
@@ -43,7 +41,13 @@ const appShellCSS = readdirSync(resolve(distDir, "assets"))
 if (appShellCSS.length !== 1) {
   throw new Error(`expected exactly one deferred app-shell stylesheet, found ${appShellCSS.length}`);
 }
-if (initialCSS.some((path) => appShellCSS.includes(path))) {
+// No render-blocking stylesheet is expected anymore: the heartbeat panel's
+// heartbeat.css was the only statically-imported stylesheet in the initial
+// HTML path, and since its removal the app shell stylesheet is deferred
+// (styles.css?url) while every component stylesheet ships in its code-split
+// chunk. Keep the guard so a render-blocking stylesheet can never come back
+// without also passing the initial-CSS budget check below.
+if (initialCSS.length && initialCSS.some((path) => appShellCSS.includes(path))) {
   throw new Error("app-shell stylesheet must not block the inline boot shell's first paint");
 }
 

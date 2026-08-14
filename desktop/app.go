@@ -189,8 +189,6 @@ func singleInstanceID() string {
 // stores session order and per-session parsed entries only after that session is
 // reached by ↑ navigation. See ScanPromptHistory.
 
-// scheduled heartbeat tasks; nil until startup
-
 // diagnosticsOwner is acquired before Wails starts so Linux's OnStartup
 // ordering cannot let a second-instance handoff create lifecycle evidence.
 
@@ -248,7 +246,7 @@ func NewApp() *App {
 // lifecycle evidence. This remains correct on Linux where Wails invokes
 // OnStartup before its DBus single-instance handoff.
 
-// Remote web window child: no local tabs, tray, heartbeat, providers,
+// Remote web window child: no local tabs, tray, or providers,
 // or remote manager. domReady consumes the ticket and navigates; the
 // owner watcher closes the window if the primary Desktop disappears.
 

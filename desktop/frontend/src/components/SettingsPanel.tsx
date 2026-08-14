@@ -115,9 +115,6 @@ export { ToggleSegment as ToggleSegment } from "./ToggleSegment";
 export type SettingsInitialFocus = {
     target: "model-access";
     requestId?: number;
-} | {
-    target: "model-stats";
-    requestId: number;
 };
 type DesktopPlatform = "darwin" | "windows" | "linux";
 const MCPServersSettingsPage = lazy(() => import("./CapabilitiesPanel").then((module) => ({ default: module.MCPServersSettingsPage })));
@@ -127,7 +124,6 @@ const MemorySettingsPage = lazy(() => import("./MemoryPanel").then((module) => (
 const SubagentsSettingsPage = lazy(() => import("./SubagentsPanel").then((module) => ({ default: module.SubagentsSettingsPage })));
 const DiagnosticsSettingsPage = lazy(() => import("./DiagnosticsSettingsPage").then((module) => ({ default: module.DiagnosticsSettingsPage })));
 const StorageSettingsPage = lazy(() => import("./StorageSettingsPage").then((module) => ({ default: module.StorageSettingsPage })));
-export const UsageStatsPanel = lazy(() => import("./UsageStatsPanel").then((module) => ({ default: module.UsageStatsPanel })));
 export const QRCodeSVG = lazy(() => import("qrcode.react").then((module) => ({ default: module.QRCodeSVG })));
 // SettingsPanel is the desktop settings centre: a modal hosting settings pages and capability management.
 export function SettingsPanel({ onClose, onChanged, initialTab, initialFocus, agentRunning = false, desktopPlatform, onUseSubagent, activeWorkspaceKey = "", }: {

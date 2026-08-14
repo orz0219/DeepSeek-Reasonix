@@ -1,6 +1,6 @@
 // overlays owns the transient surfaces layered over the workspace — the command
-// palette, the settings panel's open target/focus, the shortcuts / heartbeat /
-// topic-export dialogs, sidebar search, the startup splash, and the onboarding
+// palette, the settings panel's open target/focus, the shortcuts / topic-export
+// dialogs, sidebar search, the startup splash, and the onboarding
 // gate — plus two imperative coordination signals (dismiss-all overlays, and
 // sidebar-search focus) that callers bump to trigger an effect downstream.
 //
@@ -28,7 +28,6 @@ export type OverlayState = {
   // contract as paletteSessions).
   paletteExtensionActions: ExtensionActionView[];
   shortcutsOpen: boolean;
-  heartbeatOpen: boolean;
   topicExportOpen: boolean;
   sidebarSearchOpen: boolean;
   sidebarSearchFocusSignal: number;
@@ -41,7 +40,6 @@ export type OverlayState = {
   setPaletteSessions: Dispatch<SetStateAction<SessionMeta[]>>;
   setPaletteExtensionActions: Dispatch<SetStateAction<ExtensionActionView[]>>;
   setShortcutsOpen: Dispatch<SetStateAction<boolean>>;
-  setHeartbeatOpen: Dispatch<SetStateAction<boolean>>;
   setTopicExportOpen: Dispatch<SetStateAction<boolean>>;
   setSidebarSearchOpen: Dispatch<SetStateAction<boolean>>;
   setSidebarSearchFocusSignal: Dispatch<SetStateAction<number>>;
@@ -57,7 +55,6 @@ export const useOverlayStore = create<OverlayState>((set) => ({
   paletteSessions: [],
   paletteExtensionActions: [],
   shortcutsOpen: false,
-  heartbeatOpen: false,
   topicExportOpen: false,
   sidebarSearchOpen: false,
   sidebarSearchFocusSignal: 0,
@@ -70,7 +67,6 @@ export const useOverlayStore = create<OverlayState>((set) => ({
   setPaletteSessions: (update) => set((s) => ({ paletteSessions: applySetState(s.paletteSessions, update) })),
   setPaletteExtensionActions: (update) => set((s) => ({ paletteExtensionActions: applySetState(s.paletteExtensionActions, update) })),
   setShortcutsOpen: (update) => set((s) => ({ shortcutsOpen: applySetState(s.shortcutsOpen, update) })),
-  setHeartbeatOpen: (update) => set((s) => ({ heartbeatOpen: applySetState(s.heartbeatOpen, update) })),
   setTopicExportOpen: (update) => set((s) => ({ topicExportOpen: applySetState(s.topicExportOpen, update) })),
   setSidebarSearchOpen: (update) => set((s) => ({ sidebarSearchOpen: applySetState(s.sidebarSearchOpen, update) })),
   setSidebarSearchFocusSignal: (update) => set((s) => ({ sidebarSearchFocusSignal: applySetState(s.sidebarSearchFocusSignal, update) })),

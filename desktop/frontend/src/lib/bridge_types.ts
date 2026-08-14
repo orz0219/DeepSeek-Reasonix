@@ -5,7 +5,7 @@ import type * as GeneratedApp from "../../wailsjs/go/main/App";
 import type { InvocationRequest } from "./invocationDisplay";
 import { type HistoryCatalogBindings } from "./historyCatalogBridge";
 import { type TaskCatalogBindings } from "./taskCatalogBridge";
-import type { BalanceInfo, UsageStatsRange, UsageStatsRequest, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, MemoryFact, MemorySuggestion, MemorySuggestionsView, MemoryView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
+import type { BalanceInfo, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, MemoryFact, MemorySuggestion, MemorySuggestionsView, MemoryView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
 // AppBindings is derived from the Wails-generated Go → TS method signatures, so
 // the compiler catches drift between the Go binding surface and the frontend mock.
 // Run `wails generate module` after adding/renaming a bound method on App, then
@@ -40,14 +40,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     ToggleMaximiseMainWindow(): Promise<void>;
     IsMainWindowMaximised(): Promise<boolean>;
     CloseMainWindow(): Promise<void>;
-    // ── Heartbeat ──
-    HeartbeatListTasks(): Promise<unknown>;
-    HeartbeatReloadTasks(): Promise<unknown>;
-    HeartbeatSaveTasks(tasks: unknown): Promise<void>;
-    HeartbeatReloadConfig(): Promise<unknown>;
-    HeartbeatSaveConfig(update: unknown): Promise<unknown>;
-    HeartbeatTriggerNow(id: string): Promise<void>;
-    HeartbeatGenerateID(): Promise<string>;
     Submit(input: string): Promise<void>;
     SubmitToTab(tabID: string, input: string): Promise<void>;
     SubmitToTabWithID(tabID: string, input: string, submissionID: string): Promise<void>;
@@ -230,7 +222,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     ContextUsageForTab(tabID: string): Promise<ContextInfo>;
     Balance(): Promise<BalanceInfo>;
     BalanceForTab(tabID: string): Promise<BalanceInfo>;
-    UsageStats(req: UsageStatsRequest): Promise<UsageStatsRange>;
     Jobs(): Promise<JobView[]>;
     ListTasks(): Promise<TaskSnapshot[]>;
     CurrentTaskSessionID(): Promise<string>;
@@ -464,6 +455,8 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     // (ask questions and plan approvals still wait; deny rules still apply).
     // Runtime-only.
     SetBypass(on: boolean): Promise<void>;
+    // Version is the -ldflags-injected build version shown in the Settings →
+    // About panel (kept after the self-updater removal; see desktop/app_state.go).
     Version(): Promise<string>;
     OpenUserConfigPath?(): Promise<void>;
     ReloadUserConfig?(): Promise<{

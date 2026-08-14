@@ -3,47 +3,6 @@ export type { ProjectTopicKey, ProjectTopicPage, ProjectTopicPageRequest, Projec
 export type { SessionMeta } from "./sessionMetaTypes";
 export type { HistoryIndexStatus, HistorySearchContextLine, HistorySearchContextRequest, HistorySearchHit, HistorySearchPage, HistorySearchRequest, HistorySessionPage, HistorySessionPageRequest } from "./historyCatalogTypes";
 export type { TaskActionRequest, TaskCatalogItem, TaskCatalogStatus, TaskEventPage, TaskEventPageRequest, TaskPage, TaskPageRequest } from "./taskCatalogTypes";
-// DailyTokenUsage is one day's token total, per-model split and turn count in
-// the daily trend series.
-export interface DailyTokenUsage {
-    day: string; // "2006-01-02"
-    total: number;
-    byModel: Record<string, number>; // model ref -> tokens
-    byProvider: Record<string, number>; // provider name -> tokens
-    requests: number; // API calls that day
-    turns: number;
-    cacheHit: number; // cached input tokens that day
-    cacheMiss: number; // uncached input tokens that day
-}
-// ModelTokenUsage is one model's aggregate within the range.
-export interface ModelTokenUsage {
-    model: string; // canonical "provider/model"
-    provider: string;
-    tokens: number;
-    percent: number; // 0..100
-}
-// ProviderTokenUsage is one provider's aggregate within the range.
-export interface ProviderTokenUsage {
-    provider: string;
-    tokens: number;
-    percent: number;
-}
-// UsageStatsRange is the full aggregate the settings panel renders.
-export interface UsageStatsRange {
-    from: string;
-    to: string;
-    tokens: number;
-    requests: number; // API calls
-    turns: number; // completed turns
-    cacheHit: number;
-    cacheMiss: number;
-    activeDays: number;
-    topModel: string;
-    topProvider: string;
-    daily: DailyTokenUsage[];
-    models: ModelTokenUsage[];
-    providers: ProviderTokenUsage[];
-}
 // JobView is one running background job (desktop/app.go Jobs) for the status bar.
 export interface JobView {
     id: string;
@@ -213,7 +172,6 @@ export type { ProviderModelCatalogUpdate as ProviderModelCatalogUpdate } from ".
 export type { ProviderPresetView as ProviderPresetView } from "./types_remote";
 export type { ProviderModelOverrideView as ProviderModelOverrideView } from "./types_remote";
 export type { BalanceInfo as BalanceInfo } from "./types_remote";
-export type { UsageStatsRequest as UsageStatsRequest } from "./types_remote";
 export type { JobCancelBatchView as JobCancelBatchView } from "./types_settings";
 export type { BackgroundRuntimeView as BackgroundRuntimeView } from "./types_settings";
 export type { WorkspaceConflictView as WorkspaceConflictView } from "./types_settings";

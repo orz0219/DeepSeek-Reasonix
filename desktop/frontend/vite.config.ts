@@ -101,7 +101,7 @@ const vendorHighlight = new RegExp(`${nodeModulePath}highlight\\.js(?:[\\/]|$)`)
 export default defineConfig({
   // errorRecovery tells lightningcss to skip unparseable rules instead of
   // failing the whole build. Vite 8 + lightningcss 1.32.0 can reject valid
-  // @keyframes in concatenated CSS bundles (heartbeat.css + styles.css).
+  // @keyframes in concatenated CSS bundles.
   css: {
     lightningcss: { errorRecovery: true },
   },

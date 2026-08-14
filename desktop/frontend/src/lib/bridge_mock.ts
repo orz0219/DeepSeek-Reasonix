@@ -7,7 +7,7 @@ import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems } from "./statusBarIt
 import { registerTrustedThemeBackgroundURLs } from "./themePack";
 import { modeWithAutoApproveTools, modeWithPlan, normalizeCollaborationMode, normalizeMode, normalizeTokenMode, normalizeToolApprovalMode } from "./types";
 import { decisionSurfaceMockFromInput, isLongDecisionOptionsMockInput } from "./decisionSurfaceMock";
-import type { UsageStatsRange, CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, MemorySuggestion, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
+import type { CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, MemorySuggestion, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
 import { withMockTabScope, delay, emit, mockScopedTabId, stripLegacyGoalBudgetFlags, mockToolApprovalModeAfterModeChange, mockPreviewImageDataURL, bumpMockTopicActivationCounter, setMockPendingTopicActivation, mockPendingTopicActivation, GLOBAL_PROJECT_ORDER_KEY } from "./bridge";
 import { AppBindings } from "./bridge_types";
 import { mockScenario, baseName, mockProviderPresetViews, browserPreviewBashSandboxMode, browserPreviewEffectiveShell, browserPlatformOverride, mockExternalOpenerIconDataURL, cloneMockProviderTemplate } from "./bridge_mock_helpers";
@@ -2022,11 +2022,6 @@ export function makeMockApp(): AppBindings {
         async BalanceForTab() {
             return this.Balance();
         },
-        async UsageStats() {
-            // Browser dev mock has no stats files; the panel does not consume
-            // provider aggregates, so keep this initial-bundle fallback lean.
-            return { from: "", to: "", tokens: 0, requests: 0, turns: 0, cacheHit: 0, cacheMiss: 0, activeDays: 0, topModel: "", daily: [], models: [] } as unknown as UsageStatsRange;
-        },
         async Jobs() {
             return []; // browser dev mock has no background jobs
         },
@@ -3461,14 +3456,6 @@ export function makeMockApp(): AppBindings {
             const normalized = lang === "zh" || lang === "en" ? lang : "auto";
             settings.agent = { ...settings.agent, reasoningLanguage: normalized };
         },
-        // ── Heartbeat mock ──
-        async HeartbeatListTasks() { return []; },
-        async HeartbeatReloadTasks() { return []; },
-        async HeartbeatSaveTasks(_tasks: unknown) { },
-        async HeartbeatReloadConfig() { return { revision: 0, etag: "", tasks: [] }; },
-        async HeartbeatSaveConfig(_update: unknown) { return { revision: 0, etag: "", tasks: [] }; },
-        async HeartbeatTriggerNow(_id: string) { },
-        async HeartbeatGenerateID() { return "mock-" + Date.now().toString(36); },
         async ListTasks() { return []; },
         async CurrentTaskSessionID() { return ""; },
         async ListTasksForSession() { return []; },

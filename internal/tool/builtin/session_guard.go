@@ -116,10 +116,6 @@ func (g SessionDataGuard) deniesSecurity(abs string) bool {
 // user's request is a legitimate flow with no autonomous rewriter racing it —
 // but settings.json is a security boundary, not a ledger, and is denied
 // separately by securityStateFile.
-// heartbeat-tasks.json stays writable too — it is documented as human- and
-// AI-editable (desktop/heartbeat.go, and the heartbeat panel tip says "AI
-// agents can also edit heartbeat-tasks.json"), so the product explicitly
-// accepts agent edits racing the engine there.
 func runtimeStateFile(name string) bool {
 	if strings.HasPrefix(name, "desktop-") {
 		return true // desktop-tabs.json(+.tmp), desktop-projects.json, desktop-window.json, desktop-workspace…

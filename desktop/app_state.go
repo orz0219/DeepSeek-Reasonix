@@ -202,7 +202,6 @@ type App struct {
 	skillRootsMu    sync.Mutex
 	skillRootsCache skillRootsCache
 
-	heartbeat *HeartbeatEngine // scheduled heartbeat tasks; nil until startup
 	lifecycle desktopLifecycleRuntime
 	// diagnosticsOwner is acquired before Wails starts so Linux's OnStartup
 	// ordering cannot let a second-instance handoff create lifecycle evidence.
@@ -227,6 +226,12 @@ func (a *App) Platform() string {
 	return goruntime.GOOS
 }
 
+// Version returns the build version injected via -ldflags (see main.go). The
+// desktop settings "About" page displays it; an un-injected dev build stays
+// "dev". It used to live on the removed self-updater surface, but the About
+// panel still needs it.
+func (a *App) Version() string { return version }
+
 // startup runs once the webview process is up, before the frontend can issue any
 // bound call. It captures the Wails context (needed for EventsEmit), then kicks
 // off the initialization in a background goroutine so the webview loads immediately.
@@ -249,9 +254,6 @@ func (a *App) startup(ctx context.Context) {
 
 	a.observeIncompleteWindowRestore()
 	a.startMainThreadWatchdog()
-
-	a.heartbeat = newHeartbeatEngine(a)
-	a.heartbeat.Start()
 
 	a.mu.Lock()
 	a.tabsRestored = make(chan struct{})

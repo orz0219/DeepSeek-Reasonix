@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ShellExpandProvider } from "./lib/shellExpand";
-import { Activity, Command, Download, Search, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, AlarmClock, BarChart3, Brain, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
+import { Activity, Command, Download, Search, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, Brain, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
 import { useToast } from "./lib/toast";
 import { useGoalActionHandler } from "./lib/goalAction";
 import { useWailsResizeFix } from "./lib/useWailsResizeFix";
@@ -31,7 +31,6 @@ import { AppChrome } from "./components/AppChrome";
 import { ShortcutsCheatsheet } from "./components/ShortcutsCheatsheet";
 import { ProjectTree } from "./components/ProjectTree";
 import { WorktreeBadge } from "./components/WorktreeBadge";
-import { HeartbeatPanel } from "./custom/features/heartbeat/HeartbeatPanel";
 import { CopyButton } from "./components/CopyButton";
 import { ExternalOpener, shouldMountExternalOpener } from "./components/ExternalOpener";
 import { startTerminalEventBridge } from "./lib/terminalEvents";
@@ -120,8 +119,6 @@ export default function App() {
     const setPaletteSessions = useOverlayStore((s) => s.setPaletteSessions);
     const sidebarCollapsed = useLayoutStore((s) => s.sidebarCollapsed);
     const setSidebarCollapsed = useLayoutStore((s) => s.setSidebarCollapsed);
-    const heartbeatOpen = useOverlayStore((s) => s.heartbeatOpen);
-    const setHeartbeatOpen = useOverlayStore((s) => s.setHeartbeatOpen);
     type TimeFilter = "all" | "10" | "20" | "1h" | "3h" | "5h" | "1d";
     const [topicTimeFilter, setTopicTimeFilter] = useState<TimeFilter>(() => {
         try {
@@ -2596,21 +2593,6 @@ export default function App() {
             },
             { id: "cmd-memory", group: t("palette.group.commands"), title: t("palette.cmd.memory"), icon: <Brain size={15}/>, compact: true, keywords: ["memory", "记忆"], run: () => setSettingsTarget("memory") },
             { id: "cmd-models", group: t("palette.group.commands"), title: t("palette.cmd.models"), icon: <Cpu size={15}/>, compact: true, keywords: ["model", "模型"], run: () => setSettingsTarget("models") },
-            {
-                id: "cmd-usage-stats",
-                group: t("palette.group.commands"),
-                title: t("palette.cmd.usageStats"),
-                icon: <BarChart3 size={15}/>,
-                compact: true,
-                keywords: ["usage", "stats", "statistics", "用量", "统计"],
-                run: () => {
-                    setSettingsFocus((current) => ({
-                        target: "model-stats",
-                        requestId: (current?.requestId ?? 0) + 1,
-                    }));
-                    setSettingsTarget("models");
-                },
-            },
             { id: "cmd-task-center", group: t("palette.group.commands"), title: t("palette.cmd.taskCenter"), icon: <Activity size={15}/>, compact: true, keywords: ["task", "tasks", "center", "任务", "任务中心"], run: () => setTasksOpen("all") },
             { id: "cmd-terminal", group: t("palette.group.commands"), title: t("rightDock.terminal"), icon: <TerminalSquare size={15}/>, compact: true, keywords: ["terminal", "shell", "终端"], run: () => toggleTerminalPanel() },
             {
@@ -2938,10 +2920,6 @@ export default function App() {
                   <Brain size={14} aria-hidden="true"/>
                   <span>{t("settings.tab.memory")}</span>
                 </button>
-                <button className="sidebar-feature-zone__item" type="button" onClick={() => setHeartbeatOpen(true)}>
-                  <AlarmClock size={14} aria-hidden="true"/>
-                  <span>{t("sidebar.automation")}</span>
-                </button>
               </div>
             </section>)}
 
@@ -2957,12 +2935,6 @@ export default function App() {
                   <button className="sidebar__utility-button" type="button" onClick={() => void openTrash()}>
                     <Trash2 size={16} aria-hidden="true"/>
                     <span className="sr-only">{t("sidebar.trash")}</span>
-                  </button>
-                </Tooltip>
-                <Tooltip label={t("heartbeat.scheduler")} fill side="top">
-                  <button className="sidebar__utility-button" type="button" onClick={() => setHeartbeatOpen(true)}>
-                    <AlarmClock size={16} aria-hidden="true"/>
-                    <span className="sr-only">{t("sidebar.automation")}</span>
                   </button>
                 </Tooltip>
                 <Tooltip label={t("topbar.settings")} fill side="top">
@@ -2991,12 +2963,6 @@ export default function App() {
                   <span>{t("sidebar.trash")}</span>
                 </button>
               </Tooltip>
-              {!sidebarCreation && (<Tooltip label={t("heartbeat.scheduler")} fill side="right" disabled={sidebarNavTooltipDisabled}>
-                  <button className="sidebar__navitem" onClick={() => setHeartbeatOpen(true)}>
-                    <AlarmClock size={15}/>
-                    <span>{t("sidebar.automation")}</span>
-                  </button>
-                </Tooltip>)}
               <Tooltip label={t("topbar.settings")} fill side="right" disabled={sidebarNavTooltipDisabled}>
                 <button className="sidebar__navitem" onClick={() => {
                 closeTransientOverlays();
@@ -3383,9 +3349,6 @@ export default function App() {
                 setNeedsOnboarding(false);
             }}/>)}
 
-      <HeartbeatPanel open={heartbeatOpen} onClose={() => setHeartbeatOpen(false)} onOpenTopic={(scope, workspaceRoot, topicId) => {
-            void handleOpenTopic(scope, workspaceRoot, topicId);
-        }}/>
       <Suspense fallback={null}><TranscriptSelectionMenu enabled={Boolean(activeTabId && !activeTab?.readOnly && !decisionSurface && !hydratePlaceholderActive)} resetKey={activeTabId ?? ""} onAddToChat={addSelectedTextToComposer}/>
       </Suspense>
       {windowsFramelessChrome && (<WindowsWindowControls maximised={mainWindowMaximised} syncMaximised={syncMainWindowMaximised}/>)}

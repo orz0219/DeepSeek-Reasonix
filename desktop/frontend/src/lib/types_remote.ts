@@ -325,16 +325,4 @@ export interface BalanceInfo {
     multiCurrency?: boolean;
     err?: string;
 }
-// ── Usage statistics (desktop/stats_app.go) ────────────────────────────────
-// UsageStatsRequest selects the aggregation range and optional entry-point
-// filter for the usage statistics panel. Range is "7" | "14" | "30" | "90" |
-// "custom"; custom requires from/to as "2006-01-02" (inclusive, local dates).
-// Source "" or "all" aggregates every entry point; "desktop" | "cli" | "serve"
-// | "bot" | "remote" filters to that source's records.
-export interface UsageStatsRequest {
-    range: string;
-    from?: string;
-    to?: string;
-    source?: string;
-}
 
