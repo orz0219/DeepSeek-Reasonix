@@ -46,24 +46,11 @@ var version = "dev"
 // preview for compatibility.
 var channel = "stable"
 
-// macSelfUpdate is injected as "true" only for Developer ID signed + notarized
-// macOS release builds. Local/ad-hoc macOS builds keep the manual download path.
-var macSelfUpdate = "false"
-
 const (
 	disableWebview2GPUEnv       = "REASONIX_DISABLE_WEBVIEW2_GPU"
 	legacyDisableWebview2GPUEnv = "REASONIX_DESKTOP_DISABLE_WEBVIEW2_GPU"
 	linuxDRIRenderNodeGlob      = "/dev/dri/renderD*"
 )
-
-func macSelfUpdateAllowed() bool {
-	switch strings.ToLower(strings.TrimSpace(macSelfUpdate)) {
-	case "1", "true", "yes", "on":
-		return true
-	default:
-		return false
-	}
-}
 
 func windowsWebview2GPUDisabled() bool {
 	for _, key := range []string{disableWebview2GPUEnv, legacyDisableWebview2GPUEnv} {
@@ -189,25 +176,4 @@ func main() {
 	if err != nil {
 		println("Error:", err.Error())
 	}
-}
-
-// desktopLaunchOptions captures legacy argv that old installers/shortcuts may
-// still pass. Fields are accepted and ignored so migration never crashes on
-// unknown product switches.
-type desktopLaunchOptions struct {
-	// LegacySafeModeArg is true when --safe-mode was present. v1.20+ ignores it.
-	LegacySafeModeArg bool
-}
-
-func parseDesktopLaunchArgs(args []string) desktopLaunchOptions {
-	var out desktopLaunchOptions
-	for _, arg := range args {
-		switch {
-		case arg == "--safe-mode" || arg == "-safe-mode":
-			out.LegacySafeModeArg = true
-		case arg == "launch" || arg == "--detach":
-			// Legacy launch tokens from old shortcuts. They produce no behavior.
-		}
-	}
-	return out
 }

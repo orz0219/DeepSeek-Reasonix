@@ -17,29 +17,6 @@ func (a *App) openTopicTab(scope, workspaceRoot, topicID, sessionPath string) (T
 	return a.openTopicTabWithActivation(scope, workspaceRoot, topicID, sessionPath, true)
 }
 
-func (a *App) openProjectTabInactive(workspaceRoot, topicID string) (TabMeta, error) {
-	if workspaceRoot == "" {
-		return TabMeta{}, fmt.Errorf("workspaceRoot is required")
-	}
-	if abs, err := filepath.Abs(workspaceRoot); err == nil {
-		workspaceRoot = abs
-	}
-	a.registerProjectRoot(workspaceRoot)
-
-	sessionPath, _ := a.findTopicSessionForTarget("project", workspaceRoot, topicID)
-	return a.openTopicTabWithActivation("project", workspaceRoot, topicID, sessionPath, false)
-}
-
-func (a *App) openGlobalTabInactive(topicID string) (TabMeta, error) {
-	globalRoot := globalWorkspaceRoot()
-	if err := os.MkdirAll(globalRoot, 0o755); err != nil {
-		return TabMeta{}, fmt.Errorf("create global workspace: %w", err)
-	}
-
-	sessionPath, _ := a.findTopicSessionForTarget("global", "", topicID)
-	return a.openTopicTabWithActivation("global", "", topicID, sessionPath, false)
-}
-
 func (a *App) openTopicTabWithActivation(scope, workspaceRoot, topicID, sessionPath string, activate bool) (TabMeta, error) {
 	actualRoot := workspaceRoot
 	if scope == "global" {

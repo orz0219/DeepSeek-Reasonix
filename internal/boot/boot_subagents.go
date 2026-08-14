@@ -100,18 +100,14 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 	addSessionTools()
 	addMemoryTools()
 
-	// The `ask` tool puts structured multiple-choice questions to the user. It
-	// reaches them through the Asker on the call context, which interactive
-	// frontends wire to the controller (EnableInteractiveApproval); a headless run
-	// has none, so ask resolves to "decide for yourself".
+	// `ask` puts structured multiple-choice questions to the user via the Asker
+	// on the call context; a headless run has none, so it resolves to
+	// "decide for yourself".
 	reg.Add(agent.NewAskTool())
 
-	// Skill tools: read_only_skill is a narrow explicitly read-only entry point; the
-	// full skills source adds run_skill / install_skill plus the dedicated
-	// subagent wrappers (explore / research / review / security_review). Read-only
-	// subagent skills run ephemerally with the same registry boundary as
-	// read_only_task, so they cannot write, install, mutate memory, resume/fork
-	// transcripts, or delegate further.
+	// Skill tools: read_only_skill is a narrow read-only entry; the full skills
+	// source adds run_skill plus subagent wrappers. Read-only subagent skills
+	// cannot write, install, mutate memory, or delegate further.
 	//
 	// subagentSkillOptions is the single construction point for skill sub-agent
 	// run options, so the read-only and writer-capable runners cannot drift on
@@ -204,11 +200,9 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 		return agent.RunReadOnlySubAgentWithSession(childCtx, prov, subReg, agent.NewSession(sysPrompt), task,
 			runOptions, agent.NestedSink(sctx, event.Discard))
 	}
-	// Writer-capable subagent skills reuse the sub-agent machinery via this
-	// runner: an isolated loop with the skill body as system prompt, a tool set
-	// scoped to the skill's allowed-tools (minus recursive meta-tools), optional
-	// per-skill model, and resumable transcripts when the parent session supports
-	// them. Its tool activity nests under the invoking call, like `task`.
+	// Writer-capable subagent skills run through an isolated loop with the skill
+	// body as system prompt and a tool set scoped to allowed-tools (minus
+	// recursive meta-tools); activity nests under the invoking call, like `task`.
 	skillRunner := func(sctx context.Context, sk skill.Skill, task string, runOpts skill.SubagentRunOptions) (string, error) {
 		// Writer skills without write_paths claim the whole workspace so they
 		// cannot race fleet/task writers that declared disjoint paths.
@@ -245,11 +239,10 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 			return "", fmt.Errorf("subagent delegation depth limit reached (max_subagent_depth=%d)", maxSubagentDepth)
 		}
 		// A read-only skill (builtin review/security-review, or frontmatter
-		// `read-only: true`) gets its promise enforced at the tool boundary:
-		// writer tools are stripped and bash runs under the read-only
-		// command policy. Transcripts recorded against the writer-capable
-		// registry stop matching on continue_from (schema-hash check reports
-		// the mismatch).
+		// `read-only: true`) is enforced at the tool boundary: writer tools are
+		// stripped and bash runs under the read-only command policy. Transcripts
+		// against the writer-capable registry stop matching on continue_from
+		// (schema-hash check reports the mismatch).
 		var subReg *tool.Registry
 		if sk.ReadOnly {
 			subReg = agent.ReadOnlySubagentToolRegistryForDepthWithRuntime(reg, sk.AllowedTools, childDepth, maxSubagentDepth, capRuntime)
@@ -274,10 +267,9 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 		parentSession := agent.ParentSession(sctx)
 		var run *agent.SubagentRun
 		if subagentStore == nil || parentSession == "" {
-			// Headless runs (e.g. `reasonix run`) have no persistent session to
-			// own a transcript. Run the skill sub-agent ephemerally, as before
-			// persisted transcripts existed, instead of failing. Continuation needs
-			// a persisted owner, so it errors here.
+			// Headless runs have no persistent session to own a transcript, so
+			// run the skill sub-agent ephemerally instead of failing; continuation
+			// needs a persisted owner and errors here.
 			if continueFrom != "" || legacyForkFrom != "" {
 				return "", fmt.Errorf("subagent continuation requires a persisted session; none is active in this run")
 			}
@@ -403,10 +395,9 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 				if opts.Stderr != nil {
 					spec.Stderr = opts.Stderr
 				}
-				// Applying an install plan is already an explicit user decision.
-				// Project-scoped installs retain project provenance, but record the
-				// exact durable launch grant now so neither this connection nor the
-				// next session asks the user to authorize the same install again.
+				// Applying an install plan is an explicit user decision; record the
+				// durable launch grant now so neither this connection nor the next
+				// session re-asks for the same install.
 				launchAuthorized := false
 				if spec.RequireLaunchApproval {
 					if err := plugin.AuthorizeSpecLaunch(ctx, spec); err != nil {
@@ -491,21 +482,15 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 		addSlashCommandTool(false)
 	}
 
-	// Session-shared MCP runtime: Host, specs, and connection snapshots. Each
+	// Session-shared MCP runtime: Host, specs, and connection snapshots; each
 	// agent gets its own use_capability frontend (ledger/audit isolation) while
-	// reusing processes. Delivery puts a frontend on the executor registry;
-	// dual-model Planner and all task/fleet sub-agents get their own frontends
-	// without inheriting dynamic mcp__* schemas.
-	var capLedger *capability.Ledger
-	var capAudit *capability.Audit
+	// reusing processes, without inheriting dynamic mcp__* schemas.
 	capSpecs := PluginSpecsForRootWithOptions(cfg.Plugins, root, pluginSpecOptions)
 	cachedTools, cacheKeyOK := capability.LoadCachedToolsForSpecs(capSpecs)
 	skillStore.ConfigureToolBindings(func(sk skill.Skill) []tool.MCPBinding {
 		return skillMCPBindings(sk, reg, capSpecs, cachedTools, cacheKeyOK)
 	})
 
-	bc.capLedger = capLedger
-	bc.capAudit = capAudit
 	bc.capSpecs = capSpecs
 	bc.cmds = cmds
 	bc.skillRunner = skillRunner

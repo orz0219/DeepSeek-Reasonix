@@ -357,7 +357,7 @@ func runProbeCapture(ctx context.Context, opts ProbeOptions, argv ...string) str
 // path to a non-directory file (an executable on POSIX, any where.exe match
 // on Windows). It ignores diagnostics and localized "not found" notices.
 func firstAbsoluteExecutable(out string) string {
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || !filepath.IsAbs(line) {
 			continue

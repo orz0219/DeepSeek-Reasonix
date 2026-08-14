@@ -28,6 +28,9 @@ import (
 
 // buildTools wires the tool layer: built-ins, MCP/plugin specs, LSP, the
 // permission policy and headless gate, hooks, and the sub-agent task tool.
+// It also persists the composed + skill-indexed prompt so buildAssemble
+// freezes the enhanced version (boot-split regression: without it the
+// memory and implicit-skill-index enhancements are dropped).
 func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 	sink := bc.sink
 	cfg := bc.cfg
@@ -106,11 +109,9 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 		bashMode = override
 	}
 	forbidReadRoots := RuntimeForbidReadRoots(cfg, root)
-	// managedConfig names the Reasonix-owned config FILES (config.toml,
-	// compatibility TOMLs, legacy v0.x config.json) the file-writers may repair
-	// outside the workspace after a fresh per-write human approval. The bash
-	// OS-sandbox write roots deliberately stay unwidened: config repair goes
-	// through the approval-gated file tools, not raw shell writes.
+	// managedConfig names the Reasonix-owned config FILES the file-writers may
+	// repair outside the workspace after per-write human approval; the bash
+	// OS-sandbox write roots deliberately stay unwidened.
 	managedConfig := builtin.NewManagedConfigPaths(config.ReasonixManagedConfigPaths())
 	bashSpec := sandbox.Spec{Mode: bashMode, WriteRoots: writeRoots, ForbidReadRoots: forbidReadRoots, Network: networkEnabled}
 	bashSpec.Shell = shell
@@ -150,10 +151,9 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 		pluginHost = plugin.NewHost()
 	}
 
-	// Enabled MCP servers enter the tool catalog at boot. Cached schemas
-	// register placeholders without starting processes; cache-miss servers get
-	// a single background catalog discovery. First real tool call uses
-	// EnsureConnected so parent/child/tab runtimes share one process.
+	// Enabled MCP servers enter the catalog at boot: cached schemas register
+	// placeholders without starting processes, cache-miss servers get one
+	// background discovery, and the first real call uses EnsureConnected.
 	pluginSpecOptions := PluginSpecOptions{
 		DefaultStartupTimeout: time.Duration(cfg.MCPStartupTimeoutSeconds()) * time.Second,
 		DefaultCallTimeout:    time.Duration(cfg.MCPCallTimeoutSeconds()) * time.Second,
@@ -235,10 +235,10 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 		}
 	}
 
-	// Host-session ExtraPlugins (for example ACP session servers) are explicit
-	// for this controller and still take a short readiness probe so recovery and
-	// session-scoped servers are deterministic. User/project config MCP stays
-	// catalog-first and process-idle until first real tool call.
+	// Host-session ExtraPlugins (e.g. ACP session servers) are explicit for
+	// this controller and take a short readiness probe so recovery and
+	// session-scoped servers are deterministic; config MCP stays catalog-first
+	// until first real use.
 	if len(extraSpecs) > 0 {
 		for _, s := range extraSpecs {
 			if pluginHost.HasClient(s.Name) {
@@ -371,15 +371,10 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 		subagentStore.WithDestroyedChecker(jm.IsDestroying)
 	}
 
-	// Permission policy gates every tool call. With no HeadlessApprovalMode
-	// (interactive bootstrap), the temporary gate preserves the legacy behavior
-	// until chat/desktop installs an interactive gate. A real headless caller
-	// such as `reasonix run` always supplies a mode: Ask fails closed, Auto
-	// allows ordinary writer fallbacks, and DontAsk denies them (#6927).
-	// The selected contract is also applied to sub-agents, so they cannot be a
-	// weaker path around the parent gate.
-	// Sub-agents always run headless: they have no UI to answer a prompt, so they
-	// inherit this same gate.
+	// Permission policy gates every tool call: a real headless caller supplies
+	// a mode (Ask fails closed, Auto allows writer fallbacks, DontAsk denies);
+	// sub-agents always run headless, so they cannot be a weaker path around
+	// the parent gate.
 	policy := permission.New(cfg.Permissions.Mode, cfg.Permissions.Allow, cfg.Permissions.Ask, cfg.Permissions.Deny).
 		WithAllowDynamicBashFallback(cfg.Permissions.AllowDynamicBash).
 		WithSessionAllow(opts.PermissionAllow)
@@ -399,11 +394,9 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 		resolvedHooks, root, hook.NewDefaultSpawner(hookRuntime),
 		func(msg string) { sink.Emit(event.Event{Kind: event.Notice, Level: event.LevelWarn, Text: msg}) },
 	)
-	// The `task` tool spawns sub-agents that reuse the parent's provider and
-	// tool registry. Wired here after the built-ins / plugins are loaded so
-	// sub-agents inherit the full tool set (minus `task` itself, to keep
-	// nesting out of the picture). It registers into the same reg the
-	// executor uses, so the model surfaces it like any other tool.
+	// The `task` tool spawns sub-agents reusing the parent's provider and tool
+	// registry; wired here after built-ins/plugins load so sub-agents inherit
+	// the full tool set (minus `task` itself).
 	resolveSubagentProvider := func(modelRef, effort string) (provider.Provider, *provider.Pricing, int, error) {
 		me := *entry
 		selectedRef := modelRefFromEntry(entry)
@@ -552,6 +545,7 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 
 	bc.mem = mem
 	bc.projectChecks = projectChecks
+	bc.sysPrompt = sysPrompt
 	bc.skillStore = skillStore
 	bc.skills = skills
 	bc.allSkillStore = allSkillStore

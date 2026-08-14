@@ -255,8 +255,6 @@ type bootContext struct {
 	sessionTemp             *sessiontemp.Manager
 	subagentStore           *agent.SubagentStore
 
-	capLedger           *capability.Ledger
-	capAudit            *capability.Audit
 	capSpecs            []plugin.Spec
 	cmds                []command.Command
 	skillRunner         func(sctx context.Context, sk skill.Skill, task string, runOpts skill.SubagentRunOptions) (string, error)

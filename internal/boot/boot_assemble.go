@@ -82,9 +82,9 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 	lspMgr := bc.lspMgr
 	configSpecs := bc.configSpecs
 	cleanup := bc.cleanup
-	capLedger := bc.capLedger
-	capAudit := bc.capAudit
 	capSpecs := bc.capSpecs
+	var capLedger *capability.Ledger
+	var capAudit *capability.Audit
 	cmds := bc.cmds
 	skillRunner := bc.skillRunner
 	skillProfile := bc.skillProfile

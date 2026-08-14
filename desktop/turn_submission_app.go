@@ -322,18 +322,6 @@ func (a *App) submitToTab(tabID, input string, submissionID ...string) error {
 	return nil
 }
 
-func (a *App) submitUserTurnToTabWithSink(tabID, input string, forwarder event.Sink) bool {
-	admission, ctrl, err := a.beginTabTurn(tabID)
-	if err != nil {
-		return false
-	}
-	defer admission.abort()
-	tab := admission.tab
-	a.ensureTabTopicIndexedForUserTurn(tab)
-	ctrl.SubmitUserTurn(input, input)
-	return admission.finish(ctrl)
-}
-
 // RunShell executes a shell command directly (bypassing the model) and streams
 // output as events on eventChannel.
 func (a *App) RunShell(command string) error {

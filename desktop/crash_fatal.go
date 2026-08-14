@@ -29,10 +29,6 @@ func fatalCrashPath() string {
 	return fatalCrashPathForPID(os.Getpid())
 }
 
-func fatalCrashCoveredPath() string {
-	return fatalCrashCoveredPathForPID(os.Getpid())
-}
-
 func fatalCrashPathForPID(pid int) string {
 	return filepath.Join(fatalCrashDir(), strconv.Itoa(pid)+fatalCrashLogSuffix)
 }
@@ -47,17 +43,6 @@ func legacyFatalCrashPath() string {
 
 func legacyFatalCrashCoveredPath() string {
 	return filepath.Join(config.MemoryUserDir(), legacyFatalCrashCoveredFile)
-}
-
-func markFatalCrashCovered() {
-	markFatalCrashCoveredForPID(os.Getpid())
-}
-
-func markFatalCrashCoveredForPID(pid int) {
-	path := fatalCrashCoveredPathForPID(pid)
-	if os.MkdirAll(filepath.Dir(path), 0o700) == nil {
-		_ = os.WriteFile(path, []byte("structured\n"), 0o600)
-	}
 }
 
 // capturePreviousFatalCrash manages runtime.SetCrashOutput dumps from dead
@@ -137,33 +122,6 @@ func captureFatalCrashFile(path, coveredPath string, removeEmpty bool) {
 	// reporting was removed. Clear any covered marker from earlier builds so
 	// the dump is not mistaken for already-consumed.
 	_ = os.Remove(coveredPath)
-}
-
-// sanitizeFatalRuntimeDump removes panic values and preamble text that could
-// originate in user-controlled errors, while retaining runtime classification
-// and symbolized goroutine stacks for diagnosis.
-func sanitizeFatalRuntimeDump(raw string) string {
-	lines := strings.Split(raw, "\n")
-	classification := "runtime crash output"
-	stackStart := -1
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		switch {
-		case strings.HasPrefix(trimmed, "fatal error:"):
-			classification = sanitizeCrashText(trimmed, 256)
-		case strings.HasPrefix(trimmed, "panic:"):
-			classification = "panic: [redacted panic value]"
-		}
-		if strings.HasPrefix(trimmed, "goroutine ") {
-			stackStart = i
-			break
-		}
-	}
-	stack := ""
-	if stackStart >= 0 {
-		stack = strings.Join(lines[stackStart:], "\n")
-	}
-	return sanitizeCrashText(classification+"\n\n"+stack, maxCrashStackBytes)
 }
 
 // installFatalCrashOutput asks the Go runtime to mirror unrecovered panics and

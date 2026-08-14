@@ -292,19 +292,6 @@ func (a *App) loadDesktopUserConfigForViewForRoot(root string) (*config.Config, 
 	return a.loadDesktopUserConfigReadOnlyForRoot(root, config.LoadForEditWithoutCredentialsReadOnlyStrict)
 }
 
-// loadDesktopUserConfigForViewWithCredentials is loadDesktopUserConfigForView
-// plus credential resolution: like config.LoadForEdit it loads Reasonix's
-// global .env into the process env. Use it for read-only loads whose result
-// feeds a runtime that resolves env-based secrets — MCP server connects. It
-// still never writes to disk.
-func (a *App) loadDesktopUserConfigForViewWithCredentials() (*config.Config, string, error) {
-	return a.loadDesktopUserConfigForViewWithCredentialsForRoot(a.activeWorkspaceRoot())
-}
-
-func (a *App) loadDesktopUserConfigForViewWithCredentialsForRoot(root string) (*config.Config, string, error) {
-	return a.loadDesktopUserConfigReadOnlyForRoot(root, config.LoadForEditReadOnlyStrict)
-}
-
 // loadDesktopUserConfigReadOnlyForRoot is the shared pure-read loader behind
 // the View variants: same shape as loadDesktopUserConfigForEdit, but every
 // legacy migration stays in memory (zero SaveTo) and resolves from root.

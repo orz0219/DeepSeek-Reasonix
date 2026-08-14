@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"reasonix/internal/control"
@@ -359,12 +358,4 @@ func (a *App) InboxHasItems(tabID string) (bool, error) {
 		return false, err
 	}
 	return len(ctrl.InboxSnapshot().Items) > 0, nil
-}
-
-// FormatInboxRecoveryNotice builds the recovery banner text.
-func FormatInboxRecoveryNotice(n int) string {
-	if n <= 0 {
-		return ""
-	}
-	return fmt.Sprintf("Recovered %d pending instruction(s). Inbox is paused — review before resuming.", n)
 }
