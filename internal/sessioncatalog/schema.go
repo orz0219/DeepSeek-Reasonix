@@ -126,6 +126,10 @@ CREATE INDEX IF NOT EXISTS idx_catalog_sessions_ordinary
 ON catalog_sessions(scope, workspace_root, ordinary_visible, last_activity_at DESC);
 `
 
+const migrationV8 = `
+ALTER TABLE catalog_topics ADD COLUMN locked INTEGER NOT NULL DEFAULT 0;
+`
+
 func sessionMigrations() []projectiondb.Migration {
 	return []projectiondb.Migration{
 		{Version: 1, Apply: func(ctx context.Context, tx *sql.Tx) error {
@@ -154,6 +158,10 @@ func sessionMigrations() []projectiondb.Migration {
 		}},
 		{Version: 7, Apply: func(ctx context.Context, tx *sql.Tx) error {
 			_, err := tx.ExecContext(ctx, migrationV7)
+			return err
+		}},
+		{Version: 8, Apply: func(ctx context.Context, tx *sql.Tx) error {
+			_, err := tx.ExecContext(ctx, migrationV8)
 			return err
 		}},
 	}

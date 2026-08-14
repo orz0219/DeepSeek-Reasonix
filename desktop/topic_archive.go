@@ -29,6 +29,70 @@ func (a *App) TrashTopic(topicID string) error {
 	return friendlySessionFileError(a.trashTopic(topicID))
 }
 
+// TrashAllTopics archives every conversation in the desktop project tree
+// (Global section and all projects). Topics marked as locked are skipped, so
+// locking acts as a per-conversation opt-out from bulk archiving. It returns
+// the number of topics archived plus the first error encountered (if any).
+func (a *App) TrashAllTopics() (int, error) {
+	f := loadProjectsFile()
+	deleted := map[string]bool{}
+	for _, topicID := range f.DeletedTopics {
+		deleted[topicID] = true
+	}
+	globalLocked := map[string]bool{}
+	for _, topicID := range f.GlobalLockedTopics {
+		globalLocked[topicID] = true
+	}
+	seen := map[string]bool{}
+	trashed := 0
+	var firstErr error
+	// A busy runtime lock is transient and would fail for every remaining
+	// topic, so stop early; other errors are skipped so one bad topic does
+	// not block the rest of the bulk archive.
+	archive := func(topicID string, locked map[string]bool) bool {
+		topicID = strings.TrimSpace(topicID)
+		if topicID == "" || seen[topicID] || deleted[topicID] || locked[topicID] {
+			return true
+		}
+		seen[topicID] = true
+		if err := a.trashTopic(topicID); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			return !errors.Is(err, errTopicArchiveBusy)
+		}
+		trashed++
+		return true
+	}
+	for _, topicID := range f.GlobalTopics {
+		if !archive(topicID, globalLocked) {
+			return trashed, firstErr
+		}
+	}
+	for _, topicID := range f.GlobalPinnedTopics {
+		if !archive(topicID, globalLocked) {
+			return trashed, firstErr
+		}
+	}
+	for _, project := range f.Projects {
+		projectLocked := map[string]bool{}
+		for _, topicID := range project.LockedTopics {
+			projectLocked[topicID] = true
+		}
+		for _, topicID := range project.Topics {
+			if !archive(topicID, projectLocked) {
+				return trashed, firstErr
+			}
+		}
+		for _, topicID := range project.PinnedTopics {
+			if !archive(topicID, projectLocked) {
+				return trashed, firstErr
+			}
+		}
+	}
+	return trashed, firstErr
+}
+
 func (a *App) topicHasActiveRuntimeWork(topicID string) bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()

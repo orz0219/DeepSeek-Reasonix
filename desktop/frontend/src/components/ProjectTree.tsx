@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
-import { Archive, ArrowDown, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, ListCollapse, ListRestart, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch } from "lucide-react";
+import { Archive, ArrowDown, Lock, Pencil, Plus, Folder, FolderPlus, Search, BriefcaseBusiness, Copy, FolderOpen, XCircle, ListCollapse, ListRestart, Clock, Pin, MoreHorizontal, Minimize2, Maximize2, GitBranch } from "lucide-react";
 import { asArray } from "../lib/array";
 import { useToast } from "../lib/toast";
 import { app } from "../lib/bridge";
@@ -79,6 +79,7 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
         action: "trash";
     } | null>(null);
     const [confirmRemoveProject, setConfirmRemoveProject] = useState<string | null>(null);
+    const [confirmArchiveAll, setConfirmArchiveAll] = useState(false);
     const [dragProjectRoot, setDragProjectRoot] = useState<string | null>(null);
     const [dropProject, setDropProject] = useState<{
         root: string;
@@ -139,6 +140,7 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
         setMenuPoint(null);
         setConfirmAction(null);
         setConfirmRemoveProject(null);
+        setConfirmArchiveAll(false);
         setWorkbenchHeaderMenu(null);
     }, []);
     const updateManuallyCollapsed = useCallback((updater: (prev: Set<string>) => Set<string>) => {
@@ -651,6 +653,34 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
             showToast(err instanceof Error ? err.message : String(err), "error");
         }
     };
+    const setTopicLocked = async (topicId: string, locked: boolean) => {
+        if (!topicId)
+            return;
+        try {
+            await app.SetTopicLocked(topicId, locked);
+            setMenuTopic(null);
+            setMenuPoint(null);
+            await refresh();
+            await onTopicsChanged?.();
+        }
+        catch (err) {
+            showToast(err instanceof Error ? err.message : String(err), "error");
+        }
+    };
+    const archiveAllTopics = async () => {
+        setConfirmArchiveAll(false);
+        closeMenu();
+        try {
+            const count = await app.TrashAllTopics();
+            await refresh();
+            await onTopicsChanged?.();
+            if (count > 0)
+                showToast(t("projectTree.archiveAllDone", { n: count }));
+        }
+        catch (err) {
+            showToast(err instanceof Error ? err.message : String(err), "error");
+        }
+    };
     const setProjectPinned = async (workspaceRoot: string, pinned: boolean) => {
         if (!workspaceRoot)
             return;
@@ -925,6 +955,8 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
             const topicMenuOpen = !isSessionNode && menuTopic === topicId;
             const pinned = Boolean(node.pinned);
             const pinLabel = t(pinned ? "projectTree.unpinTopic" : "projectTree.pinTopic");
+            const locked = Boolean(node.locked);
+            const lockLabel = t(locked ? "projectTree.unlockTopic" : "projectTree.lockTopic");
             const openTopicMenu = (event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>) => {
                 if (isSessionNode)
                     return;
@@ -1024,6 +1056,9 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
                 }}>
             <span className="project-tree__topic-copy">
               <span className="project-tree__topic-heading">
+                {locked && (<span className="project-tree__topic-lock" title={t("projectTree.lockedTopic")} aria-label={t("projectTree.lockedTopic")}>
+                    <Lock size={11} aria-hidden="true"/>
+                  </span>)}
                 <span className="project-tree__topic-label">{label}</span>
                 {!compactTopics && statusLabel && (!classicTopics || status === "paused" || status === "error") && (<span className={`project-tree__topic-status project-tree__topic-status--${status}`}>{statusLabel}</span>)}
               </span>
@@ -1045,6 +1080,15 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
           </button>
           {unread && <span className="project-tree__topic-unread-dot" aria-hidden="true"/>}
           {projectTreeShouldRenderTopicActions(isSessionNode, variant, unread) && (<span className="project-tree__topic-actions" aria-label={t("projectTree.topicActions")} onMouseEnter={classicTopics ? cancelHoverCard : undefined} onFocus={classicTopics ? cancelHoverCard : undefined}>
+              <Tooltip label={lockLabel} side="top" className="project-tree__topic-action-slot">
+                <button className={`project-tree__topic-action${locked ? " project-tree__topic-action--locked" : ""}`} type="button" aria-label={lockLabel} aria-pressed={locked} onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void setTopicLocked(topicId, !locked);
+                    }}>
+                  <Lock size={15} aria-hidden="true"/>
+                </button>
+              </Tooltip>
               <Tooltip label={pinLabel} side="top" className="project-tree__topic-action-slot">
                 <button className={`project-tree__topic-action${pinned ? " project-tree__topic-action--pinned" : ""}`} type="button" aria-label={pinLabel} aria-pressed={pinned} onClick={(event) => {
                         event.preventDefault();
@@ -1381,9 +1425,16 @@ export function ProjectTree({ activeScope, activeWorkspaceRoot, activeTopicId, a
         {
             key: "archive-all",
             icon: <Archive size={13}/>,
-            label: t("projectTree.archiveAllConversations"),
-            disabled: true,
-            onSelect: () => { },
+            label: confirmArchiveAll ? t("projectTree.confirmArchiveAllConversations") : t("projectTree.archiveAllConversations"),
+            danger: true,
+            onSelect: () => {
+                if (confirmArchiveAll) {
+                    void archiveAllTopics();
+                }
+                else {
+                    setConfirmArchiveAll(true);
+                }
+            },
         },
         { type: "separator", key: "organize-separator" },
         {

@@ -101,6 +101,7 @@ type TopicMetadata struct {
 	Title         string `json:"title"`
 	TitleSource   string `json:"titleSource,omitempty"`
 	Pinned        bool   `json:"pinned,omitempty"`
+	Locked        bool   `json:"locked,omitempty"`
 	SortOrder     int    `json:"sortOrder,omitempty"`
 	CreatedAt     int64  `json:"createdAt,omitempty"`
 }
@@ -167,6 +168,7 @@ type TopicRecord struct {
 	TopicID                      string     `json:"topicId"`
 	Title                        string     `json:"title"`
 	Pinned                       bool       `json:"pinned,omitempty"`
+	Locked                       bool       `json:"locked,omitempty"`
 	SortOrder                    int        `json:"sortOrder,omitempty"`
 	Turns                        int        `json:"turns"`
 	TurnsState                   TurnsState `json:"turnsState"`

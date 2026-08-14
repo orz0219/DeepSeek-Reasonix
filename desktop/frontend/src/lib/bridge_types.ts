@@ -511,7 +511,9 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     RenameTopic(topicID: string, title: string): Promise<void>;
     DeleteTopic(topicID: string): Promise<void>;
     TrashTopic(topicID: string): Promise<void>;
+    TrashAllTopics(): Promise<number>;
     SetTopicPinned(topicID: string, pinned: boolean): Promise<void>;
+    SetTopicLocked(topicID: string, locked: boolean): Promise<void>;
     ContextPanel(tabID: string): Promise<ContextPanelInfo>;
     // New native-feel bindings (added with the desktop native-feel plan).
     ConfirmAction(req: NativeConfirmRequest): Promise<boolean>;

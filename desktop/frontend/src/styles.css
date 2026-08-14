@@ -24314,6 +24314,17 @@ body > .mermaid-diagram--fullscreen {
   white-space: nowrap;
 }
 
+.project-tree__topic-lock {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  color: color-mix(in srgb, var(--fg-faint) 80%, var(--fg));
+}
+
+.project-tree__topic-lock svg {
+  display: block;
+}
+
 .project-tree__topic-im {
   flex: 0 1 auto;
   min-width: 0;
@@ -30137,6 +30148,15 @@ body > .mermaid-diagram--fullscreen {
 .sidebar--workbench .project-tree__topic-action--pinned:hover,
 .app--classic .project-tree__topic-action--pinned,
 .app--classic .project-tree__topic-action--pinned:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--accent-soft);
+}
+
+.sidebar--workbench .project-tree__topic-action--locked,
+.sidebar--workbench .project-tree__topic-action--locked:hover,
+.app--classic .project-tree__topic-action--locked,
+.app--classic .project-tree__topic-action--locked:hover {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   background: var(--accent-soft);

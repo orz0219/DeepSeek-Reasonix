@@ -120,6 +120,7 @@ export interface ProjectNode {
     running?: boolean;
     status?: ProjectTopicStatus;
     pinned?: boolean;
+    locked?: boolean;
     recovered?: boolean;
     recoveryReason?: string;
     recoveryDigest?: string;

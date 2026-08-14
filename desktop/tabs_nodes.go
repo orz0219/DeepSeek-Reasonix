@@ -33,6 +33,7 @@ type ProjectNode struct {
 	Running                      bool          `json:"running,omitempty"`
 	Status                       string        `json:"status,omitempty"`
 	Pinned                       bool          `json:"pinned,omitempty"`
+	Locked                       bool          `json:"locked,omitempty"`
 	Recovered                    bool          `json:"recovered,omitempty"`
 	RecoveryReason               string        `json:"recoveryReason,omitempty"`
 	RecoveryDigest               string        `json:"recoveryDigest,omitempty"`
@@ -664,6 +665,50 @@ func (a *App) SetTopicPinned(topicID string, pinned bool) error {
 			return false, nil
 		}
 		f.GlobalPinnedTopics = next
+		return true, nil
+	}); err != nil {
+		return err
+	}
+	a.emitProjectTreeMetadataChanged()
+	return nil
+}
+
+// SetTopicLocked controls whether a topic is marked as locked in the desktop
+// project tree. Locking is a display-only marker (a lock icon next to the
+// conversation); it does not restrict any operations.
+func (a *App) SetTopicLocked(topicID string, locked bool) error {
+	topicID = strings.TrimSpace(topicID)
+	if topicID == "" {
+		return fmt.Errorf("topicID is required")
+	}
+	if err := updateProjectsFile(func(f *desktopProjectFile) (bool, error) {
+		for i, p := range f.Projects {
+			m := loadTopicTitles(p.Root)
+			if _, ok := m[topicID]; !ok && !containsDesktopString(p.Topics, topicID) {
+				continue
+			}
+			next := removeString(f.Projects[i].LockedTopics, topicID)
+			if locked {
+				next = prependUniqueString(f.Projects[i].LockedTopics, topicID)
+			}
+			if sameStringList(next, f.Projects[i].LockedTopics) {
+				return false, nil
+			}
+			f.Projects[i].LockedTopics = next
+			return true, nil
+		}
+		globalTitles := loadTopicTitles("")
+		if _, ok := globalTitles[topicID]; !ok && !containsDesktopString(f.GlobalTopics, topicID) {
+			return false, fmt.Errorf("topic %q not found", topicID)
+		}
+		next := removeString(f.GlobalLockedTopics, topicID)
+		if locked {
+			next = prependUniqueString(f.GlobalLockedTopics, topicID)
+		}
+		if sameStringList(next, f.GlobalLockedTopics) {
+			return false, nil
+		}
+		f.GlobalLockedTopics = next
 		return true, nil
 	}); err != nil {
 		return err

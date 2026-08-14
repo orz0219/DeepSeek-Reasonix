@@ -51,10 +51,10 @@ func (c *Catalog) SyncMetadata(ctx context.Context, projects []ProjectRecord, to
 		// does not publish last_activity_at=0 / turns_state=valid and reorder the
 		// sidebar ahead of (or instead of) the authoritative session rows.
 		if _, err := tx.ExecContext(ctx, `INSERT INTO catalog_topics(
-            scope,workspace_root,topic_id,title,title_source,pinned,sort_order,
+            scope,workspace_root,topic_id,title,title_source,pinned,locked,sort_order,
             turns,turns_state,created_at,last_activity_at,recovery_state,health,metadata_present
         )
-        SELECT ?,?,?,?,?,?,?,
+        SELECT ?,?,?,?,?,?,?,?,
 			COALESCE((SELECT MAX(
 				COALESCE(SUM(CASE WHEN recovery_copy=0 AND recovered=0 AND turns_state='valid' THEN turns ELSE 0 END),0),
 				COALESCE(MAX(CASE WHEN recovery_copy=0 AND recovered=1 AND turns_state='valid' THEN turns ELSE 0 END),0)
@@ -82,7 +82,7 @@ func (c *Catalog) SyncMetadata(ctx context.Context, projects []ProjectRecord, to
             1
         ON CONFLICT(scope,workspace_root,topic_id) DO UPDATE SET
             title=CASE WHEN excluded.title<>'' THEN excluded.title ELSE catalog_topics.title END,
-            title_source=excluded.title_source,pinned=excluded.pinned,
+            title_source=excluded.title_source,pinned=excluded.pinned,locked=excluded.locked,
             sort_order=excluded.sort_order,metadata_present=1,
             created_at=CASE WHEN excluded.created_at>0 THEN excluded.created_at ELSE catalog_topics.created_at END,
             last_activity_at=CASE WHEN excluded.last_activity_at>catalog_topics.last_activity_at
@@ -92,7 +92,7 @@ func (c *Catalog) SyncMetadata(ctx context.Context, projects []ProjectRecord, to
                 THEN excluded.turns_state ELSE catalog_topics.turns_state END,
             recovery_state=excluded.recovery_state`,
 			topic.Scope, topic.WorkspaceRoot, topic.TopicID, topic.Title,
-			topic.TitleSource, topic.Pinned, topic.SortOrder,
+			topic.TitleSource, topic.Pinned, topic.Locked, topic.SortOrder,
 			topic.Scope, topic.WorkspaceRoot, topic.TopicID,
 			topic.Scope, topic.WorkspaceRoot, topic.TopicID,
 			topic.CreatedAt, topic.Scope, topic.WorkspaceRoot, topic.TopicID,

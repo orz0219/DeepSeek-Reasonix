@@ -22,6 +22,7 @@ type desktopProject struct {
 	Color        string   `json:"color,omitempty"`
 	Topics       []string `json:"topics"` // ordered topic IDs
 	PinnedTopics []string `json:"pinnedTopics,omitempty"`
+	LockedTopics []string `json:"lockedTopics,omitempty"`
 }
 
 type desktopProjectFile struct {
@@ -29,6 +30,7 @@ type desktopProjectFile struct {
 	GlobalColor        string           `json:"globalColor,omitempty"`
 	GlobalTopics       []string         `json:"globalTopics,omitempty"`
 	GlobalPinnedTopics []string         `json:"globalPinnedTopics,omitempty"`
+	GlobalLockedTopics []string         `json:"globalLockedTopics,omitempty"`
 	DeletedTopics      []string         `json:"deletedTopics,omitempty"`
 	PinnedProjects     []string         `json:"pinnedProjects,omitempty"`
 	SidebarOrder       []string         `json:"sidebarOrder,omitempty"`
@@ -408,6 +410,10 @@ func removeTopicFromProjectsFile(topicID string) error {
 			f.GlobalPinnedTopics = next
 			changed = true
 		}
+		if next := removeString(f.GlobalLockedTopics, topicID); !sameStringList(next, f.GlobalLockedTopics) {
+			f.GlobalLockedTopics = next
+			changed = true
+		}
 		if next := prependUniqueString(f.DeletedTopics, topicID); !sameStringList(next, f.DeletedTopics) {
 			f.DeletedTopics = next
 			changed = true
@@ -419,6 +425,10 @@ func removeTopicFromProjectsFile(topicID string) error {
 			}
 			if next := removeString(p.PinnedTopics, topicID); !sameStringList(next, p.PinnedTopics) {
 				f.Projects[i].PinnedTopics = next
+				changed = true
+			}
+			if next := removeString(p.LockedTopics, topicID); !sameStringList(next, p.LockedTopics) {
+				f.Projects[i].LockedTopics = next
 				changed = true
 			}
 		}

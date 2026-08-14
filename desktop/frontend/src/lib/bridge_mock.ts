@@ -455,6 +455,17 @@ export function makeMockApp(): AppBindings {
             return;
         }
     };
+    const setMockTopicLocked = (topicId: string, locked: boolean) => {
+        for (const parent of mockProjectTree) {
+            const children = projectChildren(parent);
+            const index = children.findIndex((child) => child.topicId === topicId);
+            if (index < 0)
+                continue;
+            const topic = { ...children[index], locked: locked || undefined };
+            parent.children = children.map((child, i) => (i === index ? topic : child));
+            return;
+        }
+    };
     const setMockProjectPinned = (workspaceRoot: string, pinned: boolean) => {
         const index = mockProjectTree.findIndex((node) => node.kind === "project" && node.root === workspaceRoot);
         if (index < 0)
@@ -3842,8 +3853,23 @@ export function makeMockApp(): AppBindings {
         async TrashTopic(topicID: string) {
             deleteMockTopic(topicID);
         },
+        async TrashAllTopics() {
+            let trashed = 0;
+            for (const parent of mockProjectTree) {
+                const children = projectChildren(parent);
+                const removable = children.filter((child) => !child.locked && child.topicId);
+                for (const child of removable) {
+                    deleteMockTopic(child.topicId as string);
+                    trashed++;
+                }
+            }
+            return trashed;
+        },
         async SetTopicPinned(topicID: string, pinned: boolean) {
             setMockTopicPinned(topicID, pinned);
+        },
+        async SetTopicLocked(topicID: string, locked: boolean) {
+            setMockTopicLocked(topicID, locked);
         },
         async SaveWindowState(_state) {
             // no-op in browser dev — no real window geometry to persist

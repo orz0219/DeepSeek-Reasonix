@@ -115,16 +115,19 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 	}
 	ids := f.GlobalTopics
 	pinnedIDs := f.GlobalPinnedTopics
+	lockedIDs := f.GlobalLockedTopics
 	titleRoot := ""
 	projectColor := normalizeProjectColor(f.GlobalColor)
 	if scope == "project" {
 		ids = nil
 		pinnedIDs = nil
+		lockedIDs = nil
 		titleRoot = workspaceRoot
 		for _, project := range f.Projects {
 			if sameProjectRoot(project.Root, workspaceRoot) {
 				ids = project.Topics
 				pinnedIDs = project.PinnedTopics
+				lockedIDs = project.LockedTopics
 				projectColor = project.Color
 				break
 			}
@@ -160,7 +163,8 @@ func (a *App) metadataProjectTopics(scope, workspaceRoot string) []ProjectNode {
 			Label: a.localizedTopicTitle(title, sources[topicID]), Root: workspaceRoot,
 			TopicID: topicID, ProjectColor: projectColor,
 			CreatedAt: topicCreatedAtForTree(created, topicID), Pinned: containsDesktopString(pinnedIDs, topicID),
-			Open: overlay.open, Running: overlay.running, Status: overlay.status,
+			Locked: containsDesktopString(lockedIDs, topicID),
+			Open:   overlay.open, Running: overlay.running, Status: overlay.status,
 			TurnsState: string(sessioncatalog.TurnsUnknown), Health: string(sessioncatalog.HealthOK),
 			Children: []ProjectNode{},
 		}
@@ -329,7 +333,7 @@ func (a *App) projectNodeFromCatalogTopic(topic sessioncatalog.TopicRecord, topi
 		Root: topic.WorkspaceRoot, TopicID: topic.TopicID, Turns: topic.Turns,
 		TurnsState: string(topic.TurnsState), Health: string(topic.Health),
 		CreatedAt: topic.CreatedAt, LastActivityAt: topic.LastActivityAt,
-		Pinned: topic.Pinned, Open: overlay.open, Running: overlay.running, Status: overlay.status,
+		Pinned: topic.Pinned, Locked: topic.Locked, Open: overlay.open, Running: overlay.running, Status: overlay.status,
 		// Ordinary tree is zero-config: never surface recovery counts, badges,
 		// or forced-handling status. History "other saved versions" owns that.
 		Children: []ProjectNode{},
