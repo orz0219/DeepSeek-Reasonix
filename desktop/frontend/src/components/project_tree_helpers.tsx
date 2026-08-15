@@ -245,39 +245,21 @@ export function classicTopicWindow(children: ProjectNode[], showAll: boolean): {
     };
 }
 export function splitPinnedProjectTree(nodes: ProjectNode[], sortMode: WorkbenchSortMode, includePinnedProjects = true): PinnedTreeSections {
-    const pinnedTopics: ProjectNode[] = [];
     const pinnedProjects: ProjectNode[] = [];
     const projects: ProjectNode[] = [];
     for (const node of nodes) {
         if (!node)
             continue;
         const isFolder = node.kind === "project" || node.kind === "global_folder";
-        if (!isFolder) {
-            if (node.pinned)
-                pinnedTopics.push(node);
-            else
-                projects.push(node);
-            continue;
-        }
-        if (includePinnedProjects && node.pinned && node.kind === "project") {
+        if (includePinnedProjects && isFolder && node.pinned && node.kind === "project") {
             pinnedProjects.push(node);
             continue;
         }
-        const children = asArray(node.children);
-        const nextChildren: ProjectNode[] = [];
-        for (const child of children) {
-            if (isTopicNode(child) && child.pinned) {
-                pinnedTopics.push(child);
-                continue;
-            }
-            nextChildren.push(child);
-        }
-        projects.push({ ...node, children: nextChildren });
+        projects.push(node);
     }
-    pinnedTopics.sort((a, b) => topicSortValue(b, sortMode) - topicSortValue(a, sortMode));
     pinnedProjects.sort((a, b) => projectSortValue(b, sortMode) - projectSortValue(a, sortMode));
     return {
-        pinned: [...pinnedTopics, ...pinnedProjects],
+        pinned: pinnedProjects,
         projects,
     };
 }

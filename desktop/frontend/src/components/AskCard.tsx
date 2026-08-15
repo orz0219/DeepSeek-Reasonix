@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { isImeKeyEvent } from "../lib/composerKeyboard";
 import { useT } from "../lib/i18n";
 import type { QuestionAnswer, WireAsk, WireAskQuestion } from "../lib/types";
 import {
@@ -37,6 +38,8 @@ export function AskCard({
   const [submitting, setSubmitting] = useState(false);
   const shelfRef = useRef<HTMLDivElement | null>(null);
   const customInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const composingRef = useRef(false);
+  const lastCompositionEndAt = useRef(0);
   const instanceId = useId();
 
   const questions = ask.questions;
@@ -342,10 +345,28 @@ export function AskCard({
                 rows={3}
                 onChange={(e) => setTyped(q, e.target.value)}
                 onKeyDown={(e) => {
-                  // Enter must NOT submit from the custom answer box: typing a
-                  // reply can include newlines, and Enter misfires the send.
-                  // Submission happens via the confirm button only.
+                  // Enter submits the custom answer; Ctrl+Enter inserts a
+                  // newline (native textarea behavior). IME confirmations
+                  // must not submit.
                   e.stopPropagation();
+                  if (
+                    e.key === "Enter"
+                    && !isImeKeyEvent(e.nativeEvent, composingRef.current, lastCompositionEndAt.current)
+                    && !e.ctrlKey
+                    && !e.metaKey
+                    && !e.altKey
+                    && !e.shiftKey
+                  ) {
+                    e.preventDefault();
+                    confirmSelected();
+                  }
+                }}
+                onCompositionStart={() => {
+                  composingRef.current = true;
+                }}
+                onCompositionEnd={() => {
+                  composingRef.current = false;
+                  lastCompositionEndAt.current = Date.now();
                 }}
               />
             </div>
