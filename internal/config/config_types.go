@@ -435,7 +435,7 @@ type DesktopConfig struct {
 	Telemetry            *bool    `toml:"telemetry"`       // anonymous launch ping plus scrubbed next-launch native crash diagnostics; nil keeps the default enabled
 	Metrics              *bool    `toml:"metrics"`         // aggregate desktop metrics (anonymous signal/bucket counts, including lifecycle health; no content); nil keeps the default enabled
 	ProviderAccess       []string `toml:"provider_access"` // desktop-only list of provider entries shown in Settings > Model > Access
-	ExpandThinking       bool     `toml:"expand_thinking"` // deprecated compatibility alias: true maps to auto
+	ExpandThinking       bool     `toml:"expand_thinking"` // deprecated compatibility alias; kept true for every reasoning_display_mode
 	ReasoningDisplayMode string   `toml:"reasoning_display_mode"`
 	ConversationWidth    string   `toml:"conversation_width"` // standard|full; max transcript width; empty = standard
 }

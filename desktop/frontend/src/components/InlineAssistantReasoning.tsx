@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { displayReasoningText, STREAMING_REASONING_WINDOW_STEP_CHARS, STREAMING_REASONING_WINDOW_STEP_LINES } from "../lib/reasoningDisplay";
-import { useReasoningDisplayMode } from "../lib/reasoningDisplayPreference";
+import { useReasoningFoldBehavior } from "../lib/reasoningDisplayPreference";
 import type { AssistantItem } from "../lib/transcriptRows";
 import { useT } from "../lib/i18n";
 import { LiveStreamContext } from "./LiveStreamContext";
@@ -12,28 +12,46 @@ import { ReasoningSummary } from "./ReasoningSummary";
 export function InlineAssistantReasoning({ item, onManualOpen }: { item: AssistantItem; onManualOpen?: () => void }) {
   const t = useT();
   const live = useContext(LiveStreamContext);
-  const displayMode = useReasoningDisplayMode();
+  const foldBehavior = useReasoningFoldBehavior();
   const shown = live?.id === item.id ? { reasoning: live.reasoning, streaming: true, reasoningComplete: live.reasoningComplete } : item;
   const running = shown.streaming && !shown.reasoningComplete;
-  const [open, setOpen] = useState(displayMode === "auto" && running);
+  const [open, setOpen] = useState(
+    foldBehavior === "open" || (foldBehavior === "half" && shown.streaming) || (foldBehavior === "closed" && running),
+  );
   const userOverridden = useRef(false);
   const previousRunning = useRef(running);
-  const previousMode = useRef(displayMode);
+  const previousStreaming = useRef(shown.streaming);
+  const previousComplete = useRef(shown.reasoningComplete ?? false);
+  const previousMode = useRef(foldBehavior);
   useEffect(() => {
-    const modeChanged = previousMode.current !== displayMode;
+    const modeChanged = previousMode.current !== foldBehavior;
     const wasRunning = previousRunning.current;
-    previousMode.current = displayMode;
+    const wasStreaming = previousStreaming.current;
+    const wasComplete = previousComplete.current;
+    const complete = shown.reasoningComplete ?? false;
+    previousMode.current = foldBehavior;
     previousRunning.current = running;
+    previousStreaming.current = shown.streaming;
+    previousComplete.current = complete;
+    if (foldBehavior === "pending") return;
     if (modeChanged) {
       userOverridden.current = false;
-      setOpen(displayMode === "auto" && running);
-    } else if (displayMode === "auto" && running && !wasRunning) {
-      userOverridden.current = false;
-      setOpen(true);
-    } else if (displayMode === "auto" && !running && wasRunning && !userOverridden.current) {
-      setOpen(false);
+      if (foldBehavior === "open") setOpen(true);
+      else if (foldBehavior === "half") setOpen(shown.streaming);
+      else setOpen(running);
+    } else if (shown.streaming) {
+      if (!wasStreaming) userOverridden.current = false;
+      if (!userOverridden.current) {
+        if (foldBehavior === "open" || foldBehavior === "half") setOpen(true);
+        else if (running && !wasRunning) setOpen(true);
+        else if (!running && wasRunning) setOpen(false);
+      }
+    } else if (wasStreaming) {
+      if (!userOverridden.current) setOpen(foldBehavior === "open");
+    } else if (complete && !wasComplete) {
+      if (!userOverridden.current) setOpen(foldBehavior === "open" || foldBehavior === "half");
     }
-  }, [displayMode, running]);
+  }, [foldBehavior, running, shown.reasoningComplete, shown.streaming]);
   const toggle = useCallback(() => {
     userOverridden.current = true;
     if (!open) onManualOpen?.();

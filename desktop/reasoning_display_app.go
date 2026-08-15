@@ -12,7 +12,7 @@ func desktopStartupSettingsFromConfig(cfg *config.Config) DesktopStartupSettings
 		return DesktopStartupSettingsView{
 			DesktopLayoutStyle: "workbench",
 			DesktopTheme:       "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
-			DisplayMode: "standard", ReasoningDisplayMode: "auto", StatusBarStyle: "text",
+			DisplayMode: "standard", ReasoningDisplayMode: "open", StatusBarStyle: "text",
 			StatusBarItems:    config.DefaultDesktopStatusBarItems(),
 			ConversationWidth: "standard",
 		}
@@ -45,7 +45,7 @@ func (a *App) defaultSettingsView() SettingsView {
 		},
 		AutoPlan: "off", DesktopLayoutStyle: "workbench",
 		DesktopTheme: "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
-		CloseBehavior: "background", DisplayMode: "standard", ReasoningDisplayMode: "auto",
+		CloseBehavior: "background", DisplayMode: "standard", ReasoningDisplayMode: "open",
 		StatusBarStyle: "text", StatusBarItems: config.DefaultDesktopStatusBarItems(),
 		DefaultToolApprovalMode: "auto",
 		ExpandThinking:          false, ConversationWidth: "standard",

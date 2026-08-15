@@ -2,6 +2,92 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.24.4",
+      "date": "2026-08-15",
+      "channel": "stable",
+      "title": {
+        "en": "Reasonix Desktop 1.24.4",
+        "zh": "Reasonix Desktop 1.24.4"
+      },
+      "summary": {
+        "en": "Local desktop build.",
+        "zh": "本地桌面打包。"
+      },
+      "surfaces": [
+        "desktop"
+      ],
+      "guides": [],
+      "highlights": [
+        {
+          "kind": "new",
+          "title": {
+            "en": "Local build 1.24.4",
+            "zh": "本地打包 1.24.4"
+          },
+          "body": {
+            "en": "Packaged locally with scripts/build-mac-desktop.sh.",
+            "zh": "通过 scripts/build-mac-desktop.sh 本地打包。"
+          }
+        }
+      ],
+      "changes": {
+        "new": [],
+        "improved": [],
+        "fixed": []
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.24.4",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.24.3...desktop-v1.24.4",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      }
+    },
+    {
+      "version": "1.24.3",
+      "date": "2026-08-15",
+      "channel": "stable",
+      "title": {
+        "en": "Reasonix Desktop 1.24.3",
+        "zh": "Reasonix Desktop 1.24.3"
+      },
+      "summary": {
+        "en": "Local desktop build.",
+        "zh": "本地桌面打包。"
+      },
+      "surfaces": [
+        "desktop"
+      ],
+      "guides": [],
+      "highlights": [
+        {
+          "kind": "new",
+          "title": {
+            "en": "Local build 1.24.3",
+            "zh": "本地打包 1.24.3"
+          },
+          "body": {
+            "en": "Packaged locally with scripts/build-mac-desktop.sh.",
+            "zh": "通过 scripts/build-mac-desktop.sh 本地打包。"
+          }
+        }
+      ],
+      "changes": {
+        "new": [],
+        "improved": [],
+        "fixed": []
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.24.3",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.24.2...desktop-v1.24.3",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      }
+    },
+    {
       "version": "1.24.2",
       "date": "2026-08-12",
       "channel": "stable",

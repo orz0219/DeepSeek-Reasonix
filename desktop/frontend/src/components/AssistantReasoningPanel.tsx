@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { displayReasoningText, STREAMING_REASONING_WINDOW_STEP_CHARS, STREAMING_REASONING_WINDOW_STEP_LINES } from "../lib/reasoningDisplay";
-import { useReasoningDisplayMode } from "../lib/reasoningDisplayPreference";
+import { useReasoningFoldBehavior } from "../lib/reasoningDisplayPreference";
 import { useCollapseAnimation } from "../lib/useCollapseAnimation";
 import { useT } from "../lib/i18n";
 import type { Item } from "../lib/useController";
@@ -28,42 +28,54 @@ export function AssistantReasoningPanel({
   truncateStreamingReasoning: boolean;
 }) {
   const t = useT();
-  const displayMode = useReasoningDisplayMode();
+  const foldBehavior = useReasoningFoldBehavior();
   const running = item.streaming && !item.reasoningComplete;
-  const followsWhileStreaming = displayMode === "auto" || expandWhileStreaming;
-  const [open, setOpen] = useState(defaultExpanded || (followsWhileStreaming && running));
+  const [open, setOpen] = useState(
+    defaultExpanded || foldBehavior === "open" || (foldBehavior === "half" && item.streaming) || (foldBehavior === "closed" && running),
+  );
   const bodyRef = useRef<HTMLDivElement>(null);
   const userOverridden = useRef(false);
   const previousStreaming = useRef(item.streaming);
   const previousComplete = useRef(item.reasoningComplete ?? false);
-  const previousMode = useRef(displayMode);
+  const previousMode = useRef(foldBehavior);
 
   useEffect(() => {
     const wasStreaming = previousStreaming.current;
     const wasComplete = previousComplete.current;
     const complete = item.reasoningComplete ?? false;
-    const modeChanged = previousMode.current !== displayMode;
+    const modeChanged = previousMode.current !== foldBehavior;
     previousStreaming.current = item.streaming;
     previousComplete.current = complete;
-    previousMode.current = displayMode;
+    previousMode.current = foldBehavior;
+    if (foldBehavior === "pending") return;
     if (modeChanged) {
       userOverridden.current = false;
-      setOpen(defaultExpanded || (followsWhileStreaming && !complete));
+      if (defaultExpanded) setOpen(true);
+      else if (foldBehavior === "open") setOpen(true);
+      else if (foldBehavior === "half") setOpen(item.streaming);
+      else setOpen(item.streaming && !complete);
     } else if (item.streaming) {
       if (!wasStreaming) userOverridden.current = false;
-      if (defaultExpanded) setOpen(true);
-      else if (!userOverridden.current) setOpen(followsWhileStreaming && !complete);
-    } else if ((complete && !wasComplete) || wasStreaming) {
-      if (!defaultExpanded && !userOverridden.current) setOpen(false);
+      if (!userOverridden.current) {
+        if (expandWhileStreaming || foldBehavior === "open" || foldBehavior === "half") setOpen(true);
+        else setOpen(!complete);
+      }
+    } else if (wasStreaming) {
+      // The whole reply finished: half collapses here, closed already did.
+      if (!userOverridden.current) setOpen(foldBehavior === "open");
+    } else if (complete && !wasComplete) {
+      // Reasoning finished while the body still streams: closed collapses here,
+      // half keeps reasoning visible until the reply completes.
+      if (!userOverridden.current) setOpen(foldBehavior === "open" || foldBehavior === "half");
     }
-  }, [defaultExpanded, displayMode, followsWhileStreaming, item.reasoningComplete, item.streaming]);
+  }, [defaultExpanded, foldBehavior, item.reasoningComplete, item.streaming]);
 
   const toggle = () => {
     userOverridden.current = true;
     setOpen((value) => !value);
   };
   useCollapseAnimation(bodyRef, open);
-  if (displayMode === "hidden" || displayMode === "pending") return null;
+  if (foldBehavior === "pending") return null;
   const visibleReasoning = open ? displayReasoningText(item.reasoning, {
     streaming: running,
     truncateStreaming: truncateStreamingReasoning,

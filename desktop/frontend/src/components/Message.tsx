@@ -11,7 +11,7 @@ import { replaySubmitTextPreservingSelectedContext } from "../lib/editReplay";
 import { useT } from "../lib/i18n";
 import { ImageViewer } from "./ImageViewer";
 import { Tooltip } from "./Tooltip";
-import { useReasoningDisplayMode } from "../lib/reasoningDisplayPreference";
+import { useReasoningFoldBehavior } from "../lib/reasoningDisplayPreference";
 import { historyEntryIdForItemId } from "../lib/transcriptRows";
 import { stripMemoryCompilerExecution } from "../lib/memoryCompilerDisplay";
 import { invocationSegmentsFromMessage } from "../lib/invocationDisplay";
@@ -557,11 +557,11 @@ export const AssistantMessage = memo(function AssistantMessage({ item, defaultEx
     truncateStreamingReasoning?: boolean;
     creationMode?: boolean;
 }) {
-    const reasoningDisplayMode = useReasoningDisplayMode();
+    const reasoningFoldBehavior = useReasoningFoldBehavior();
     const hasText = item.streaming || item.text.trim() !== "";
     const processOnly = Boolean(item.reasoning) && !hasText;
     const processWithText = Boolean(item.reasoning) && hasText;
-    if (processOnly && (reasoningDisplayMode === "hidden" || reasoningDisplayMode === "pending"))
+    if (processOnly && reasoningFoldBehavior === "pending")
         return null;
     return (<div className={`msg msg--assistant${processOnly ? " msg--process-only" : ""}${processWithText ? " msg--process-with-text" : ""}`} data-history-restore={item.id.startsWith("h") ? "" : undefined} data-entrance={item.id}>
       {item.reasoning && (<AssistantReasoningPanel item={item} defaultExpanded={defaultExpanded} expandWhileStreaming={expandWhileStreaming} truncateStreamingReasoning={truncateStreamingReasoning}/>)}

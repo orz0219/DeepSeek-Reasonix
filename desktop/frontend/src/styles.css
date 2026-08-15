@@ -8903,11 +8903,15 @@ body > .mermaid-diagram--fullscreen {
 .prompt-shelf--decision .prompt-shelf__actions .prompt-action:not(.prompt-action--descriptive) .prompt-action__copy {
   grid-template-columns: minmax(0, 1fr);
 }
-.prompt-shelf--decision .prompt-shelf__actions .prompt-action__label,
+.prompt-shelf--decision .prompt-shelf__actions .prompt-action__label {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .prompt-shelf--decision .prompt-shelf__actions .prompt-action__desc {
   min-width: 0;
   overflow: hidden;
-  white-space: nowrap !important;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 .prompt-shelf--decision .prompt-shelf__actions .prompt-action__label {

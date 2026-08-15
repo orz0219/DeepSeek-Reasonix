@@ -21,7 +21,7 @@ import { compactQuestionText, lastQuestionTurn, questionAnchorId, questionTurnsB
 import { buildTranscriptRows, buildTurnModels, foldMapWithReasoningOpen, foldMapWithToggle, foldSegmentStates, reconcileFoldEntries, estimateTranscriptRowSize, userRowKey, EMPTY_FOLDS, NO_LIVE, type FoldMap, type NoticeItem, type SegmentModel, type ToolItem, type TranscriptLiveFlags, type TranscriptRow } from "../lib/transcriptRows";
 import { acquireMarkdownWorkerClient, releaseMarkdownWorkerClient } from "../lib/markdownWorkerClient";
 import { noteTranscriptRowCounts } from "../lib/sessionDiagnostics";
-import { useReasoningDisplayMode } from "../lib/reasoningDisplayPreference";
+import { useReasoningFoldBehavior } from "../lib/reasoningDisplayPreference";
 import { InlineAssistantReasoning } from "./InlineAssistantReasoning";
 import { LiveStreamContext } from "./LiveStreamContext";
 import { useTranscriptSelectableRows } from "../lib/useTranscriptSelectableRows";
@@ -225,8 +225,8 @@ export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeig
     const liveHasAnswerText = Boolean(live?.text.trim());
     const liveHasReasoning = Boolean(live?.reasoning);
     const liveReasoningComplete = live?.reasoningComplete;
-    const reasoningDisplayMode = useReasoningDisplayMode();
-    const hideReasoning = reasoningDisplayMode === "hidden" || reasoningDisplayMode === "pending";
+    const reasoningFoldBehavior = useReasoningFoldBehavior();
+    const hideReasoning = reasoningFoldBehavior === "pending";
     const liveFlags = useMemo<TranscriptLiveFlags>(() => (liveId
         ? { id: liveId, hasAnswerText: liveHasAnswerText, hasReasoning: liveHasReasoning, reasoningComplete: liveReasoningComplete }
         : NO_LIVE), [liveId, liveHasAnswerText, liveHasReasoning, liveReasoningComplete]);

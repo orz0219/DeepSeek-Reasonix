@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from "react";
 
-export type ReasoningDisplayMode = "hidden" | "summary" | "auto";
-export type ResolvedReasoningDisplayMode = ReasoningDisplayMode | "legacy-collapsed" | "pending";
+export type ReasoningFoldBehavior = "open" | "half" | "closed";
+export type ResolvedReasoningFoldBehavior = ReasoningFoldBehavior | "pending";
 
 const LEGACY_SUMMARY_KEY = "reasonix-reasoning-summary";
-const DISPLAY_EVENT = "reasonix:reasoning-display-mode";
+const DISPLAY_EVENT = "reasonix:reasoning-fold-behavior";
 
-let currentMode: ResolvedReasoningDisplayMode = "auto";
+let currentMode: ResolvedReasoningFoldBehavior = "open";
 let currentModeExplicit = false;
 const listeners = new Set<() => void>();
 
@@ -15,8 +15,13 @@ function emit(): void {
   if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(DISPLAY_EVENT, { detail: currentMode }));
 }
 
-function normalizeMode(value: unknown): ReasoningDisplayMode | undefined {
-  return value === "hidden" || value === "summary" || value === "auto" ? value : undefined;
+function normalizeMode(value: unknown): ReasoningFoldBehavior | undefined {
+  if (value === "open" || value === "half" || value === "closed") return value;
+  // Legacy display modes (hidden/summary/auto) map to closed — thinking stays
+  // at least glanceable instead of forcing the new fully-open default on users
+  // who explicitly chose a more collapsed presentation before.
+  if (value === "hidden" || value === "summary" || value === "auto") return "closed";
+  return undefined;
 }
 
 function legacySummaryValue(): "on" | "off" | undefined {
@@ -27,31 +32,24 @@ function legacySummaryValue(): "on" | "off" | undefined {
   return undefined;
 }
 
-export function resolveReasoningDisplayMode(
+export function resolveReasoningFoldBehavior(
   configuredMode: unknown,
   explicit: boolean,
-): ResolvedReasoningDisplayMode {
+): ResolvedReasoningFoldBehavior {
   const normalized = normalizeMode(configuredMode);
   if (explicit && normalized) return normalized;
-  switch (legacySummaryValue()) {
-    case "off":
-      return "legacy-collapsed";
-    case "on":
-      return "summary";
-  }
-  return normalized ?? "auto";
+  if (legacySummaryValue() !== undefined) return "closed";
+  return normalized ?? "open";
 }
 
-export function getReasoningDisplayMode(): ResolvedReasoningDisplayMode {
+export function getReasoningFoldBehavior(): ResolvedReasoningFoldBehavior {
   if (!currentModeExplicit && currentMode !== "pending") {
-    const legacy = legacySummaryValue();
-    if (legacy === "off") return "legacy-collapsed";
-    if (legacy === "on") return "summary";
+    if (legacySummaryValue() !== undefined) return "closed";
   }
   return currentMode;
 }
 
-export function setReasoningDisplayPending(): void {
+export function setReasoningFoldBehaviorPending(): void {
   if (currentMode === "pending") return;
   currentMode = "pending";
   currentModeExplicit = false;
@@ -59,8 +57,8 @@ export function setReasoningDisplayPending(): void {
 }
 
 /** Hydrates the frontend mirror from the authoritative Wails startup payload. */
-export function hydrateReasoningDisplayMode(configuredMode: unknown, explicit = false): void {
-  const next = resolveReasoningDisplayMode(configuredMode, explicit);
+export function hydrateReasoningFoldBehavior(configuredMode: unknown, explicit = false): void {
+  const next = resolveReasoningFoldBehavior(configuredMode, explicit);
   if (next === currentMode && currentModeExplicit === explicit) return;
   currentMode = next;
   currentModeExplicit = explicit;
@@ -68,7 +66,7 @@ export function hydrateReasoningDisplayMode(configuredMode: unknown, explicit = 
 }
 
 /** Applies a successfully persisted user selection and completes legacy migration. */
-export function applyReasoningDisplayMode(mode: ReasoningDisplayMode): void {
+export function applyReasoningFoldBehavior(mode: ReasoningFoldBehavior): void {
   if (typeof localStorage !== "undefined") localStorage.removeItem(LEGACY_SUMMARY_KEY);
   if (mode === currentMode && currentModeExplicit) return;
   currentMode = mode;
@@ -76,16 +74,11 @@ export function applyReasoningDisplayMode(mode: ReasoningDisplayMode): void {
   emit();
 }
 
-export function onReasoningDisplayModeChange(cb: () => void): () => void {
+export function onReasoningFoldBehaviorChange(cb: () => void): () => void {
   listeners.add(cb);
   return () => listeners.delete(cb);
 }
 
-export function useReasoningDisplayMode(): ResolvedReasoningDisplayMode {
-  return useSyncExternalStore(onReasoningDisplayModeChange, getReasoningDisplayMode, getReasoningDisplayMode);
+export function useReasoningFoldBehavior(): ResolvedReasoningFoldBehavior {
+  return useSyncExternalStore(onReasoningFoldBehaviorChange, getReasoningFoldBehavior, getReasoningFoldBehavior);
 }
-
-// Compatibility helpers for older frontend tests/extensions. They keep the
-// legacy localStorage key semantics without reintroducing the old settings UI.
-
-

@@ -421,7 +421,7 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     SetDisplayMode(mode: string): Promise<void>;
     SetStatusBarStyle(style: string): Promise<void>;
     SetStatusBarItems(items: string[]): Promise<void>;
-    SetReasoningDisplayMode(mode: "hidden" | "summary" | "auto"): Promise<void>;
+    SetReasoningDisplayMode(mode: "open" | "half" | "closed"): Promise<void>;
     SetDesktopLanguage(lang: string): Promise<void>;
     SetDesktopCurrency(currency: string): Promise<void>;
     SetDesktopAppearance(theme: string, style: string): Promise<void>;

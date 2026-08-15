@@ -37,7 +37,7 @@ import { startTerminalEventBridge } from "./lib/terminalEvents";
 import { applyTerminalThemePreference } from "./lib/terminalTheme";
 import { formatTerminalOutputForComposer } from "./lib/terminalOutput";
 import { useTerminalStore } from "./store/terminal";
-import { hydrateReasoningDisplayMode, setReasoningDisplayPending } from "./lib/reasoningDisplayPreference";
+import { hydrateReasoningFoldBehavior, setReasoningFoldBehaviorPending } from "./lib/reasoningDisplayPreference";
 import { parseTodos } from "./lib/tools";
 import { dismissedTodoKeyForScope, resolveTodoPanelTodos, scopedTodoBatchKey, scopedTodoDismissalKey, shouldShowTodoPanel, signedTodoStepsFromItems, todoBatchKey, todoDismissalKey, todoPanelScope } from "./lib/todoVisibility";
 import { type ActiveWorkView, type BackgroundRuntimeView, type CollaborationMode, type ComposerInsertRequest, type Mode, modeHasPlan, type RewindResultView, type SessionMeta, type SettingsView, type TabMeta, type TokenMode, type ToolApprovalMode, type WorkspaceConflictView } from "./lib/types";
@@ -71,7 +71,7 @@ import { CHAT_MIN_WIDTH, CHAT_COMFORT_MIN_WIDTH, WORKSPACE_RESIZER_WIDTH, Deskto
 import { DecisionSurfaceKind, TERMINAL_CLOSE_TRANSITION_MS, noticePreviewMockEnabled, runtimeProfileShortKey, NoticePreviewPanel, stripLegacyGoalBudgetFlags, hasLegacyGoalBudgetFlag, isThemeMode, DesktopLayoutStyle, normalizeDesktopLayoutStyle, SHOW_CONTEXT_DOCK, WorkspaceInsertTarget, HistoryViewState, DesktopNavigationIntent, DesktopNavigationInput, PendingDesktopNavigationRequest, loadDismissedTodoKeys, saveDismissedTodoKeys, GUIDANCE_QUEUE_MOCK_ITEMS, browserMockScenarioParam, isGuidanceMockScenario, detectBrowserPlatform, tabWorkspaceTitle, topicTitle, topicDisplayTitle, sessionsForScope, isMissingSessionError, workspaceDisplayName, sessionItemsToMarkdown, sessionItemsToJson, safeFilename, ShellHotkeys, TextSizeHotkeys } from "./app_helpers";
 // Hold reasoning UI until the authoritative desktop startup settings arrive;
 // this prevents a hidden preference from flashing content during first paint.
-setReasoningDisplayPending();
+setReasoningFoldBehaviorPending();
 const UndoRewindBanner = lazy(() => import("./components/UndoRewindBanner").then((module) => ({ default: module.UndoRewindBanner })));
 const TranscriptSelectionMenu = lazy(() => import("./components/TranscriptSelectionMenu").then((module) => ({ default: module.TranscriptSelectionMenu })));
 const ContextPanel = lazy(() => import("./components/ContextPanel").then((module) => ({ default: module.ContextPanel })));
@@ -407,10 +407,10 @@ export default function App() {
         setLocalePref(normalizeLangPref(settings.desktopLanguage));
         setStatusBarStyle(settings.statusBarStyle === "text" ? "text" : "icon");
         setStatusBarItems(normalizeStatusBarItems(settings.statusBarItems));
-        hydrateReasoningDisplayMode(settings.reasoningDisplayMode, settings.reasoningDisplayModeExplicit === true);
+        hydrateReasoningFoldBehavior(settings.reasoningDisplayMode, settings.reasoningDisplayModeExplicit === true);
     }, [setLocalePref]);
     useEffect(() => {
-        setReasoningDisplayPending();
+        setReasoningFoldBehaviorPending();
         let cancelled = false;
         const syncDesktopPreferences = async () => {
             const legacyLanguage = readLegacyLangPref();
@@ -454,7 +454,7 @@ export default function App() {
         };
         void syncDesktopPreferences().catch((e) => {
             console.warn("desktop preferences sync failed", e);
-            hydrateReasoningDisplayMode("auto", false);
+            hydrateReasoningFoldBehavior("open", false);
         });
         return () => {
             cancelled = true;

@@ -313,7 +313,7 @@ export function makeMockApp(): AppBindings {
         desktopTerminalTheme: "auto",
         conversationWidth: "standard",
         closeBehavior: "background",
-        displayMode: "standard", reasoningDisplayMode: "auto", reasoningDisplayModeExplicit: false,
+        displayMode: "standard", reasoningDisplayMode: "open", reasoningDisplayModeExplicit: false,
         statusBarStyle: "text",
         statusBarItems: [...DEFAULT_STATUS_BAR_ITEMS],
         defaultToolApprovalMode: "auto",
@@ -3433,9 +3433,9 @@ export function makeMockApp(): AppBindings {
             // no-op in mock
         },
         async SetDesktopConversationWidth(width: string) { settings.conversationWidth = width; },
-        async SetReasoningDisplayMode(mode: "hidden" | "summary" | "auto") { if (!(["hidden", "summary", "auto"] as string[]).includes(mode))
+        async SetReasoningDisplayMode(mode: "open" | "half" | "closed") { if (!(["open", "half", "closed"] as string[]).includes(mode))
             throw new Error("invalid reasoning display mode"); settings.reasoningDisplayMode = mode; settings.reasoningDisplayModeExplicit = true; },
-        async SetExpandThinking(on: boolean) { settings.reasoningDisplayMode = on ? "auto" : "summary"; settings.reasoningDisplayModeExplicit = true; },
+        async SetExpandThinking(_on: boolean) { settings.reasoningDisplayMode = "closed"; settings.reasoningDisplayModeExplicit = true; },
         async MigrateDesktopPreferences(language: string, theme: string, style: string) {
             if (!settings.desktopLanguage)
                 settings.desktopLanguage = language === "en" || language === "zh" || language === "zh-TW" ? language : "";

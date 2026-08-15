@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { BrainCircuit, Check, ChevronDown, ChevronUp, CircleDollarSign, Languages, ListChecks, Monitor, PanelBottom, Play, Power, ShieldCheck, SlidersHorizontal, Volume2 } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronUp, CircleDollarSign, Languages, ListChecks, Monitor, PanelBottom, Play, Power, ShieldCheck, SlidersHorizontal, Volume2 } from "lucide-react";
 import { app } from "../lib/bridge";
 import { normalizeLangPref, useI18n, useT, type DictKey, type LangPref } from "../lib/i18n";
 import { getDisplayMode, onDisplayModeChange, setDisplayMode as setLocalDisplayMode } from "../lib/displayMode";
 import { getProcessFoldPreference, onProcessFoldPreferenceChange, setProcessFoldPreference, type ProcessFoldPreference } from "../lib/processFoldPreference";
-import { applyReasoningDisplayMode, useReasoningDisplayMode, type ReasoningDisplayMode } from "../lib/reasoningDisplayPreference";
 import { normalizeStatusBarItems, type StatusBarItemId } from "../lib/statusBarItems";
 import { normalizeToolApprovalMode } from "../lib/types";
 import type { NetworkView } from "../lib/types";
@@ -23,16 +22,10 @@ export function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & 
     const closeBehavior = normalizeCloseBehavior(s.closeBehavior);
     const [displayMode, setDisplayMode] = useState<DisplayMode>(() => normalizeDisplayMode(getDisplayMode()));
     const [processFold, setProcessFold] = useState<ProcessFoldPreference>(getProcessFoldPreference);
-    const reasoningDisplayMode = useReasoningDisplayMode();
     const soundPanelId = useId();
     useEffect(() => onDisplayModeChange((mode) => setDisplayMode(mode)), []);
     useEffect(() => onProcessFoldPreferenceChange((pref) => setProcessFold(pref)), []);
     const defaultToolApprovalMode = normalizeToolApprovalMode(s.defaultToolApprovalMode);
-    const saveReasoningDisplayMode = useCallback(async (mode: ReasoningDisplayMode) => {
-        const ok = await apply(() => app.SetReasoningDisplayMode(mode));
-        if (ok)
-            applyReasoningDisplayMode(mode);
-    }, [apply]);
     const languagePref = normalizeLangPref(s.desktopLanguage);
     const desktopCurrency = normalizeDesktopCurrency(s.desktopCurrency);
     const desktopLayoutStyle = normalizeDesktopLayoutStyle(s.desktopLayoutStyle);
@@ -100,16 +93,6 @@ export function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & 
             }}>
                 {t(`settings.displayMode.${mode}`)}
               </button>))}
-          </div>
-        </SettingsField>
-        <SettingsField label={t("settings.reasoningDisplay")} hint={t("settings.reasoningDisplayHint")} icon={<BrainCircuit size={18}/>}>
-          <div>
-            <div className="set-seg" role="radiogroup" aria-label={t("settings.reasoningDisplay")}>
-              {(["hidden", "summary", "auto"] as const).map((mode) => (<button key={mode} type="button" className={`set-seg__btn${reasoningDisplayMode === mode ? " set-seg__btn--on" : ""}`} aria-pressed={reasoningDisplayMode === mode} disabled={busy} onClick={() => void saveReasoningDisplayMode(mode)}>
-                  {t(`settings.reasoningDisplay.${mode}`)}
-                </button>))}
-            </div>
-            {reasoningDisplayMode === "legacy-collapsed" && <div className="settings-inline-hint" role="status">{t("settings.reasoningDisplay.legacy")}</div>}
           </div>
         </SettingsField>
         <SettingsField label={t("settings.processFold")} hint={t("settings.processFoldHint")} icon={<ListChecks size={18}/>}>
