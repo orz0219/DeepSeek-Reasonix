@@ -25,7 +25,7 @@ func NewAskTool() *AskTool { return &AskTool{} }
 func (*AskTool) Name() string { return "ask" }
 
 func (*AskTool) Description() string {
-	return "Ask the user one or more multiple-choice questions when you hit a decision that is genuinely theirs to make — one you can't resolve from the request, the code, or sensible defaults. The frontend shows the options for the user to pick; their choices are returned to you. Prefer this over asking in prose for any real fork (which approach, which library, scope). Don't use it for decisions with an obvious default — pick the sensible option and proceed. Tool-approval modes such as YOLO do not answer these questions for the user. Each question has a short `header` (a tab label), the `question` text, 2-4 `options` (each a `label` and optional `description`; put any recommended option first), and `multiSelect` when more than one may apply."
+	return "Ask the user one or more questions when you hit a decision that is genuinely theirs to make — one you can't resolve from the request, the code, or sensible defaults. The frontend shows the questions for the user to answer; their choices come back to you. Prefer this over asking in prose for any real fork (which approach, which library, scope). Don't use it for decisions with an obvious default — pick the sensible option and proceed. Tool-approval modes such as YOLO do not answer these questions for the user. Each question has a short `header` (a tab label), the `question` text, and either 2-4 `options` (each a `label` and optional `description`; put any recommended option first) or an `input` free-text field (with an optional editable `recommended` default answer); `multiSelect` applies to option questions. Include an optional trailing input question (required:false) when you want the user's free-form supplement."
 }
 
 func (*AskTool) Schema() json.RawMessage {
@@ -44,7 +44,7 @@ func (*AskTool) Schema() json.RawMessage {
         "question":{"type":"string","description":"The full question to ask."},
         "options":{
           "type":"array","minItems":2,"maxItems":4,
-          "description":"The choices. Put any recommended option first.",
+          "description":"The choices. Mutually exclusive with input.",
           "items":{
             "type":"object",
             "properties":{
@@ -54,9 +54,18 @@ func (*AskTool) Schema() json.RawMessage {
             "required":["label"]
           }
         },
+        "input":{
+          "type":"object",
+          "description":"Render a free-text field instead of options. Mutually exclusive with options.",
+          "properties":{
+            "recommended":{"type":"string","description":"Editable default answer pre-filled into the field."},
+            "multiline":{"type":"boolean","description":"Render a taller text area."},
+            "required":{"type":"boolean","description":"Empty answers are not submittable."}
+          }
+        },
         "multiSelect":{"type":"boolean","description":"Allow selecting more than one option."}
       },
-      "required":["question","header","options"]
+      "required":["question","header"]
     }
   }
 },
@@ -78,6 +87,11 @@ func (*AskTool) Execute(ctx context.Context, args json.RawMessage) (string, erro
 				Label       string `json:"label"`
 				Description string `json:"description"`
 			} `json:"options"`
+			Input *struct {
+				Recommended string `json:"recommended"`
+				Multiline   bool   `json:"multiline"`
+				Required    bool   `json:"required"`
+			} `json:"input"`
 		} `json:"questions"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
@@ -90,27 +104,48 @@ func (*AskTool) Execute(ctx context.Context, args json.RawMessage) (string, erro
 	qs := make([]event.AskQuestion, 0, len(p.Questions))
 	for i, q := range p.Questions {
 		question := strings.TrimSpace(q.Question)
-		if question == "" || len(q.Options) < 2 {
-			return "", fmt.Errorf("question %d: a question and at least two options are required", i+1)
+		if question == "" {
+			return "", fmt.Errorf("question %d: a question is required", i+1)
+		}
+		if len(q.Options) > 0 && q.Input != nil {
+			return "", fmt.Errorf("question %d: options and input are mutually exclusive", i+1)
+		}
+		if len(q.Options) == 0 && q.Input == nil {
+			return "", fmt.Errorf("question %d: either options or input are required", i+1)
+		}
+		var input *event.AskInput
+		if q.Input != nil {
+			input = &event.AskInput{
+				Recommended: strings.TrimSpace(q.Input.Recommended),
+				Multiline:   q.Input.Multiline,
+				Required:    q.Input.Required,
+			}
+		} else {
+			if len(q.Options) < 2 {
+				return "", fmt.Errorf("question %d: at least two options are required", i+1)
+			}
+			seenLabels := make(map[string]int, len(q.Options))
+			for j, o := range q.Options {
+				label := strings.TrimSpace(o.Label)
+				if label == "" {
+					return "", fmt.Errorf("question %d option %d: label is required", i+1, j+1)
+				}
+				if prev, ok := seenLabels[label]; ok {
+					return "", fmt.Errorf("question %d option %d: duplicate label %q also used by option %d", i+1, j+1, label, prev+1)
+				}
+				seenLabels[label] = j
+			}
 		}
 		opts := make([]event.AskOption, len(q.Options))
-		seenLabels := make(map[string]int, len(q.Options))
 		for j, o := range q.Options {
-			label := strings.TrimSpace(o.Label)
-			if label == "" {
-				return "", fmt.Errorf("question %d option %d: label is required", i+1, j+1)
-			}
-			if prev, ok := seenLabels[label]; ok {
-				return "", fmt.Errorf("question %d option %d: duplicate label %q also used by option %d", i+1, j+1, label, prev+1)
-			}
-			seenLabels[label] = j
-			opts[j] = event.AskOption{Label: label, Description: strings.TrimSpace(o.Description)}
+			opts[j] = event.AskOption{Label: strings.TrimSpace(o.Label), Description: strings.TrimSpace(o.Description)}
 		}
 		qs = append(qs, event.AskQuestion{
 			ID:      fmt.Sprintf("q%d", i+1),
 			Header:  strings.TrimSpace(q.Header),
 			Prompt:  question,
 			Options: opts,
+			Input:   input,
 			Multi:   q.MultiSelect,
 		})
 	}

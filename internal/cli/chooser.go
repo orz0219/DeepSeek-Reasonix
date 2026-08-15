@@ -35,17 +35,40 @@ func newChooser(a event.Ask) *chooser {
 	}
 	for i := range c.sel {
 		c.sel[i] = map[int]bool{}
+		if in := c.questions[i].Input; in != nil && in.Recommended != "" {
+			c.custom[i] = in.Recommended
+		}
 	}
 	return c
 }
 
 func (c *chooser) onSubmitTab() bool { return c.tab >= len(c.questions) }
 
+// isInputTab reports whether the current question is a free-text field.
+func (c *chooser) isInputTab() bool {
+	return c.tab < len(c.questions) && c.questions[c.tab].Input != nil
+}
+
+// firstUnansweredRequired returns the first required input question the user
+// left empty, so the Submit tab bounces back instead of submitting a blank form.
+func (c *chooser) firstUnansweredRequired() (int, bool) {
+	for i, q := range c.questions {
+		if q.Input != nil && q.Input.Required && strings.TrimSpace(c.custom[i]) == "" {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 // rowCount is the rows of the current question: one per option, then a "Type
-// something" row and a "Chat about this" row.
+// something" row and a "Chat about this" row; input questions have a single
+// field row and no option rows.
 func (c *chooser) rowCount() int {
 	if c.onSubmitTab() {
 		return 0
+	}
+	if c.isInputTab() {
+		return 1
 	}
 	return len(c.questions[c.tab].Options) + 2
 }
@@ -99,12 +122,18 @@ func (m chatTUI) handleChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if c.tab > 0 {
 			c.tab--
 			c.cursor = 0
+			if c.isInputTab() {
+				return m.enterChooserInput(), nil
+			}
 		}
 		return m, nil
 	case "right", "l":
 		if c.tab < len(c.questions) {
 			c.tab++
 			c.cursor = 0
+			if c.isInputTab() {
+				return m.enterChooserInput(), nil
+			}
 		}
 		return m, nil
 	}
@@ -112,10 +141,21 @@ func (m chatTUI) handleChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if c.onSubmitTab() {
 		switch msg.String() {
 		case "enter":
+			if i, ok := c.firstUnansweredRequired(); ok {
+				c.tab = i
+				c.cursor = 0
+				if c.isInputTab() {
+					return m.enterChooserInput(), nil
+				}
+				return m, nil
+			}
 			return m.chooserAnswer(c.answers())
 		case "up", "k", "down", "j":
 			c.tab = len(c.questions) - 1 // step back into the last question
 			c.cursor = 0
+			if c.isInputTab() {
+				return m.enterChooserInput(), nil
+			}
 		}
 		return m, nil
 	}
@@ -148,6 +188,23 @@ func (m chatTUI) handleChooserKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// enterChooserInput starts free-text entry for the current question, pre-filling
+// the field with the input question's recommended answer as an editable default.
+func (m chatTUI) enterChooserInput() tea.Model {
+	c := m.chooser
+	c.typing = true
+	c.cursor = 0
+	m.input.Reset()
+	if rec := c.questions[c.tab].Input.Recommended; rec != "" {
+		m.input.SetValue(rec)
+		c.custom[c.tab] = rec
+		c.sel[c.tab] = map[int]bool{}
+	}
+	m.input.SetHeight(1)
+	m.refreshInputPlaceholder()
+	return m
+}
+
 // chooserActivate acts on the row: a normal option toggles (multi) or selects and
 // advances (single); the "Type something" row opens free-text entry; the "Chat
 // about this" row dismisses the prompt so the user can just talk.
@@ -166,19 +223,14 @@ func (m chatTUI) chooserActivate(row int) (tea.Model, tea.Cmd) {
 		c.custom[c.tab] = ""
 		return m.chooserAdvance()
 	case row == len(q.Options): // Type something
-		c.typing = true
-		c.cursor = row
-		m.input.Reset()
-		m.input.SetHeight(1)
-		m.refreshInputPlaceholder()
-		return m, nil
+		return m.enterChooserInput(), nil
 	default: // Chat about this
 		return m.chooserAnswer(nil)
 	}
 }
 
 // chooserAdvance moves to the next question, or the Submit tab; a single-question
-// prompt submits straight away.
+// prompt submits straight away. Input questions open free-text entry directly.
 func (m chatTUI) chooserAdvance() (tea.Model, tea.Cmd) {
 	c := m.chooser
 	if len(c.questions) == 1 {
@@ -187,6 +239,9 @@ func (m chatTUI) chooserAdvance() (tea.Model, tea.Cmd) {
 	if c.tab < len(c.questions) {
 		c.tab++
 		c.cursor = 0
+		if c.isInputTab() {
+			return m.enterChooserInput(), nil
+		}
 	}
 	return m, nil
 }
@@ -231,6 +286,17 @@ func (m chatTUI) renderChooser() string {
 
 	q := c.questions[c.tab]
 	b.WriteString(accent("? ") + q.Prompt + "\n")
+	if c.isInputTab() {
+		if q.Input.Recommended != "" {
+			b.WriteString(dim(i18n.M.AskRecommended+": "+q.Input.Recommended) + "\n")
+		}
+		typeLabel := i18n.M.AskTypingHint
+		if c.custom[c.tab] != "" {
+			typeLabel = c.custom[c.tab]
+		}
+		b.WriteString(rowLine(c.cursor == 0, 1, "", typeLabel, c.typing && c.custom[c.tab] == "") + "\n")
+		return choicePanelStyle.Width(w).Render(b.String())
+	}
 	for j, opt := range q.Options {
 		b.WriteString(m.chooserOptionRow(j, opt, q.Multi) + "\n")
 	}

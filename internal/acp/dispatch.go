@@ -520,6 +520,12 @@ func (s *updateSink) requestAskQuestion(ctx context.Context, askID string, q eve
 		options = append(options, PermissionOption{OptionID: id, Name: name, Kind: OptAllowOnce})
 		labelsByID[id] = opt.Label
 	}
+	if len(q.Options) == 0 && q.Input != nil && strings.TrimSpace(q.Input.Recommended) != "" {
+		// ACP permission prompts only carry options; surface the recommended
+		// answer as the sole selectable choice for an input question.
+		options = append(options, PermissionOption{OptionID: q.ID + ":recommended", Name: q.Input.Recommended, Kind: OptAllowOnce})
+		labelsByID[q.ID+":recommended"] = q.Input.Recommended
+	}
 	options = append(options, PermissionOption{OptionID: q.ID + ":cancel", Name: "Cancel", Kind: OptRejectOnce})
 
 	rawInput, _ := json.Marshal(map[string]any{

@@ -85,6 +85,7 @@ var ChineseTraditional = Messages{
 	AskTypeSomething:                       "自己輸入",
 	AskTypingHint:                          "輸入後按 Enter 確認",
 	AskChatInstead:                         "先不選擇，直接回覆",
+	AskRecommended:                         "推薦回答",
 	ChatStatusQuestion:                     "↑/↓ 選 · 數字快選 · 空格多選 · Enter 確認 · ←/→ 切換問題 · Esc 取消",
 	StatusResumePicker:                     "↑/↓ 移動 · Enter 恢復 · Esc 取消",
 	AskSubmitTitle:                         "提交答案",

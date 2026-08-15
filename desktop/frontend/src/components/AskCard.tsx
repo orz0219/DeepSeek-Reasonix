@@ -10,6 +10,14 @@ import {
   PromptShelf,
 } from "./PromptShelf";
 
+// Input questions carry an editable recommended default; pre-fill the field so
+// Enter submits the recommendation unless the user edits it first.
+function initialCustomAnswers(questions: WireAskQuestion[]): Record<string, string> {
+  return Object.fromEntries(
+    questions.filter((q) => q.input?.recommended).map((q) => [q.id, q.input!.recommended!]),
+  );
+}
+
 // AskCard renders the `ask` tool as a decision shelf near the composer. It
 // walks multi-question asks one at a time. Selecting (click / digit) never
 // advances; Enter / Confirm submits or moves to the next question.
@@ -48,8 +56,9 @@ export function AskCard({
   const progress = `${Math.min(active + 1, questions.length)}/${questions.length}`;
   const hasMultipleQuestions = questions.length > 1;
 
-  // Row layout: [options...] [custom]
-  const optionCount = q?.options.length ?? 0;
+  // Row layout: [options...] [custom] — input questions render a single field.
+  const isInputQuestion = Boolean(q?.input);
+  const optionCount = isInputQuestion ? 0 : (q?.options.length ?? 0);
   const customRowIndex = optionCount;
   const rowCount = optionCount + 1;
   const selectedOption = selectedIndex >= 0 && selectedIndex < optionCount
@@ -63,7 +72,7 @@ export function AskCard({
   useEffect(() => {
     shelfRef.current?.focus();
     setSel({});
-    setCustom({});
+    setCustom(initialCustomAnswers(questions));
     setCustomOpen(false);
     setActive(0);
     setSelectedIndex(0);
@@ -80,8 +89,8 @@ export function AskCard({
   }, [active, ask.id]);
 
   useEffect(() => {
-    if (customOpen) customInputRef.current?.focus();
-  }, [customOpen]);
+    if (customOpen || isInputQuestion) customInputRef.current?.focus();
+  }, [customOpen, isInputQuestion]);
 
   const answersFrom = (
     nextSel: Record<string, string[]> = sel,
@@ -159,6 +168,9 @@ export function AskCard({
 
   const canConfirm = (): boolean => {
     if (!q || submitting) return false;
+    if (q.input) {
+      return q.input.required ? Boolean(custom[q.id]?.trim()) : true;
+    }
     if (selectedIndex === customRowIndex) {
       return Boolean(custom[q.id]?.trim());
     }
@@ -173,6 +185,10 @@ export function AskCard({
 
   const confirmSelected = () => {
     if (!q || submitting || !canConfirm()) return;
+    if (q.input) {
+      finishOrAdvance();
+      return;
+    }
     if (selectedIndex === customRowIndex) {
       finishOrAdvance();
       return;
@@ -273,38 +289,40 @@ export function AskCard({
         </PromptHeaderAction>
       }
       actions={
-        <>
-          {q.options.map((o, index) => {
-            const on = (sel[q.id] ?? []).includes(o.label);
-            const cursor = selectedIndex === index;
-            return (
-              <PromptAction
-                key={o.label}
-                actionId={`${instanceId}-row-${index}`}
-                keyLabel={q.options.length <= 9 ? String(index + 1) : ""}
-                label={o.label}
-                description={o.description}
-                descriptionId={`${instanceId}-description-${index}`}
-                descriptionDisclosure
-                onDescriptionOverflowChange={selectedIndex === index ? setDescriptionTruncated : undefined}
-                onClick={() => selectRow(index)}
-                // Single-select: cursor owns selection. Multi-select: selected
-                // means checked; active is the keyboard cursor only.
-                selected={q.multi ? on : cursor}
-                active={q.multi ? cursor : false}
-                disabled={submitting}
-              />
-            );
-          })}
-          <PromptAction
-            actionId={`${instanceId}-row-${customRowIndex}`}
-            keyLabel=""
-            label={t("ask.customAnswer")}
-            onClick={() => selectRow(customRowIndex)}
-            selected={selectedIndex === customRowIndex || customOpen}
-            disabled={submitting}
-          />
-        </>
+        q.input ? undefined : (
+          <>
+            {q.options.map((o, index) => {
+              const on = (sel[q.id] ?? []).includes(o.label);
+              const cursor = selectedIndex === index;
+              return (
+                <PromptAction
+                  key={o.label}
+                  actionId={`${instanceId}-row-${index}`}
+                  keyLabel={q.options.length <= 9 ? String(index + 1) : ""}
+                  label={o.label}
+                  description={o.description}
+                  descriptionId={`${instanceId}-description-${index}`}
+                  descriptionDisclosure
+                  onDescriptionOverflowChange={selectedIndex === index ? setDescriptionTruncated : undefined}
+                  onClick={() => selectRow(index)}
+                  // Single-select: cursor owns selection. Multi-select: selected
+                  // means checked; active is the keyboard cursor only.
+                  selected={q.multi ? on : cursor}
+                  active={q.multi ? cursor : false}
+                  disabled={submitting}
+                />
+              );
+            })}
+            <PromptAction
+              actionId={`${instanceId}-row-${customRowIndex}`}
+              keyLabel=""
+              label={t("ask.customAnswer")}
+              onClick={() => selectRow(customRowIndex)}
+              selected={selectedIndex === customRowIndex || customOpen}
+              disabled={submitting}
+            />
+          </>
+        )
       }
       quickActions={
         active > 0 ? (
@@ -334,15 +352,15 @@ export function AskCard({
               disabled={submitting}
             />
           )}
-          {customOpen && (
+          {(customOpen || q.input) && (
             <div className="ask-shelf__custom-row">
               <textarea
                 ref={customInputRef}
                 className="ask-shelf__custom"
-                placeholder={t("ask.customPlaceholder")}
+                placeholder={q.input ? "" : t("ask.customPlaceholder")}
                 value={custom[q.id] ?? ""}
                 disabled={submitting}
-                rows={3}
+                rows={q.input?.multiline ? 4 : 2}
                 onChange={(e) => setTyped(q, e.target.value)}
                 onKeyDown={(e) => {
                   // Enter submits the custom answer; Ctrl+Enter inserts a

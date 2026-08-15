@@ -115,10 +115,20 @@ func renderReleaseMarkdown(release releaseRecord, locale string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Reasonix v%s — %s\n\n", release.Version, localize(release.Title))
 	if zh {
-		fmt.Fprintf(&b, "发布日期：%s\n\n发布渠道：%s\n\n状态：%s\n", release.Date, release.Channel, release.Status)
+		fmt.Fprintf(&b, "发布日期：%s\n\n发布渠道：%s", release.Date, release.Channel)
 	} else {
-		fmt.Fprintf(&b, "Release date: %s\n\nChannel: %s\n\nStatus: %s\n", release.Date, release.Channel, release.Status)
+		fmt.Fprintf(&b, "Release date: %s\n\nChannel: %s", release.Date, release.Channel)
 	}
+	// Personal builds record no managed status; skip the line instead of
+	// printing a bare "Status:".
+	if release.Status != "" {
+		if zh {
+			fmt.Fprintf(&b, "\n\n状态：%s", release.Status)
+		} else {
+			fmt.Fprintf(&b, "\n\nStatus: %s", release.Status)
+		}
+	}
+	fmt.Fprintf(&b, "\n")
 	if len(release.Surfaces) > 0 {
 		fmt.Fprintf(&b, "\n%s: %s\n", heading("Surfaces", "涉及产品面"), strings.Join(release.Surfaces, ", "))
 	}

@@ -161,6 +161,7 @@ type Messages struct {
 	AskTypeSomething   string // the "type your own answer" option label
 	AskTypingHint      string // shown on that row while entering free text
 	AskChatInstead     string // the "don't pick, just chat" option label
+	AskRecommended     string // label for an input question's editable default answer
 	ChatStatusQuestion string // shortcuts hint while a question card is open
 	StatusResumePicker string // status tag while the resume picker is open (e.g. "select session")
 	AskSubmitTitle     string // submit-tab title in the ask tool question card

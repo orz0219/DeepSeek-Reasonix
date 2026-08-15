@@ -88,6 +88,7 @@ var English = Messages{
 	AskTypeSomething:                       "Type something else",
 	AskTypingHint:                          "type below, Enter to confirm",
 	AskChatInstead:                         "None — just chat",
+	AskRecommended:                         "Recommended answer",
 	ChatStatusQuestion:                     "↑/↓ move · number to pick · space multi · Enter confirm · ←/→ switch · Esc cancel",
 	StatusResumePicker:                     "↑/↓ move · Enter resume · Esc cancel",
 	AskSubmitTitle:                         "Submit answers",

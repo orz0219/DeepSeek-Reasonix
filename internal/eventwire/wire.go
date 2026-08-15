@@ -341,12 +341,20 @@ type AskOption struct {
 	Description string `json:"description,omitempty" externalizable:"true"`
 }
 
+// AskInput is the JSON form of an event.AskInput: a free-text field question.
+type AskInput struct {
+	Recommended string `json:"recommended,omitempty" externalizable:"true"`
+	Multiline   bool   `json:"multiline,omitempty" externalizable:"true"`
+	Required    bool   `json:"required,omitempty" externalizable:"true"`
+}
+
 // AskQuestion is one JSON-formatted structured ask question.
 type AskQuestion struct {
 	ID      string      `json:"id"`
 	Header  string      `json:"header,omitempty"`
 	Prompt  string      `json:"prompt" externalizable:"true"`
 	Options []AskOption `json:"options"`
+	Input   *AskInput   `json:"input,omitempty" externalizable:"true"`
 	Multi   bool        `json:"multi,omitempty"`
 }
 
@@ -555,7 +563,11 @@ func ToWireAsk(a event.Ask) *Ask {
 		for j, o := range q.Options {
 			opts[j] = AskOption{Label: o.Label, Description: o.Description}
 		}
-		qs[i] = AskQuestion{ID: q.ID, Header: q.Header, Prompt: q.Prompt, Options: opts, Multi: q.Multi}
+		var input *AskInput
+		if q.Input != nil {
+			input = &AskInput{Recommended: q.Input.Recommended, Multiline: q.Input.Multiline, Required: q.Input.Required}
+		}
+		qs[i] = AskQuestion{ID: q.ID, Header: q.Header, Prompt: q.Prompt, Options: opts, Input: input, Multi: q.Multi}
 	}
 	return &Ask{ID: a.ID, Questions: qs}
 }

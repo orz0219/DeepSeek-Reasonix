@@ -116,4 +116,50 @@ rm -rf dist/Reasonix.app
 rm -f dist/Reasonix-darwin-*.zip
 cp -R "$app" dist/Reasonix.app
 
+# Record the built version at the top of release-notes/releases.json so the
+# next default version starts from this build instead of the last catalog
+# entry (which personal builds otherwise never update).
+if [ -f release-notes/releases.json ]; then
+	python3 - "$VERSION" <<'PY'
+import json, sys
+from datetime import datetime, timezone
+
+path = "release-notes/releases.json"
+version = sys.argv[1].lstrip("v")
+with open(path, encoding="utf-8") as f:
+    catalog = json.load(f)
+if any(r["version"] == version for r in catalog["releases"]):
+    sys.exit(0)
+previous = catalog["releases"][0]["version"]
+record = {
+    "version": version,
+    "date": datetime.now(timezone.utc).date().isoformat(),
+    "channel": "stable",
+    "title": {"en": f"Reasonix Desktop {version}", "zh": f"Reasonix Desktop {version}"},
+    "summary": {"en": "Local desktop build.", "zh": "本地桌面打包。"},
+    "surfaces": ["desktop"],
+    "guides": [],
+    "highlights": [{
+        "kind": "new",
+        "title": {"en": f"Local build {version}", "zh": f"本地打包 {version}"},
+        "body": {"en": "Packaged locally with scripts/build-mac-desktop.sh.", "zh": "通过 scripts/build-mac-desktop.sh 本地打包。"},
+    }],
+    "changes": {"new": [], "improved": [], "fixed": []},
+    "upgrade": [],
+    "risks": [],
+    "contributors": [],
+    "links": {
+        "github": f"https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v{version}",
+        "compare": f"https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v{previous}...desktop-v{version}",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start",
+    },
+}
+catalog["releases"].insert(0, record)
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(catalog, f, ensure_ascii=False, indent=2)
+    f.write("\n")
+PY
+	echo "==> recorded v$VERSION in release-notes/releases.json"
+fi
+
 echo "==> done: dist/Reasonix.app (${ARCH}, $VERSION, ad-hoc signed)"

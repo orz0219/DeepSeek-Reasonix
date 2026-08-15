@@ -185,11 +185,17 @@ export interface WireAskOption {
     label: string;
     description?: string;
 }
+export interface WireAskInput {
+    recommended?: string;
+    multiline?: boolean;
+    required?: boolean;
+}
 export interface WireAskQuestion {
     id: string;
     header?: string;
     prompt: string;
     options: WireAskOption[];
+    input?: WireAskInput;
     multi?: boolean;
 }
 export interface WireAsk {

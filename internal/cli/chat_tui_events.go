@@ -250,8 +250,7 @@ func (m *chatTUI) ingestEvent(e event.Event) {
 
 	case event.AskRequest:
 
-		m.finalizeStreamed()
-		m.chooser = newChooser(e.Ask)
+		m.startAskChooser(e.Ask)
 
 	case event.MCPSurfaceReady:
 
@@ -287,6 +286,16 @@ func (m *chatTUI) finalizeStreamed() {
 	m.collapseToolOutput(m.toolStreamID, "")
 	m.commitReasoning()
 	m.commitPending()
+}
+
+// startAskChooser opens the ask question card, entering free-text entry right
+// away when the first question is an input field.
+func (m *chatTUI) startAskChooser(a event.Ask) {
+	m.finalizeStreamed()
+	m.chooser = newChooser(a)
+	if m.chooser.isInputTab() {
+		m.enterChooserInput()
+	}
 }
 
 func waitForAgentEvent(ch chan event.Event) tea.Cmd {

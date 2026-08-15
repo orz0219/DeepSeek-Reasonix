@@ -335,13 +335,22 @@ type AskOption struct {
 	Description string // optional one-line explanation shown under the label
 }
 
+// AskInput marks an AskQuestion as a free-text field instead of an option
+// picker. Recommended pre-fills the field as an editable default answer.
+type AskInput struct {
+	Recommended string // editable default answer pre-filled into the field
+	Multiline   bool   // render a taller text area
+	Required    bool   // empty answers are not submittable
+}
+
 // AskQuestion is one structured question the `ask` tool puts to the user.
 type AskQuestion struct {
 	ID      string // stable per-question id, so answers correlate back
 	Header  string // short label (the tab title)
 	Prompt  string // the question text
 	Options []AskOption
-	Multi   bool // allow selecting more than one option
+	Input   *AskInput // non-nil renders a free-text field instead of Options
+	Multi   bool      // allow selecting more than one option
 }
 
 // Ask carries an AskRequest: a batch of questions and the ID that correlates the

@@ -78,33 +78,7 @@ func (m chatTUI) handleKeyPress(msg tea.KeyPressMsg, cmds []tea.Cmd, inputBefore
 
 	if m.chooser != nil {
 		if m.chooser.typing {
-			switch msg.String() {
-			case "enter":
-				val := strings.TrimSpace(m.input.Value())
-				m.input.Reset()
-				m.chooser.typing = false
-				m.refreshInputPlaceholder()
-				if val == "" {
-					return m, finalize(m, cmds)
-				}
-				m.chooser.custom[m.chooser.tab] = val
-				m.chooser.sel[m.chooser.tab] = map[int]bool{}
-				return m.chooserAdvance()
-			case "esc":
-				m.chooser.typing = false
-				m.input.Reset()
-				m.refreshInputPlaceholder()
-				return m, finalize(m, cmds)
-			}
-			beforeInput := m.input.Value()
-			var ic tea.Cmd
-			m.input, ic = m.input.Update(msg)
-			cmds = append(cmds, ic)
-			m.growInputToFit()
-			if shouldClearWideInputChange(beforeInput, m.input.Value()) {
-				cmds = append(cmds, tea.ClearScreen)
-			}
-			return m, finalize(m, cmds)
+			return m.handleChooserTypingKey(msg, cmds)
 		}
 		return m.handleChooserKey(msg)
 	}
@@ -545,6 +519,39 @@ func (m chatTUI) handleKeyPress(msg tea.KeyPressMsg, cmds []tea.Cmd, inputBefore
 	cmds = append(cmds, ic)
 	m.growInputToFit()
 	m.updateCompletion()
+	if shouldClearWideInputChange(beforeInput, m.input.Value()) {
+		cmds = append(cmds, tea.ClearScreen)
+	}
+	return m, finalize(m, cmds)
+}
+
+// handleChooserTypingKey routes keys while the ask card is in free-text entry.
+// An empty Enter confirms an input question (its empty answer is meaningful),
+// but only after the user typed something for an option question.
+func (m chatTUI) handleChooserTypingKey(msg tea.KeyPressMsg, cmds []tea.Cmd) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		val := strings.TrimSpace(m.input.Value())
+		m.input.Reset()
+		m.chooser.typing = false
+		m.refreshInputPlaceholder()
+		if val == "" && !m.chooser.isInputTab() {
+			return m, finalize(m, cmds)
+		}
+		m.chooser.custom[m.chooser.tab] = val
+		m.chooser.sel[m.chooser.tab] = map[int]bool{}
+		return m.chooserAdvance()
+	case "esc":
+		m.chooser.typing = false
+		m.input.Reset()
+		m.refreshInputPlaceholder()
+		return m, finalize(m, cmds)
+	}
+	beforeInput := m.input.Value()
+	var ic tea.Cmd
+	m.input, ic = m.input.Update(msg)
+	cmds = append(cmds, ic)
+	m.growInputToFit()
 	if shouldClearWideInputChange(beforeInput, m.input.Value()) {
 		cmds = append(cmds, tea.ClearScreen)
 	}
