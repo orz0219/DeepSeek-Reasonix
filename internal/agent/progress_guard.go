@@ -13,9 +13,9 @@ import (
 // judged by evidence gain (new reads, new results, mutations) and only
 // consecutive zero-gain rounds escalate — nudge, then pivot, then stop.
 const (
-	progressNudgeStreak = 2
-	progressPivotStreak = 4
-	progressStopStreak  = 6
+	progressNudgeStreak = 4
+	progressPivotStreak = 8
+	progressStopStreak  = 12
 )
 
 // progressGuard tracks consecutive tool rounds whose receipts produced no new
