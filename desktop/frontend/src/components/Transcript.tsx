@@ -314,11 +314,12 @@ export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeig
         olderHistory: hasOlderHistory
             ? {
                 loading: loadingOlderHistory,
+                running,
                 label: loadingOlderHistory ? t("common.loading") : t("transcript.showEarlierHistory", { n: olderHistoryCount }),
                 onLoad: onLoadOlderHistory,
             }
             : null,
-    }), [hasOlderHistory, loadingOlderHistory, nativeScrollbarDragging, olderHistoryCount, onLoadOlderHistory, overlayRevision, scrollElement, t, tabId]);
+    }), [hasOlderHistory, loadingOlderHistory, nativeScrollbarDragging, olderHistoryCount, onLoadOlderHistory, overlayRevision, running, scrollElement, t, tabId]);
     const handleScrollerRef = useCallback((node: HTMLElement | Window | null) => {
         scrollerRef(node);
         entranceRef.current = node instanceof HTMLElement ? node as HTMLDivElement : null;
@@ -355,7 +356,7 @@ export function Transcript({ items, live: liveProp, liveStore, tabId, footerHeig
     const renderRow = (row: TranscriptRow): ReactNode => {
         switch (row.kind) {
             case "older-history":
-                return (<button type="button" className="warm-collapse transcript__older" onClick={onLoadOlderHistory} disabled={loadingOlderHistory}>
+                return (<button type="button" className="warm-collapse transcript__older" onClick={onLoadOlderHistory} disabled={loadingOlderHistory || running}>
             {loadingOlderHistory ? t("common.loading") : t("transcript.showEarlierHistory", { n: olderHistoryCount })}
           </button>);
             case "user": {

@@ -143,7 +143,7 @@ func parsePlanTodos(plan string) []seedTodo {
 			continue
 		}
 		todos = append(todos, seedTodo{Content: item, Status: "pending", Level: level})
-		if len(todos) >= 20 {
+		if len(todos) >= 2000 {
 			break
 		}
 	}

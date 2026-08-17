@@ -74,6 +74,24 @@ func (a *App) liveHistorySlice(ctrl control.SessionAPI, sessionDir, sessionPath 
 	if !indexUsed {
 		a.kickHistoryIndexRebuild(sessionPath)
 	}
+	// Append-only sessions advance identity on save while the message prefix
+	// stays intact, so re-bind an older page cursor to the current identity
+	// instead of failing it; rewrites (compaction, rewind) keep strict checks.
+	appendOnly := false
+	if wc, ok := ctrl.(historyWindowController); ok {
+		if cursor, err := decodeHistorySliceCursor(req.Cursor); err == nil && cursor.Before > 0 && cursor.Before <= src.total {
+			if ps, psOK := wc.SessionPersistedState(); psOK && ps.AppendOnlyTail {
+				req.Cursor = encodeHistorySliceCursor(historySliceCursor{
+					V:        1,
+					Revision: src.revision,
+					RevKnown: src.revKnown,
+					Digest:   src.digest,
+					Before:   cursor.Before,
+				})
+				appendOnly = true
+			}
+		}
+	}
 	slice, err := a.pageHistorySliceSource(src, req, resolver, sessionPlannerDisplayTurns(sessionDir, sessionPath), ctrl.CheckpointTurnsByMessageIndex(), sessionPath)
 	if err != nil {
 		slog.Debug("desktop: live history slice failed", "path", sessionPath, "err", err)
@@ -83,6 +101,9 @@ func (a *App) liveHistorySlice(ctrl control.SessionAPI, sessionDir, sessionPath 
 		slice.Source = "live-index"
 	} else {
 		slice.Source = "live-fallback"
+	}
+	if appendOnly {
+		slice.AppendOnly = true
 	}
 	return slice
 }

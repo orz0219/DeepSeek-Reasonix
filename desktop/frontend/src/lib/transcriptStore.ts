@@ -505,10 +505,22 @@ export class TranscriptStore {
                 return projection ? { ...projection, kind: "reload", prependItems: [], removeIds: [] } : undefined;
             }
             if (!this.sameFingerprint(session, slice)) {
-                // A backend that raced a rewrite may return a fresh page instead of a
-                // stale marker. Never prepend rows from a different canonical state.
-                const projection = await this.loadLatest(tabId, sessionPath, options);
-                return projection ? { ...projection, kind: "reload", prependItems: [], removeIds: [] } : undefined;
+                if (slice.appendOnly) {
+                    // The backend re-bound the cursor to the current identity of
+                    // an append-only live session; the message prefix is intact,
+                    // so adopt the new identity and prepend instead of reloading
+                    // the same newest page (which would hide the earlier turns
+                    // again).
+                    session.revision = slice.revision ?? session.revision;
+                    session.revisionKnown = sliceRevisionKnown(slice);
+                    session.digest = slice.digest ?? session.digest;
+                } else {
+                    // A backend that raced a rewrite may return a fresh page
+                    // instead of a stale marker. Never prepend rows from a
+                    // different canonical state.
+                    const projection = await this.loadLatest(tabId, sessionPath, options);
+                    return projection ? { ...projection, kind: "reload", prependItems: [], removeIds: [] } : undefined;
+                }
             }
             const { items, removeIds } = this.prependRecords(session, asArray<HistoryEntry>(slice.entries));
             session.nextCursor = slice.nextCursor ?? "";
@@ -521,7 +533,7 @@ export class TranscriptStore {
             this.enforceBudgets();
             if (this.sessions.get(key) !== session)
                 return undefined;
-            return { ...this.projectionOf(session), kind: "prepend", prependItems: items, removeIds };
+            return { ...this.projectionOf(session), kind: "prepend", prependItems: items, removeIds, appendOnly: slice.appendOnly };
         }
         finally {
             session.olderInFlight = false;

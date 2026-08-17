@@ -447,3 +447,22 @@ func isPendingState(state InboxState) bool {
 		return false
 	}
 }
+
+// HasPending reports whether any item still needs review or dispatch. Empty
+// and fully-consumed queues do not warrant the recovery/inspection pause flag.
+func (s *Store) HasPending() bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.man == nil {
+		return false
+	}
+	for i := range s.man.Items {
+		if isPendingState(s.man.Items[i].State) {
+			return true
+		}
+	}
+	return false
+}

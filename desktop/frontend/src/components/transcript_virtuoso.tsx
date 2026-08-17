@@ -65,7 +65,7 @@ function TranscriptVirtuosoHeader({ context }: {
     if (!context.olderHistory)
         return null;
     return (<div className="transcript__header">
-      <button type="button" className="warm-collapse transcript__older" onClick={context.olderHistory.onLoad} disabled={context.olderHistory.loading}>
+      <button type="button" className="warm-collapse transcript__older" onClick={context.olderHistory.onLoad} disabled={context.olderHistory.loading || context.olderHistory.running}>
         {context.olderHistory.label}
       </button>
     </div>);

@@ -62,6 +62,9 @@ export interface LoadOlderResult extends TranscriptProjection {
     prependItems: Item[];
     /** Existing item ids superseded by cross-page tool merges (kind === "prepend"). */
     removeIds: string[];
+    /** Backend re-bound the cursor to the current identity of an append-only
+     * session: identity checks may adopt this page instead of discarding it. */
+    appendOnly?: boolean;
 }
 export interface TranscriptContentChange {
     tabId: string;

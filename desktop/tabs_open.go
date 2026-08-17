@@ -283,7 +283,7 @@ func (a *App) ensureBlankTab(scope, workspaceRoot, forcedTokenMode string) (TabM
 	}
 	if reusable != nil {
 		a.mu.Unlock()
-		if err := a.alignReusableBlankTabModel(reusable, defaultModel); err != nil {
+		if err := a.alignReusableBlankTab(reusable, defaultModel, defaultToolApprovalMode); err != nil {
 			return TabMeta{}, err
 		}
 		a.mu.Lock()
@@ -486,6 +486,33 @@ func (a *App) alignReusableBlankTabModel(tab *WorkspaceTab, model string) error 
 	a.saveTabsLocked()
 	a.mu.Unlock()
 	a.startTabControllerBuild(tab)
+	return nil
+}
+
+// alignReusableBlankTab applies both new-session defaults to a reused empty
+// session: the provider/model (alignReusableBlankTabModel) and the approval
+// posture (alignReusableBlankTabApproval).
+func (a *App) alignReusableBlankTab(tab *WorkspaceTab, model, approval string) error {
+	if err := a.alignReusableBlankTabModel(tab, model); err != nil {
+		return err
+	}
+	return a.alignReusableBlankTabApproval(tab, approval)
+}
+
+// alignReusableBlankTabApproval makes a reused empty session obey the
+// configured new-session approval default: a reused blank tab is a new
+// session, so the last Ask/Auto/YOLO posture must not override it.
+func (a *App) alignReusableBlankTabApproval(tab *WorkspaceTab, mode string) error {
+	if tab == nil {
+		return nil
+	}
+	a.mu.RLock()
+	current := tab.toolApprovalMode
+	a.mu.RUnlock()
+	if current == mode {
+		return nil
+	}
+	a.SetToolApprovalModeForTab(tab.ID, normalizeToolApprovalMode(mode))
 	return nil
 }
 

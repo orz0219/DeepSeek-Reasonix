@@ -19,6 +19,7 @@ export type TranscriptVirtuosoContext = {
     overlayRevision: string;
     olderHistory: null | {
         loading: boolean;
+        running: boolean;
         label: string;
         onLoad?: () => void;
     };

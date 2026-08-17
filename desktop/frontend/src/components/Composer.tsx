@@ -1598,6 +1598,10 @@ export function Composer({ running, collaborationMode, toolApprovalMode, tokenMo
                                 structured,
                             },
                         ]);
+                        // The receipt only carries the enqueue-time pause state;
+                        // refresh the durable snapshot so blocked/resumed states
+                        // replace the optimistic row instead of a stale banner.
+                        setGuidanceRetryNonce((value) => value + 1);
                         clearSubmittedDraft(submitDraftKey);
                     }
                     catch (error) {

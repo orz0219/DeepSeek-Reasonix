@@ -29959,6 +29959,20 @@ body > .mermaid-diagram--fullscreen {
   font-weight: 700;
 }
 
+/* Running sessions get a blue title so in-flight work stands out in the
+   sidebar; the class drops off when the turn ends and the color reverts. */
+.project-tree__topic--running .project-tree__topic-label,
+.sidebar--workbench .project-tree__topic--running .project-tree__topic-label,
+.sidebar--workbench .project-tree__topic--running.project-tree__topic--active .project-tree__topic-label,
+.app--creation .project-tree__topic--running .project-tree__topic-label,
+.app--creation .project-tree__topic--running.project-tree__topic--active .project-tree__topic-label,
+:root[data-theme-style] .project-tree__topic--running .project-tree__topic-label,
+:root[data-theme-style] .project-tree__topic--running.project-tree__topic--active .project-tree__topic-label,
+:root[data-theme-style] .sidebar--workbench .project-tree__topic--running .project-tree__topic-label,
+:root[data-theme-style] .sidebar--workbench .project-tree__topic--running.project-tree__topic--active .project-tree__topic-label {
+  color: var(--accent-blue, #2f8cff);
+}
+
 .sidebar--workbench .project-tree__topic-im {
   max-width: 64px;
   height: 16px;

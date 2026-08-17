@@ -612,10 +612,16 @@ export function useController() {
             // A replace-level hydrate while the page was in flight clears
             // historyOlderLoading; a metadata or canonical-identity change also
             // makes the page belong to a different transcript generation.
+            // appendOnly results are exempt: the backend re-bound the cursor to
+            // the current identity of an append-only session, so the identity
+            // change is exactly what the page was cut for.
+            const resultIdentityChanged = result !== undefined && !result.appendOnly &&
+                (!fingerprintMatches(sessionRevision, result.revisionKnown ? result.revision : undefined) ||
+                    !digestMatches(sessionDigest, result.digest));
             if (!current || !current.historyOlderLoading || (current.meta?.sessionPath ?? "") !== sessionPath ||
-                !fingerprintMatches(sessionRevision, currentRevision) || !digestMatches(sessionDigest, currentDigest) ||
-                (result !== undefined && (!fingerprintMatches(sessionRevision, result.revisionKnown ? result.revision : undefined) ||
-                    !digestMatches(sessionDigest, result.digest)))) {
+                (result !== undefined && !result.appendOnly &&
+                    (!fingerprintMatches(sessionRevision, currentRevision) || !digestMatches(sessionDigest, currentDigest))) ||
+                resultIdentityChanged) {
                 dispatchTo(targetTabId, { type: "history_older_error" });
                 return;
             }

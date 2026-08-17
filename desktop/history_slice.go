@@ -134,6 +134,10 @@ type HistorySlice struct {
 	// (empty Entries alone means a genuinely empty session).
 	Source string `json:"source,omitempty"`
 	Error  string `json:"error,omitempty"`
+	// AppendOnly marks that the session was append-only when the page was cut,
+	// so a frontend holding an older page identity may adopt this page's
+	// identity and prepend instead of discarding it.
+	AppendOnly bool `json:"appendOnly,omitempty"`
 }
 
 // HistoryContentChunk is one chunk of a ref-replaced field's full value.

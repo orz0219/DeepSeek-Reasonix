@@ -133,6 +133,9 @@ export interface HistorySlice {
     // Diagnostic read path: index|scan|event-log|live-index|live-fallback.
     source?: string;
     error?: string; // failed read; empty entries alone are not an error
+    // Session was append-only when the page was cut: an older page identity
+    // may be adopted and prepended instead of discarded.
+    appendOnly?: boolean;
 }
 export interface HistoryContentChunk {
     entryId: string;
