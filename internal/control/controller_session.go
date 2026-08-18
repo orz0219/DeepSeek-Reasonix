@@ -40,6 +40,9 @@ func (c *Controller) NewSession() error {
 		return err
 	}
 
+	// Consolidate memories from the old session before rotating.
+	c.consolidateSession(context.Background())
+
 	if err := c.extensionSessionPhase(context.Background(), extension.PointSessionRotate, dispatch.PhaseRotate, oldPath); err != nil {
 		return err
 	}
@@ -73,6 +76,7 @@ func (c *Controller) NewSession() error {
 	c.mu.Lock()
 	c.startedOnce = true
 	c.mu.Unlock()
+	c.resetConsolidation()
 	c.hooks.SetSessionID(c.parentSessionID())
 	c.enqueueHookContexts(c.hooks.SessionStart(context.Background(), "clear"))
 	c.extensionSessionEvent(extension.PointSessionStart, dispatch.PhaseStart, c.SessionPath())

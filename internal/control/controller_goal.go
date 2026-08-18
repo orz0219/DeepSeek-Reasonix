@@ -260,7 +260,12 @@ func (c *Controller) Compact(ctx context.Context, instructions string) error {
 		return err
 	}
 	defer c.endRotation()
-	return c.executor.CompactNow(ctx, instructions)
+	if err := c.executor.CompactNow(ctx, instructions); err != nil {
+		return err
+	}
+	// Consolidate after compaction.
+	go c.consolidateSession(ctx)
+	return nil
 }
 
 // maybeSessionStart fires the SessionStart hook exactly once per session, lazily

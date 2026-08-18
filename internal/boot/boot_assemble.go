@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reasonix/internal/agent"
+	"reasonix/internal/boundedllm"
 	"reasonix/internal/capability"
 	"reasonix/internal/config"
 	"reasonix/internal/control"
@@ -17,6 +18,7 @@ import (
 	"reasonix/internal/extension/sidecar"
 	"reasonix/internal/goaleval"
 	"reasonix/internal/guardian"
+	"reasonix/internal/memory"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
 	"reasonix/internal/recovery"
@@ -284,6 +286,7 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		SkillProfile:                   skillProfile,
 		Hooks:                          hookRunner,
 		Memory:                         mem,
+		Consolidator:                   buildConsolidator(mem, execProv, entry, sink),
 		// Indirection: the cleanup variable gains the extension runtime set at
 		// the end of build (snapshot assembly runs after control.New), and the
 		// controller must observe the final chain at Close time.
@@ -546,4 +549,31 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		ImplicitSkillInvocation: implicitSkillInvocation,
 	}
 	return finalizeBuildResult(&BuildResult{Controller: ctrl, Snapshot: snap, Runtime: runtimeSet, Owner: owner, Extensions: extensionMgr, Dispatcher: extensionDispatcher, ExtensionUI: extUIHub, ProviderResolver: providerResolver, BaseProviderResolver: baseResolver, Assembly: assembly}, !opts.deferPublish), nil
+}
+
+// buildConsolidator creates an LLM-backed memory consolidator when the memory
+// store is available and a provider exists. Returns nil when consolidation
+// cannot be configured, which disables the feature gracefully.
+func buildConsolidator(mem *memory.Set, prov provider.Provider, entry *config.ProviderEntry, sink event.Sink) memory.Consolidator {
+	if mem == nil || mem.Store.Dir == "" {
+		return nil
+	}
+	if prov == nil {
+		return nil
+	}
+	cfg := boundedllm.Config{
+		Provider:       prov,
+		Pricing:        entry.Price,
+		ModelRef:       entry.Model,
+		Sink:           sink,
+		UsageSource:    "consolidation",
+		Timeout:        boundedllm.DefaultTimeout,
+		MaxTokens:      2048,
+		MaxOutputBytes: 16 * 1024,
+		MaxTotalBytes:  32 * 1024,
+	}
+	completionFn := func(ctx context.Context, system, user string) (string, error) {
+		return boundedllm.Call(ctx, cfg, system, user)
+	}
+	return memory.NewLLMConsolidator(completionFn, mem.Store, memory.ConsolidationPolicy{})
 }

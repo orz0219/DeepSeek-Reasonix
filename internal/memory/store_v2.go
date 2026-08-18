@@ -120,6 +120,18 @@ func inheritOnUpdate(m Memory, existing Memory, clearExpiry bool) Memory {
 	if strings.TrimSpace(m.Keywords) == "" {
 		m.Keywords = existing.Keywords
 	}
+	if NormalizeOrigin(string(m.Origin)) == OriginExplicit && NormalizeOrigin(string(existing.Origin)) != OriginExplicit {
+		// Preserve a higher-priority origin (manual/explicit) when the update
+		// arrives with only the default. A consolidation explicitly sets
+		// OriginConsolidated so it will not accidentally inherit manual.
+		m.Origin = existing.Origin
+	}
+	if m.SourceSessionID == "" {
+		m.SourceSessionID = existing.SourceSessionID
+	}
+	if m.Confidence == 0 {
+		m.Confidence = existing.Confidence
+	}
 	return m
 }
 

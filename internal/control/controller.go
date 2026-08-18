@@ -33,6 +33,7 @@ import (
 	"reasonix/internal/guardian"
 	"reasonix/internal/hook"
 	"reasonix/internal/jobs"
+	"reasonix/internal/memory"
 	"reasonix/internal/permission"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
@@ -115,7 +116,11 @@ type Controller struct {
 	// memory owns the loaded memory snapshot, the pending turn-tail notes queue,
 	// and write serialization behind its own locks, off c.mu — so a memory-panel
 	// save never stalls an approval or status poll. See memory.go.
-	memory                 memoryManager
+	memory memoryManager
+	// consolidator runs automatic session memory consolidation. nil disables it.
+	consolidator           memory.Consolidator
+	consolidateMu          sync.Mutex
+	consolidateDone        bool
 	cleanup                func()
 	responseLanguage       string
 	reasoningLanguage      string

@@ -91,6 +91,16 @@ type Memory struct {
 	LastVerifiedAt time.Time  // last explicit confirmation; renews the freshness clock
 	Keywords       string     // search aliases (bilingual synonyms, related commands); recall-only, never rendered into the index
 	Body           string     // the fact itself (Markdown)
+
+	// Origin records how this memory was created. Zero value (empty) resolves
+	// to OriginExplicit via NormalizeOrigin for memories predating this field.
+	Origin MemoryOrigin
+	// SourceSessionID is the session that created this memory via consolidation.
+	// Empty for manual/explicit memories.
+	SourceSessionID string
+	// Confidence is the consolidation confidence score (0.0-1.0). Zero for
+	// manually created memories (implicit 1.0).
+	Confidence float64
 }
 
 // ArchivedMemory is a saved fact that has been removed from active memory but
@@ -420,22 +430,25 @@ func loadMemory(path string) (Memory, bool) {
 	}
 	fm, body := splitFrontmatter(string(b))
 	m := Memory{
-		ID:             fm["id"],
-		Revision:       parsePositiveInt(fm["revision"]),
-		CreatedAt:      parseMemoryTime(fm["created_at"]),
-		UpdatedAt:      parseMemoryTime(fm["updated_at"]),
-		Name:           fm["name"],
-		Title:          fm["title"],
-		Description:    fm["description"],
-		Keywords:       fm["keywords"],
-		Activation:     NormalizeActivation(fm["activation"]),
-		Volatility:     NormalizeVolatility(fm["volatility"]),
-		SubjectKey:     NormalizeSubjectKey(fm["subject_key"]),
-		ExpiresAt:      parseMemoryTime(fm["expires_at"]),
-		LastVerifiedAt: parseMemoryTime(fm["last_verified_at"]),
-		Type:           persistedFactType(fm),
-		Scope:          factScopeFromFrontmatter(fm["scope"]),
-		Body:           strings.TrimSpace(body),
+		ID:              fm["id"],
+		Revision:        parsePositiveInt(fm["revision"]),
+		CreatedAt:       parseMemoryTime(fm["created_at"]),
+		UpdatedAt:       parseMemoryTime(fm["updated_at"]),
+		Name:            fm["name"],
+		Title:           fm["title"],
+		Description:     fm["description"],
+		Keywords:        fm["keywords"],
+		Activation:      NormalizeActivation(fm["activation"]),
+		Volatility:      NormalizeVolatility(fm["volatility"]),
+		SubjectKey:      NormalizeSubjectKey(fm["subject_key"]),
+		ExpiresAt:       parseMemoryTime(fm["expires_at"]),
+		LastVerifiedAt:  parseMemoryTime(fm["last_verified_at"]),
+		Type:            persistedFactType(fm),
+		Scope:           factScopeFromFrontmatter(fm["scope"]),
+		Body:            strings.TrimSpace(body),
+		Origin:          NormalizeOrigin(fm["origin"]),
+		SourceSessionID: fm["source_session_id"],
+		Confidence:      parseFloat64(fm["confidence"]),
 	}
 	if m.Name == "" {
 		m.Name = strings.TrimSuffix(filepath.Base(path), ".md")
@@ -478,6 +491,11 @@ func parsePositiveInt(value string) int {
 func parseMemoryTime(value string) time.Time {
 	when, _ := time.Parse(time.RFC3339Nano, strings.TrimSpace(value))
 	return when
+}
+
+func parseFloat64(value string) float64 {
+	f, _ := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	return f
 }
 
 func persistedFactType(fm map[string]string) Type {

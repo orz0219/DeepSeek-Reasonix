@@ -73,6 +73,7 @@ func (c *Controller) close(fireSessionEnd bool, jobsMode closeJobsMode) {
 			cancel()
 		}
 		if fireSessionEnd && started {
+			c.consolidateSession(context.Background())
 			c.hooks.SessionEnd(context.Background(), "other")
 			c.extensionSessionEvent(extension.PointSessionEnd, dispatch.PhaseEnd, c.SessionPath())
 		}
