@@ -29053,7 +29053,7 @@ body > .mermaid-diagram--fullscreen {
   border: 0;
   background: transparent;
   font-size: 12px;
-  line-height: 1.7;
+  line-height: 1.55;
 }
 
 :root[data-theme-style] .workspace-preview__body--code .code--lines {

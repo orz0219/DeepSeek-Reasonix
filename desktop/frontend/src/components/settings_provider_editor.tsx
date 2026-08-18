@@ -97,7 +97,10 @@ export function ProviderEditor({ initial, kinds, busy, onCancel, onSave, onSaveK
     const t = useT();
     const [name, setName] = useState(initial?.name ?? "");
     const [kind, setKind] = useState(initial?.kind ?? "openai");
-    const [requestUrl, setRequestUrl] = useState(() => providerRequestURLFromConfig(initial?.kind ?? "openai", initial?.baseUrl ?? "", initial?.requestUrl ?? "", initial?.chatUrl ?? ""));
+    const [requestUrl, setRequestUrl] = useState(() => {
+        const computed = providerRequestURLFromConfig(initial?.kind ?? "openai", initial?.baseUrl ?? "", initial?.requestUrl ?? "", initial?.chatUrl ?? "");
+        return computed || (!initial ? "https://api.openai.com/v1/chat/completions" : "");
+    });
     const providerUrlInputId = useId();
     const providerUrlHelpId = useId();
     const [models, setModels] = useState((initial?.models ?? []).join(", "));

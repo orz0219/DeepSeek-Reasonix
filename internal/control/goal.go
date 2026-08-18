@@ -619,10 +619,9 @@ func (g *goalMachine) advance(in goalAdvanceInput) goalAdvanceResult {
 // goal completion so a session reload does not revert to the old incomplete
 // todo state.
 
-// terminalTodosFromState reads the persisted goal-state sidecar and returns its
-// todo snapshot only after the goal has reached a terminal state. Running goal
-// state is not refreshed on every todo_write, so its todos may be older than the
-// transcript rebuilt by Agent.SetSession.
+// todosFromState reads the persisted goal-state sidecar and returns its todo
+// snapshot. Restores both running and terminal goals so a restart does not
+// lose completed-step visibility.
 
 // restoreFromState reloads Goal state from the sidecar. The sidecar is
 // authoritative; active Goals are normalized to continuous-runtime sentinels.

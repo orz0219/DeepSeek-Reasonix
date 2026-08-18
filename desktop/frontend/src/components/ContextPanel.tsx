@@ -356,9 +356,11 @@ export function ContextPanel({ tabId, context, usage, sessionTokens, sessionCost
             <div className="context-panel__session-metrics">
               <div className="context-panel__summary-rows">
                 <MiniStat label={t("status.cacheAvgLabel")} value={formatCacheHitRate(sessionCacheHit, sessionCacheMiss)} tone={cacheHitTone(sessionCacheHit, sessionCacheMiss)}/>
-                <MiniStat label={t("context.sessionCost")} value={sessionCostLabel}/>
                 <MiniStat label={t("context.time")} value={fmtDuration(elapsed, t)}/>
                 <MiniStat label={t("context.requests")} value={requestCount > 0 ? String(requestCount) : "-"}/>
+                {cost.labelKind !== "unavailable" && cost.labelKind !== "bucketed" && (
+                  <MiniStat label={t("context.sessionCost")} value={sessionCostLabel}/>
+                )}
                 <MiniStat label={t("context.sessionTokensShort")} value={markEstimated(totalTokensMetric.display, sessionEstimated)} title={totalTokensTitle} wide/>
               </div>
             </div>

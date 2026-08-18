@@ -129,6 +129,7 @@ func splitLegacyCoalescedSummary(msg provider.Message) (provider.Message, provid
 	user := msg
 	user.Content = msg.Content[i+len(separator):]
 	user.RawContent = ""
+	user.LocalOnly = true // split fragment: already captured in the summary, skip retention
 	return summary, user, true
 }
 

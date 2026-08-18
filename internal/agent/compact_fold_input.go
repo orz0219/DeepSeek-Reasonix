@@ -18,7 +18,7 @@ const (
 	// summaryInputBudgetCeiling caps one summarizer call's transcript so the
 	// request stays within summaryTimeout on the provider side: full-window
 	// inputs can take minutes to prefill, while a 64k ceiling clears in seconds.
-	summaryInputBudgetCeiling = 64 * 1024
+	summaryInputBudgetCeiling = 128 * 1024
 )
 
 const (

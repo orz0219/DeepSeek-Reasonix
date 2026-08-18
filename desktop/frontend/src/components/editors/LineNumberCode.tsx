@@ -19,7 +19,7 @@ export { findCodeMatches, MAX_SEARCH_MATCHES } from "./codeSearch";
 
 // Line-numbered code viewer with virtual scroll and viewer-scoped search.
 const VIRTUAL_THRESHOLD = 100;
-const ROW_HEIGHT_ESTIMATE = 22;
+const FALLBACK_ROW_HEIGHT = 22;
 const OVERSCAN = 15;
 const SEARCH_DEBOUNCE_MS = 100;
 const EMPTY_SEARCH_RESULT: CodeSearchResult = { matches: [], truncated: false };
@@ -332,15 +332,31 @@ export default function LineNumberCode({
   }, [commitSearchQuery]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLDivElement>(null);
+  const measuredRowHeightRef = useRef(FALLBACK_ROW_HEIGHT);
   const isVirtual = showLineNumbers !== false && lines.length > VIRTUAL_THRESHOLD;
+
+  useEffect(() => {
+    const probe = probeRef.current;
+    if (!probe) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+        if (h > 0) {
+          measuredRowHeightRef.current = h;
+          break;
+        }
+      }
+    });
+    ro.observe(probe);
+    return () => ro.disconnect();
+  }, [value, language]);
+
   const virtualizer = useVirtualizer({
     count: isVirtual ? lines.length : 0,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ROW_HEIGHT_ESTIMATE,
+    estimateSize: () => measuredRowHeightRef.current,
     overscan: OVERSCAN,
-    // Syntax-highlighted rows can still require measurement when the user
-    // changes typography, but measurement/scroll updates should not feed a
-    // React render loop for a long code block.
     directDomUpdates: true,
   });
 
@@ -355,7 +371,7 @@ export default function LineNumberCode({
           row.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
         } else {
           scrollRef.current.scrollTo({
-            top: index * ROW_HEIGHT_ESTIMATE - scrollRef.current.clientHeight / 2,
+            top: index * measuredRowHeightRef.current - scrollRef.current.clientHeight / 2,
             behavior: "smooth",
           });
         }
@@ -596,7 +612,7 @@ export default function LineNumberCode({
           overflow: maxHeight != null || isVirtual ? "auto" : undefined,
         }}
       >
-        {isVirtual ? (
+        {isVirtual && virtualizer.getVirtualItems().length > 0 ? (
           <div
             ref={virtualizer.containerRef}
             className="code-lines-wrap"
@@ -623,6 +639,13 @@ export default function LineNumberCode({
             {lines.map((_, index) => renderRow(index))}
           </div>
         )}
+      </div>
+      <div
+        ref={probeRef}
+        aria-hidden
+        style={{ position: "absolute", visibility: "hidden", pointerEvents: "none" }}
+      >
+        {renderRow(0)}
       </div>
       {!searchOpen && <CopyButton text={value} className="code-block__copy" />}
     </div>

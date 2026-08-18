@@ -110,11 +110,10 @@ func (g *goalMachine) persistWithTodos(todos []evidence.TodoItem) {
 	}
 }
 
-// terminalTodosFromState reads the persisted goal-state sidecar and returns its
-// todo snapshot only after the goal has reached a terminal state. Running goal
-// state is not refreshed on every todo_write, so its todos may be older than the
-// transcript rebuilt by Agent.SetSession.
-func (g *goalMachine) terminalTodosFromState(sessionPath string) ([]evidence.TodoItem, bool) {
+// todosFromState reads the persisted goal-state sidecar and returns its todo
+// snapshot. Unlike the old terminal-only path, this also restores running
+// goals so a restart does not lose completed-step visibility.
+func (g *goalMachine) todosFromState(sessionPath string) ([]evidence.TodoItem, bool) {
 	if strings.TrimSpace(sessionPath) == "" {
 		return nil, false
 	}
@@ -128,11 +127,6 @@ func (g *goalMachine) terminalTodosFromState(sessionPath string) ([]evidence.Tod
 	var state goalState
 	if err := json.Unmarshal(data, &state); err != nil {
 		slog.Warn("controller: parse goal state", "err", err)
-		return nil, false
-	}
-	switch state.Status {
-	case GoalStatusComplete, GoalStatusBlocked, GoalStatusStopped:
-	default:
 		return nil, false
 	}
 	if len(state.Todos) == 0 {
@@ -339,7 +333,7 @@ func (c *Controller) restoreTerminalGoalTodos(sessionPath string) {
 	if c.executor == nil {
 		return
 	}
-	todos, ok := c.goals.terminalTodosFromState(sessionPath)
+	todos, ok := c.goals.todosFromState(sessionPath)
 	if !ok {
 		return
 	}
