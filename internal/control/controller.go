@@ -117,11 +117,9 @@ type Controller struct {
 	// and write serialization behind its own locks, off c.mu — so a memory-panel
 	// save never stalls an approval or status poll. See memory.go.
 	memory memoryManager
-	// consolidator runs automatic session memory consolidation. nil disables it.
-	consolidator           memory.Consolidator
-	consolidateMu          sync.Mutex
-	consolidateDone        bool
-	cleanup                func()
+	// consolidationWorker runs async memory consolidation. nil disables it.
+	consolidationWorker *memory.ConsolidationWorker
+	cleanup             func()
 	responseLanguage       string
 	reasoningLanguage      string
 	disableColdResumePrune bool // legacy; rewrite elision removed, still gates cold notice

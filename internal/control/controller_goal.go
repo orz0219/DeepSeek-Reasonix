@@ -10,6 +10,7 @@ import (
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/goaleval"
 	"reasonix/internal/i18n"
+	"reasonix/internal/memory"
 )
 
 func (c *Controller) applyPlanMode(v bool) {
@@ -263,8 +264,8 @@ func (c *Controller) Compact(ctx context.Context, instructions string) error {
 	if err := c.executor.CompactNow(ctx, instructions); err != nil {
 		return err
 	}
-	// Consolidate after compaction.
-	go c.consolidateSession(ctx)
+	// Enqueue consolidation after compaction (async, non-blocking).
+	c.enqueueConsolidation(memory.ConsolidationCompact)
 	return nil
 }
 

@@ -89,8 +89,8 @@ type Options struct {
 	SkillProfile        skill.ProfileResolver
 	Hooks               *hook.Runner
 	Memory              *memory.Set
-	// Consolidator runs automatic session memory consolidation. nil disables it.
-	Consolidator memory.Consolidator
+	// ConsolidationWorker runs async memory consolidation. nil disables it.
+	ConsolidationWorker *memory.ConsolidationWorker
 	Cleanup      func()
 	// BalanceURL/BalanceKey wire the active provider's optional wallet-balance
 	// endpoint and bearer key; empty when the provider declares no balance_url.
@@ -237,7 +237,7 @@ func New(opts Options) *Controller {
 		skillProfile:                      opts.SkillProfile,
 		hooks:                             opts.Hooks,
 		memory:                            newMemoryManager(opts.Memory),
-		consolidator:                      opts.Consolidator,
+		consolidationWorker:               opts.ConsolidationWorker,
 		cleanup:                           opts.Cleanup,
 		responseLanguage:                  config.NormalizeLanguage(opts.ResponseLanguage),
 		reasoningLanguage:                 config.NormalizeReasoningLanguage(opts.ReasoningLanguage),

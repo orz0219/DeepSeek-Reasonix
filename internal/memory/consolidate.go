@@ -331,11 +331,11 @@ func NewLLMConsolidator(llm CompletionFunc, store Store, policy ConsolidationPol
 	return &LLMConsolidator{llm: llm, store: store, policy: policy}
 }
 
-// Consolidate runs the full pipeline: summary → candidates → validation →
-// policy → dedup → subject conflict → store mutation. All errors are logged
-// and returned in the result without propagating to the caller, so the session
-// lifecycle is never blocked.
+// Consolidate runs the full pipeline: summary → related memory retrieval →
+// candidates → validation → dedup → policy → store mutation. Errors are logged
+// and returned in the result without propagating to the caller.
 func (c *LLMConsolidator) Consolidate(ctx context.Context, input ConsolidationInput) (ConsolidationResult, error) {
+	start := time.Now()
 	result := ConsolidationResult{SessionID: input.SessionID}
 	if c.llm == nil || c.store.Dir == "" {
 		return result, nil
@@ -344,7 +344,7 @@ func (c *LLMConsolidator) Consolidate(ctx context.Context, input ConsolidationIn
 		return result, nil
 	}
 
-	// Step 1: Generate summary.
+	// Stage 1: Project and summarize.
 	projected := ProjectMessages(input.Messages)
 	summary, err := GenerateSummary(ctx, c.llm, projected, input.SessionID)
 	if err != nil {
@@ -353,22 +353,54 @@ func (c *LLMConsolidator) Consolidate(ctx context.Context, input ConsolidationIn
 		return result, nil
 	}
 
-	// Merge suppression hints from the summary.
-	allSuppressed := append([]string{}, input.SuppressedKeys...)
-	allSuppressed = append(allSuppressed, summary.SuppressionHints...)
+	// Stage 2: Retrieve related memories (top-K, not ListAll).
+	relatedMemories := RetrieveRelatedMemories(c.store, summary, defaultRelatedMemoryLimit)
 
-	// Step 2: Extract candidates.
-	candidates, err := ExtractCandidates(ctx, c.llm, summary, input.ExistingMemories)
+	// Stage 3: Extract candidates against related memories only.
+	candidates, err := ExtractCandidates(ctx, c.llm, summary, relatedMemories)
 	if err != nil {
 		result.Error = err.Error()
 		slog.Warn("memory consolidation: extraction failed", "session", input.SessionID, "err", err)
 		return result, nil
 	}
 
-	// Step 3: Validate and filter.
+	// Merge suppression hints from the summary.
+	allSuppressed := append([]string{}, input.SuppressedKeys...)
+	allSuppressed = append(allSuppressed, summary.SuppressionHints...)
+
+	// Stage 4: Validate.
+	validated := validateCandidates(candidates, input.ExistingMemories, allSuppressed, &result)
+
+	// Stage 5: Dedup and subject conflict resolution.
+	final := deduplicateCandidates(validated, input.ExistingMemories, &result)
+
+	// Stage 6: Filter by confidence and limit.
+	final = FilterByConfidence(final, c.policy)
+
+	// Stage 7: Atomic store mutation with rollback.
+	err = c.executeMutations(input.SessionID, final, &result)
+	if err != nil {
+		result.Error = err.Error()
+	}
+
+	// Structured log: no user content, no memory bodies.
+	slog.Info("memory consolidation complete",
+		"session", input.SessionID,
+		"added", len(result.Added),
+		"updated", len(result.Updated),
+		"archived", len(result.Archived),
+		"ignored", result.Ignored,
+		"duration_ms", time.Since(start).Milliseconds(),
+		"error", result.Error,
+	)
+
+	return result, nil
+}
+
+func validateCandidates(candidates []MemoryCandidate, existing []Memory, suppressed []string, result *ConsolidationResult) []MemoryCandidate {
 	var validated []MemoryCandidate
 	for _, cand := range candidates {
-		cand, err := ValidateCandidate(cand, input.ExistingMemories, allSuppressed)
+		cand, err := ValidateCandidate(cand, existing, suppressed)
 		if err != nil {
 			result.Ignored++
 			continue
@@ -379,11 +411,13 @@ func (c *LLMConsolidator) Consolidate(ctx context.Context, input ConsolidationIn
 		}
 		validated = append(validated, cand)
 	}
+	return validated
+}
 
-	// Step 4: Dedup and subject conflict resolution.
+func deduplicateCandidates(candidates []MemoryCandidate, existing []Memory, result *ConsolidationResult) []MemoryCandidate {
 	var final []MemoryCandidate
-	for _, cand := range validated {
-		dedup := DeduplicateCandidate(cand, input.ExistingMemories)
+	for _, cand := range candidates {
+		dedup := DeduplicateCandidate(cand, existing)
 		switch dedup.Action {
 		case CandidateActionIgnore:
 			result.Ignored++
@@ -399,20 +433,7 @@ func (c *LLMConsolidator) Consolidate(ctx context.Context, input ConsolidationIn
 		}
 		final = append(final, cand)
 	}
-
-	// Step 5: Filter by confidence and limit.
-	final = FilterByConfidence(final, c.policy)
-
-	// Step 6: Store mutation. Each Save/Archive is individually atomic
-	// (they hold memoryStoreMutationMu internally). Rollback handles
-	// partial failure.
-	err = c.executeMutations(input.SessionID, final, &result)
-	if err != nil {
-		result.Error = err.Error()
-		slog.Warn("memory consolidation: mutation failed", "session", input.SessionID, "err", err)
-	}
-
-	return result, nil
+	return final
 }
 
 // rollback tracks committed mutations so they can be undone on failure.

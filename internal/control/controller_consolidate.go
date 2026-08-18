@@ -1,34 +1,23 @@
 package control
 
 import (
-	"context"
-	"fmt"
 	"log/slog"
 
 	"reasonix/internal/event"
 	"reasonix/internal/memory"
+	"reasonix/internal/provider"
 )
 
-// consolidateSession runs automatic memory consolidation for the current
-// session. It is a no-op when no consolidator is configured or the session
-// has no content. Failures are logged and emitted as events but never
-// propagate to the caller — consolidation is auxiliary, not part of the
-// session's main success path.
-func (c *Controller) consolidateSession(ctx context.Context) {
-	if c.consolidator == nil {
+// enqueueConsolidation submits an immutable snapshot to the background
+// consolidation worker. It returns immediately — consolidation never blocks
+// the session lifecycle.
+func (c *Controller) enqueueConsolidation(reason memory.ConsolidationReason) {
+	if c.consolidationWorker == nil {
 		return
 	}
 	if c.executor == nil {
 		return
 	}
-	// Singleflight: only one consolidation per logical session.
-	c.consolidateMu.Lock()
-	if c.consolidateDone {
-		c.consolidateMu.Unlock()
-		return
-	}
-	c.consolidateDone = true
-	c.consolidateMu.Unlock()
 
 	sessionID := c.parentSessionID()
 	if sessionID == "" {
@@ -40,18 +29,13 @@ func (c *Controller) consolidateSession(ctx context.Context) {
 		return
 	}
 
-	// Project messages to text for the consolidator.
-	projected := make([]string, 0, len(messages))
-	for _, m := range messages {
-		if m.Content != "" {
-			projected = append(projected, m.Content)
-		}
-	}
+	// Project: only user and assistant messages with content, no local-only.
+	projected := projectMessagesForMemory(messages)
 	if len(projected) == 0 {
 		return
 	}
 
-	// Load existing memories for dedup context.
+	// Load existing memories for suppression detection.
 	var existing []memory.Memory
 	if mem := c.Memory(); mem != nil {
 		existing = mem.Store.ListAll()
@@ -65,10 +49,10 @@ func (c *Controller) consolidateSession(ctx context.Context) {
 		}
 	}
 
-	// Detect session-level suppression hints from user messages.
+	// Detect session-level suppression hints from user messages only.
 	var userMsgs []string
 	for _, m := range messages {
-		if m.Role == "user" && m.Content != "" {
+		if m.Role == provider.RoleUser && m.Content != "" {
 			userMsgs = append(userMsgs, m.Content)
 		}
 	}
@@ -85,54 +69,40 @@ func (c *Controller) consolidateSession(ctx context.Context) {
 		}
 	}
 
-	input := memory.ConsolidationInput{
-		Workspace:        c.workspaceRoot,
+	job := memory.ConsolidationJob{
 		SessionID:        sessionID,
-		SessionPath:      c.SessionPath(),
+		Reason:           reason,
 		Messages:         projected,
 		ExistingMemories: existing,
 		SuppressedKeys:   suppressedKeys,
 	}
 
-	result, err := c.consolidator.Consolidate(ctx, input)
-	if err != nil {
-		slog.Warn("controller: memory consolidation failed", "session", sessionID, "err", err)
+	if err := c.consolidationWorker.Enqueue(job); err != nil {
+		slog.Warn("controller: enqueue consolidation failed", "session", sessionID, "err", err)
 		c.sink.Emit(event.Event{
 			Kind:  event.Notice,
 			Level: event.LevelWarn,
-			Text:  "Memory consolidation failed: " + err.Error(),
+			Text:  "Memory consolidation enqueue failed: " + err.Error(),
 		})
-		return
 	}
-
-	// Emit telemetry.
-	c.sink.Emit(event.Event{
-		Kind:  event.Notice,
-		Level: event.LevelInfo,
-		Text:  formatConsolidationResult(result),
-	})
 }
 
-// resetConsolidation resets the singleflight guard for a new session.
-func (c *Controller) resetConsolidation() {
-	c.consolidateMu.Lock()
-	c.consolidateDone = false
-	c.consolidateMu.Unlock()
-}
-
-func formatConsolidationResult(r memory.ConsolidationResult) string {
-	if r.Error != "" {
-		return "Memory consolidation error: " + r.Error
+// projectMessagesForMemory filters session messages to only user and assistant
+// content suitable for memory consolidation. System, tool, synthetic, and
+// local-only messages are excluded.
+func projectMessagesForMemory(messages []provider.Message) []string {
+	projected := make([]string, 0, len(messages))
+	for _, m := range messages {
+		if m.LocalOnly {
+			continue
+		}
+		if m.Role != provider.RoleUser && m.Role != provider.RoleAssistant {
+			continue
+		}
+		if m.Content == "" {
+			continue
+		}
+		projected = append(projected, m.Content)
 	}
-	if len(r.Added) == 0 && len(r.Updated) == 0 && len(r.Archived) == 0 {
-		return "Memory consolidation: no new memories"
-	}
-	return "Memory consolidation: added=" + itoa(len(r.Added)) +
-		" updated=" + itoa(len(r.Updated)) +
-		" archived=" + itoa(len(r.Archived)) +
-		" ignored=" + itoa(r.Ignored)
-}
-
-func itoa(n int) string {
-	return fmt.Sprint(n)
+	return projected
 }

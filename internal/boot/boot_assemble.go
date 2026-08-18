@@ -286,7 +286,7 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		SkillProfile:                   skillProfile,
 		Hooks:                          hookRunner,
 		Memory:                         mem,
-		Consolidator:                   buildConsolidator(mem, execProv, entry, sink),
+		ConsolidationWorker:               buildConsolidationWorker(mem, execProv, entry, sink),
 		// Indirection: the cleanup variable gains the extension runtime set at
 		// the end of build (snapshot assembly runs after control.New), and the
 		// controller must observe the final chain at Close time.
@@ -551,10 +551,10 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 	return finalizeBuildResult(&BuildResult{Controller: ctrl, Snapshot: snap, Runtime: runtimeSet, Owner: owner, Extensions: extensionMgr, Dispatcher: extensionDispatcher, ExtensionUI: extUIHub, ProviderResolver: providerResolver, BaseProviderResolver: baseResolver, Assembly: assembly}, !opts.deferPublish), nil
 }
 
-// buildConsolidator creates an LLM-backed memory consolidator when the memory
-// store is available and a provider exists. Returns nil when consolidation
-// cannot be configured, which disables the feature gracefully.
-func buildConsolidator(mem *memory.Set, prov provider.Provider, entry *config.ProviderEntry, sink event.Sink) memory.Consolidator {
+// buildConsolidationWorker creates an async memory consolidation worker when
+// the memory store is available and a provider exists. Returns nil when
+// consolidation cannot be configured, which disables the feature gracefully.
+func buildConsolidationWorker(mem *memory.Set, prov provider.Provider, entry *config.ProviderEntry, sink event.Sink) *memory.ConsolidationWorker {
 	if mem == nil || mem.Store.Dir == "" {
 		return nil
 	}
@@ -575,5 +575,6 @@ func buildConsolidator(mem *memory.Set, prov provider.Provider, entry *config.Pr
 	completionFn := func(ctx context.Context, system, user string) (string, error) {
 		return boundedllm.Call(ctx, cfg, system, user)
 	}
-	return memory.NewLLMConsolidator(completionFn, mem.Store, memory.ConsolidationPolicy{})
+	consolidator := memory.NewLLMConsolidator(completionFn, mem.Store, memory.ConsolidationPolicy{})
+	return memory.NewConsolidationWorker(consolidator, memory.ConsolidationWorkerConfig{})
 }
