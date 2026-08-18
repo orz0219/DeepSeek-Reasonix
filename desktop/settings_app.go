@@ -13,6 +13,7 @@ type ProviderView struct {
 	Name                        string                      `json:"name"`
 	BuiltIn                     bool                        `json:"builtIn"`
 	Added                       bool                        `json:"added"`
+	Enabled                     bool                        `json:"enabled"`
 	Kind                        string                      `json:"kind"`
 	BaseURL                     string                      `json:"baseUrl"`
 	ChatURL                     string                      `json:"chatUrl"`

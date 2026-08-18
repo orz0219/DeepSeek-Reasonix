@@ -155,6 +155,7 @@ func (a *App) Settings() SettingsView {
 	for i := range cfg.Providers {
 		p := &cfg.Providers[i]
 		providerView := providerViewFromEntryForRootWithResolverAndCredentials(*p, isOfficialBuiltInProvider(*p), added[p.Name], root, resolver, credentialsRevision)
+		providerView.Enabled = providerEnabled(cfg, p.Name)
 		providerView.RecommendedUpgradeAvailable = providerView.RecommendedUpgradeAvailable && config.CanUpgradeDeepSeekProviderProtocolUserConfig(p.Name)
 		v.Providers = append(v.Providers, providerView)
 	}

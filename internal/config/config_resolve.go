@@ -263,8 +263,10 @@ func (c *Config) ResolveDesktopNewSessionModel() (resolvedRef string, fallback b
 		return "", false, false
 	}
 	access := desktopProviderAccessMap(c.Desktop.ProviderAccess)
+	disabled := desktopProviderAccessMap(c.Desktop.ProviderDisabled)
 	return c.resolveNewSessionChatModel(func(name string) bool {
-		return c.Desktop.ProviderAccess == nil || access[strings.TrimSpace(name)]
+		name = strings.TrimSpace(name)
+		return (c.Desktop.ProviderAccess == nil || access[name]) && !disabled[name]
 	}, false)
 }
 

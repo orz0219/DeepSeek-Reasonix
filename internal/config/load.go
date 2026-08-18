@@ -183,6 +183,11 @@ func loadForRoot(root string, migrateOnDisk bool) (*Config, error) {
 	} else if ok {
 		cfg.Desktop.ProviderAccess = access
 	}
+	if disabled, ok, err := mergeTOMLProviderDisabled(tomlSources); err != nil {
+		cfg.addLoadWarning(fmt.Sprintf("provider disabled configuration could not be merged (%v)", err))
+	} else if ok {
+		cfg.Desktop.ProviderDisabled = disabled
+	}
 
 	// Claude Code's .mcp.json (project root) is read last and merged into
 	// [[plugins]], so a server configured for Claude works here unchanged.

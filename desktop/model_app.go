@@ -53,7 +53,7 @@ func (a *App) ModelsForTab(tabID string) []ModelInfo {
 	out := []ModelInfo{}
 	for i := range cfg.Providers {
 		p := &cfg.Providers[i]
-		if !modelProviderAccessAllowed(cfg.Desktop.ProviderAccess, p.Name) || !p.Configured() {
+		if !modelProviderAccessAllowed(cfg.Desktop.ProviderAccess, p.Name) || !providerEnabled(cfg, p.Name) || !p.Configured() {
 			continue
 		}
 		for _, m := range p.ChatModelList() {

@@ -290,10 +290,10 @@ export function makeMockApp(): AppBindings {
         subagentEffort: "",
         autoPlan: "off",
         providers: [
-            { name: "deepseek", builtIn: true, added: deepSeekUpgradeMock, kind: "openai", baseUrl: "https://api.deepseek.com", modelsUrl: "", models: ["deepseek-v4-flash"], visionModels: [], visionModelsConfigured: false, visionCapability: "unsupported", default: "deepseek-v4-flash", apiKeyEnv: "DEEPSEEK_API_KEY", headers: deepSeekUpgradeMock ? { "X-Route": "official-custom" } : undefined, keySet: true, balanceUrl: "https://api.deepseek.com/user/balance", contextWindow: 1000000, reasoningProtocol: "", thinking: "", supportedEfforts: [], defaultEffort: "", recommendedUpgradeAvailable: deepSeekUpgradeMock },
+            { name: "deepseek", builtIn: true, added: deepSeekUpgradeMock, enabled: true, kind: "openai", baseUrl: "https://api.deepseek.com", modelsUrl: "", models: ["deepseek-v4-flash"], visionModels: [], visionModelsConfigured: false, visionCapability: "unsupported", default: "deepseek-v4-flash", apiKeyEnv: "DEEPSEEK_API_KEY", headers: deepSeekUpgradeMock ? { "X-Route": "official-custom" } : undefined, keySet: true, balanceUrl: "https://api.deepseek.com/user/balance", contextWindow: 1000000, reasoningProtocol: "", thinking: "", supportedEfforts: [], defaultEffort: "", recommendedUpgradeAvailable: deepSeekUpgradeMock },
         ],
         officialProviders: [
-            { name: "deepseek", builtIn: true, added: false, kind: "openai", baseUrl: "https://api.deepseek.com", modelsUrl: "", models: ["deepseek-v4-flash", "deepseek-v4-pro"], visionModels: [], visionModelsConfigured: false, default: "deepseek-v4-flash", apiKeyEnv: "DEEPSEEK_API_KEY", keySet: true, balanceUrl: "https://api.deepseek.com/user/balance", contextWindow: 1000000, reasoningProtocol: "", thinking: "", supportedEfforts: [], defaultEffort: "" },
+            { name: "deepseek", builtIn: true, added: false, enabled: true, kind: "openai", baseUrl: "https://api.deepseek.com", modelsUrl: "", models: ["deepseek-v4-flash", "deepseek-v4-pro"], visionModels: [], visionModelsConfigured: false, default: "deepseek-v4-flash", apiKeyEnv: "DEEPSEEK_API_KEY", keySet: true, balanceUrl: "https://api.deepseek.com/user/balance", contextWindow: 1000000, reasoningProtocol: "", thinking: "", supportedEfforts: [], defaultEffort: "" },
         ],
         providerPresets: mockProviderPresetViews(),
         permissions: { mode: "ask", allow: ["ls", "read_file"], ask: [], deny: ["Bash(rm:*)"] },
@@ -2795,12 +2795,14 @@ export function makeMockApp(): AppBindings {
         async Models() {
             const active = mockTabs.find((tab) => tab.active) ?? mockTabs[0];
             const current = mockTabModelRef(active);
-            return mockModelCatalog.map((model) => ({ ...model, current: model.ref === current }));
+            const enabledProviders = new Set(settings.providers.filter((provider) => provider.enabled !== false).map((provider) => provider.name));
+            return mockModelCatalog.filter((model) => enabledProviders.has(model.provider)).map((model) => ({ ...model, current: model.ref === current }));
         },
         async ModelsForTab(tabID) {
             const tab = mockTabs.find((item) => item.id === tabID) ?? mockTabs.find((item) => item.active) ?? mockTabs[0];
             const current = mockTabModelRef(tab);
-            return mockModelCatalog.map((model) => ({ ...model, current: model.ref === current }));
+            const enabledProviders = new Set(settings.providers.filter((provider) => provider.enabled !== false).map((provider) => provider.name));
+            return mockModelCatalog.filter((model) => enabledProviders.has(model.provider)).map((model) => ({ ...model, current: model.ref === current }));
         },
         async SetModel(name) {
             setMockTabModel(undefined, name);
@@ -3091,6 +3093,10 @@ export function makeMockApp(): AppBindings {
         async SetProviderWebSearch(names: string[], enabled: boolean) {
             const requested = new Set(names);
             settings.providers = settings.providers.map((provider) => (requested.has(provider.name) ? { ...provider, webSearch: enabled } : provider));
+        },
+        async SetProviderEnabled(names: string[], enabled: boolean) {
+            const requested = new Set(names);
+            settings.providers = settings.providers.map((provider) => (requested.has(provider.name) ? { ...provider, enabled } : provider));
         },
         async SaveProviderModelCatalogs(updates: ProviderModelCatalogUpdate[]) {
             const applied: string[] = [];

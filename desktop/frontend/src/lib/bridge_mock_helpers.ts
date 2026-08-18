@@ -52,6 +52,7 @@ export function mockProviderTemplate(p: Pick<ProviderView, "name" | "kind" | "ba
         name: p.name,
         builtIn: false,
         added: true,
+        enabled: p.enabled !== false,
         kind: p.kind,
         baseUrl: p.baseUrl,
         modelsUrl: p.modelsUrl ?? "",

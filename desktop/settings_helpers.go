@@ -239,8 +239,16 @@ func providerAccessSet(names []string) map[string]bool {
 	return out
 }
 
+func providerEnabled(c *config.Config, name string) bool {
+	if c == nil {
+		return true
+	}
+	return !providerAccessSet(c.Desktop.ProviderDisabled)[strings.TrimSpace(name)]
+}
+
 func addProviderAccess(c *config.Config, names ...string) {
 	seen := providerAccessSet(c.Desktop.ProviderAccess)
+	removeProviderDisabled(c, names...)
 	for _, name := range names {
 		name = strings.TrimSpace(name)
 		if name == "" || seen[name] {
@@ -263,6 +271,33 @@ func removeProviderAccess(c *config.Config, names ...string) {
 		}
 	}
 	c.Desktop.ProviderAccess = out
+	removeProviderDisabled(c, names...)
+}
+
+func addProviderDisabled(c *config.Config, names ...string) {
+	seen := providerAccessSet(c.Desktop.ProviderDisabled)
+	for _, name := range names {
+		name = strings.TrimSpace(name)
+		if name == "" || seen[name] {
+			continue
+		}
+		c.Desktop.ProviderDisabled = append(c.Desktop.ProviderDisabled, name)
+		seen[name] = true
+	}
+}
+
+func removeProviderDisabled(c *config.Config, names ...string) {
+	remove := providerAccessSet(names)
+	if len(remove) == 0 || len(c.Desktop.ProviderDisabled) == 0 {
+		return
+	}
+	out := c.Desktop.ProviderDisabled[:0]
+	for _, name := range c.Desktop.ProviderDisabled {
+		if !remove[name] {
+			out = append(out, name)
+		}
+	}
+	c.Desktop.ProviderDisabled = out
 }
 
 func providerViewFromEntryForRootWithResolverAndCredentials(p config.ProviderEntry, builtIn, added bool, root string, resolver *config.CredentialResolver, credentialsRevision string) ProviderView {
@@ -282,7 +317,7 @@ func providerViewFromEntryForRootWithResolverAndCredentials(p config.ProviderEnt
 		visionCapability = "unsupported"
 	}
 	return ProviderView{
-		Name: p.Name, BuiltIn: builtIn, Added: added, Kind: p.Kind, BaseURL: p.BaseURL, ChatURL: p.ChatURL, RequestURL: p.RequestURL,
+		Name: p.Name, BuiltIn: builtIn, Added: added, Enabled: providerEnabled(nil, p.Name), Kind: p.Kind, BaseURL: p.BaseURL, ChatURL: p.ChatURL, RequestURL: p.RequestURL,
 		Models: nonNil(models), VisionModels: nonNil(providerVisionModels(models, visionModels)), VisionModelsSet: visionModelsSet, VisionCapability: visionCapability, ModelsURL: p.ModelsURL, Default: p.DefaultModel(),
 		APIKeyEnv:                   p.APIKeyEnv,
 		Headers:                     nonNilStringMap(p.Headers),

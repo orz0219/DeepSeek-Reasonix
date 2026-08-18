@@ -19,6 +19,7 @@ export type ProviderAccessGroup = {
     baseUrl: string;
     kind: string;
     models: string[];
+    enabled: boolean;
     recommendedUpgradeAvailable: boolean;
 };
 export type ProviderFetchResult = {
@@ -375,6 +376,7 @@ export function providerAccessGroups(providers: ProviderView[], t: ReturnType<ty
             existing.keySet = existing.keySet || p.keySet;
             existing.requiresKey = existing.requiresKey && providerRequiresKey(p);
             existing.configured = existing.configured || providerIsConfigured(p);
+            existing.enabled = existing.enabled && p.enabled !== false;
             existing.recommendedUpgradeAvailable = existing.recommendedUpgradeAvailable || Boolean(p.recommendedUpgradeAvailable);
             if (existing.recommendedUpgradeAvailable && existing.id === "builtin:deepseek") {
                 existing.description = "";
@@ -401,6 +403,7 @@ export function providerAccessGroups(providers: ProviderView[], t: ReturnType<ty
             baseUrl: p.baseUrl,
             kind: p.kind,
             models: uniqueStrings(p.models),
+            enabled: p.enabled !== false,
             recommendedUpgradeAvailable: Boolean(p.recommendedUpgradeAvailable),
         });
     }

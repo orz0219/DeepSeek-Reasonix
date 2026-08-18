@@ -126,7 +126,6 @@ func mergeTOMLProviderAccess(paths []string) ([]string, bool, error) {
 			continue
 		}
 		if !saw {
-
 			merged = []string{}
 		}
 		saw = true
@@ -134,6 +133,52 @@ func mergeTOMLProviderAccess(paths []string) ([]string, bool, error) {
 			userDeclared = true
 		}
 		for _, name := range f.Desktop.ProviderAccess {
+			name = strings.TrimSpace(name)
+			if name == "" || seen[name] {
+				continue
+			}
+			seen[name] = true
+			merged = append(merged, name)
+		}
+	}
+
+	if saw && !userDeclared {
+		return nil, false, nil
+	}
+	return merged, saw, nil
+}
+
+// mergeTOMLProviderDisabled merges desktop.provider_disabled across TOML sources
+// so project desktop settings can hide models in the same way as the user config.
+func mergeTOMLProviderDisabled(paths []string) ([]string, bool, error) {
+	var merged []string
+	seen := map[string]bool{}
+	saw := false
+	userDeclared := false
+	for _, path := range paths {
+		_, exists, err := statConfigPath(path)
+		if err != nil {
+			return nil, false, fmt.Errorf("config %s: %w", path, err)
+		}
+		if !exists {
+			continue
+		}
+		var f Config
+		meta, err := decodeTOMLFile(path, &f)
+		if err != nil {
+			return nil, false, fmt.Errorf("config %s: %w", path, err)
+		}
+		if !meta.IsDefined("desktop", "provider_disabled") {
+			continue
+		}
+		if !saw {
+			merged = []string{}
+		}
+		saw = true
+		if isUserConfigPath(path) {
+			userDeclared = true
+		}
+		for _, name := range f.Desktop.ProviderDisabled {
 			name = strings.TrimSpace(name)
 			if name == "" || seen[name] {
 				continue

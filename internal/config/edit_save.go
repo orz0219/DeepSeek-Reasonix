@@ -95,7 +95,8 @@ func (c *Config) saveProjectIncrementalResolved(logicalPath, resolvedPath string
 	_, hasRetiredAgentAutoGuard := tomlSectionKeyValue(body, "agent", "auto_recovery_checkpoint")
 	removeRetiredAutoGuard := hasLegacyDesktopAutoGuard || hasRetiredAgentAutoGuard
 	writeProviderAccess := c.Desktop.ProviderAccess != nil
-	if strings.TrimSpace(delta) == "" && !removePlugins && !removeSandboxBash && !removeSkills && !removeRetiredAutoGuard && !writeProviderAccess {
+	writeProviderDisabled := len(c.Desktop.ProviderDisabled) > 0
+	if strings.TrimSpace(delta) == "" && !removePlugins && !removeSandboxBash && !removeSkills && !removeRetiredAutoGuard && !writeProviderAccess && !writeProviderDisabled {
 		return nil
 	}
 
@@ -117,6 +118,9 @@ func (c *Config) saveProjectIncrementalResolved(logicalPath, resolvedPath string
 	}
 	if writeProviderAccess {
 		body = upsertTOMLSectionKey(body, "desktop", "provider_access", "provider_access = "+renderStringArray(c.Desktop.ProviderAccess))
+	}
+	if writeProviderDisabled {
+		body = upsertTOMLSectionKey(body, "desktop", "provider_disabled", "provider_disabled = "+renderStringArray(c.Desktop.ProviderDisabled))
 	}
 	return writeConfigFileResolved(resolvedPath, body, configFilePerm(logicalPath))
 }

@@ -115,6 +115,9 @@ func RenderTOMLForScope(c *Config, scope RenderScope) string {
 		if c.Desktop.ProviderAccess != nil {
 			fmt.Fprintf(&b, "provider_access = %s   # desktop settings: providers shown on Settings > Model > Access\n", renderStringArray(c.Desktop.ProviderAccess))
 		}
+		if len(c.Desktop.ProviderDisabled) > 0 {
+			fmt.Fprintf(&b, "provider_disabled = %s   # desktop settings: providers hidden from the model switcher\n", renderStringArray(c.Desktop.ProviderDisabled))
+		}
 		renderDesktopReasoningDisplayMode(&b, c)
 		fmt.Fprintf(&b, "display_mode = %q   # desktop: standard|compact transcript display mode\n", c.DesktopDisplayMode())
 		if width := c.DesktopConversationWidth(); width == "full" {

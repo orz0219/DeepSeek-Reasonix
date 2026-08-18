@@ -60,6 +60,26 @@
   background: var(--bg-soft);
   color: var(--fg);
 }
+.provider-access-enabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--button-small-height);
+  padding-inline: 6px;
+  color: var(--fg-dim);
+  font-size: var(--text-2xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+.provider-access-enabled input {
+  width: 28px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.provider-access-enabled input:disabled {
+  cursor: not-allowed;
+}
 .provider-card-block--inline {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);

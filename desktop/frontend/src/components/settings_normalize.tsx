@@ -11,7 +11,7 @@ import type { NetworkView, ProviderPresetView, ProviderView, SettingsView } from
 export function allRefs(s: SettingsView): string[] {
     const out: string[] = [];
     for (const p of s.providers) {
-        if (!p.added || !providerIsConfigured(p))
+        if (!p.added || p.enabled === false || !providerIsConfigured(p))
             continue;
         for (const m of p.models)
             out.push(`${p.name}/${m}`);
@@ -256,6 +256,7 @@ export function normalizeProviderView(p: ProviderView): ProviderView {
         baseUrl: String(p.baseUrl ?? ""),
         builtIn: Boolean(p.builtIn),
         added: Boolean(p.added),
+        enabled: p.enabled !== false,
         chatUrl: p.chatUrl ?? "",
         requestUrl: p.requestUrl ?? "",
         models: asArray(p.models),

@@ -302,7 +302,12 @@ export function ProvidersSection({ s, busy, apply }: SectionProps) {
                 : [...draft.selected, model]))} onToggleDraftVision={(model) => toggleModelDraftVision(group.id, model)} onSelectAllDraftModels={() => updateModelDraftSelection(group.id, (draft) => draft.candidates)} onClearDraftModels={() => updateModelDraftSelection(group.id, () => [])} onCancelDraftModels={() => {
                 setGroupModelDraft(group.id, null);
                 setGroupFetchResult(group.id, null);
-            }} onSaveDraftModels={() => void saveModelDraft(group)} onToggleWebSearch={(enabled) => {
+            }} onSaveDraftModels={() => void saveModelDraft(group)} onToggleProviderEnabled={(enabled) => {
+                const providerNames = group.providers.map((provider) => provider.name);
+                if (providerNames.length === 0)
+                    return;
+                void apply(() => app.SetProviderEnabled(providerNames, enabled));
+            }} onToggleWebSearch={(enabled) => {
                 const providerNames = group.providers.map((provider) => provider.name);
                 if (providerNames.length === 0)
                     return;
@@ -457,7 +462,7 @@ export function AddProviderPanel({ mode, kinds, officialProviders, providerPrese
     }
     return null;
 }
-export function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDraft, defaultProvider, editing, kinds, onEdit, onCancelEdit, onSave, onRefresh, onToggleDraftModel, onToggleDraftVision, onSelectAllDraftModels, onClearDraftModels, onCancelDraftModels, onSaveDraftModels, onToggleWebSearch, onUpgradeRecommended, onSaveEditorKey, onClearEditorKey, onDelete, }: {
+export function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDraft, defaultProvider, editing, kinds, onEdit, onCancelEdit, onSave, onRefresh, onToggleDraftModel, onToggleDraftVision, onSelectAllDraftModels, onClearDraftModels, onCancelDraftModels, onSaveDraftModels, onToggleProviderEnabled, onToggleWebSearch, onUpgradeRecommended, onSaveEditorKey, onClearEditorKey, onDelete, }: {
     group: ProviderAccessGroup;
     busy: boolean;
     fetching: boolean;
@@ -476,6 +481,7 @@ export function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDr
     onClearDraftModels: () => void;
     onCancelDraftModels: () => void;
     onSaveDraftModels: () => void;
+    onToggleProviderEnabled: (enabled: boolean) => void;
     onToggleWebSearch: (enabled: boolean) => void;
     onUpgradeRecommended: (name: string) => void | Promise<void>;
     onSaveEditorKey: (apiKeyEnv: string, value: string) => Promise<void>;
@@ -513,6 +519,10 @@ export function ProviderAccessCard({ group, busy, fetching, fetchResult, modelDr
               {fetching ? t("settings.fetchingModels") : t("settings.fetchModels")}
             </button>)}
           {editableProvider && onDelete && (<ProviderAccessMoreMenu busy={busy} removeDisabled={isDefault && !group.builtIn} builtIn={group.builtIn} onRemove={() => onDelete(group.providers)}/>)}
+          <label className="provider-access-enabled" title={group.enabled ? t("settings.providerEnabledHint") : t("settings.providerDisabledHint")}>
+            <input type="checkbox" role="switch" checked={group.enabled} disabled={busy} aria-label={t("settings.providerEnabledAria", { provider: group.label })} onChange={(event) => onToggleProviderEnabled(event.target.checked)}/>
+            <span>{group.enabled ? t("settings.providerEnabled") : t("settings.providerDisabled")}</span>
+          </label>
         </div>
       </div>
       {group.description && <div className="provider-access-card__desc">{group.description}</div>}

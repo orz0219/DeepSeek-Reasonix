@@ -246,6 +246,7 @@ export interface ProviderView {
     name: string;
     builtIn: boolean;
     added: boolean;
+    enabled?: boolean; // false hides this provider's models from the chat model picker
     kind: string;
     baseUrl: string;
     chatUrl?: string; // legacy OpenAI chat endpoint override; preserved for old-config compatibility

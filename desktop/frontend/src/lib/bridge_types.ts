@@ -410,6 +410,7 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     RemoveProviderAccesses(names: string[]): Promise<void>;
     SaveProviderKey(apiKeyEnv: string, value: string): Promise<string>;
     SetProviderKey(apiKeyEnv: string, value: string): Promise<string>;
+    SetProviderEnabled(names: string[], enabled: boolean): Promise<void>;
     ClearProviderKey(apiKeyEnv: string): Promise<void>;
     SetPermissionMode(mode: string): Promise<void>;
     AddPermissionRule(list: string, rule: string): Promise<void>;
