@@ -169,8 +169,6 @@ export type { SandboxView as SandboxView } from "./types_settings";
 export type { NetworkProxyView as NetworkProxyView } from "./types_settings";
 export type { NetworkView as NetworkView } from "./types_settings";
 export type { AgentView as AgentView } from "./types_settings";
-export type { HookConfigView as HookConfigView } from "./types_settings";
-export type { HooksSettingsView as HooksSettingsView } from "./types_settings";
 export type { SettingsView as SettingsView } from "./types_settings";
 export type { DesktopStartupSettingsView as DesktopStartupSettingsView } from "./types_settings";
 export type { ExternalOpenerKind as ExternalOpenerKind } from "./types_settings";

@@ -63,22 +63,6 @@ export interface AgentView {
     effectiveCompactRatio?: number; // Active local session after project overrides.
     compactRatioOverridden?: boolean;
 }
-export interface HookConfigView {
-    event: string;
-    match?: string;
-    command: string;
-    description?: string;
-    timeout?: number;
-    cwd?: string;
-}
-export interface HooksSettingsView {
-    scope: string;
-    path: string;
-    projectRoot: string;
-    trusted: boolean;
-    hooks: HookConfigView[];
-    events: string[];
-}
 export interface SettingsView {
     defaultModel: string;
     plannerModel: string;

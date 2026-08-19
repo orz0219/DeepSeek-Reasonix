@@ -19,7 +19,7 @@ import { SettingsNavigation, SETTINGS_NAV_TABS } from "./SettingsNavigation";
 import { formatSettingsError, normalizeSettingsView } from "./settings_normalize";
 import { GeneralSection, NetworkSection } from "./settings_general";
 import { ModelsSection } from "./settings_models";
-import { PermissionsSection, HooksSection, SandboxSection, AboutSection } from "./settings_permissions";
+import { PermissionsSection, SandboxSection, AboutSection } from "./settings_permissions";
 import { SettingsSection, SettingsPageShell, settingsTabLabel, settingsTabMeta } from "./settings_shell";
 export { allRefs as allRefs } from "./settings_normalize";
 export { toRef as toRef } from "./settings_normalize";
@@ -74,7 +74,6 @@ export { providerKeyStatusLabel as providerKeyStatusLabel } from "./settings_mod
 export { modelProviderLabel as modelProviderLabel } from "./settings_models";
 export { KeyField as KeyField } from "./settings_permissions";
 export { PermissionsSection as PermissionsSection } from "./settings_permissions";
-export { HooksSection as HooksSection } from "./settings_permissions";
 export { SandboxSection as SandboxSection } from "./settings_permissions";
 export { AboutSection as AboutSection } from "./settings_permissions";
 export type { ProviderAccessGroup as ProviderAccessGroup } from "./settings_provider_helpers";
@@ -382,7 +381,6 @@ export function SettingsPanel({ onClose, onChanged, initialTab, initialFocus, ag
                     requestClose();
                 }}/></Suspense></SettingsPageShell>}
                 {tab === "plugins" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><PluginsSettingsPage /></Suspense></SettingsPageShell>}
-                {tab === "hooks" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><HooksSection onChanged={onChanged}/></SettingsPageShell>}
                 {tab === "diagnostics" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><Suspense fallback={lazySettingsPageFallback}><DiagnosticsSettingsPage onNavigate={setTab}/></Suspense></SettingsPageShell>}
                 {tab === "shortcuts" && <SettingsPageShell key={tab} s={s} tab={tab} busy={false} apply={apply}><ShortcutsSection /></SettingsPageShell>}
                 {tab === "permissions" && s && <SettingsPageShell key={tab} s={s} tab={tab} busy={busy} apply={apply}><PermissionsSection s={s} busy={busy} apply={apply}/></SettingsPageShell>}

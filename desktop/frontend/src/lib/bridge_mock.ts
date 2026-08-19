@@ -7,7 +7,7 @@ import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems } from "./statusBarIt
 import { registerTrustedThemeBackgroundURLs } from "./themePack";
 import { modeWithAutoApproveTools, modeWithPlan, normalizeCollaborationMode, normalizeMode, normalizeTokenMode, normalizeToolApprovalMode } from "./types";
 import { decisionSurfaceMockFromInput, isLongDecisionOptionsMockInput } from "./decisionSurfaceMock";
-import type { CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
+import type { CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, MCPServerInput, MCPMarketplaceView, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
 import { withMockTabScope, delay, emit, mockScopedTabId, stripLegacyGoalBudgetFlags, mockToolApprovalModeAfterModeChange, mockPreviewImageDataURL, bumpMockTopicActivationCounter, setMockPendingTopicActivation, mockPendingTopicActivation, GLOBAL_PROJECT_ORDER_KEY } from "./bridge";
 import { AppBindings } from "./bridge_types";
 import { mockScenario, baseName, mockProviderPresetViews, browserPreviewBashSandboxMode, browserPreviewEffectiveShell, browserPlatformOverride, mockExternalOpenerIconDataURL, cloneMockProviderTemplate } from "./bridge_mock_helpers";
@@ -322,27 +322,6 @@ export function makeMockApp(): AppBindings {
         providerKinds: ["openai", "anthropic"],
         autoApproveTools: false,
         bypass: false,
-    };
-    const hookEvents = ["PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "PostLLMCall", "SessionStart", "SessionEnd", "SubagentStop", "Notification", "PreCompact"];
-    const hookSettings: Record<string, HooksSettingsView> = {
-        global: {
-            scope: "global",
-            path: "~/.reasonix/settings.json",
-            projectRoot: "",
-            trusted: true,
-            events: hookEvents,
-            hooks: [
-                { event: "Stop", command: "echo turn done", description: "Notify after each turn" },
-            ],
-        },
-        project: {
-            scope: "project",
-            path: "./.reasonix/settings.json",
-            projectRoot: "/mock/project",
-            trusted: false,
-            events: hookEvents,
-            hooks: [],
-        },
     };
     settings.providers = settings.providers.map((provider) => provider.apiKeyEnv === "DEEPSEEK_API_KEY" ? { ...provider, keySet: !freshMock } : provider);
     if (freshMock) {
@@ -2580,9 +2559,6 @@ export function makeMockApp(): AppBindings {
                     { label: "new", insert: "new ", hint: "scaffold a new skill" },
                     { label: "paths", insert: "paths", hint: "show discovery paths" },
                 ],
-                "/hooks": [
-                    { label: "list", insert: "list", hint: "list active hooks" },
-                ],
                 "/model": [
                     { label: "deepseek/deepseek-v4-flash", insert: "deepseek/deepseek-v4-flash", hint: "current" },
                     { label: "deepseek/deepseek-v4-pro", insert: "deepseek/deepseek-v4-pro", hint: "" },
@@ -2861,24 +2837,6 @@ export function makeMockApp(): AppBindings {
         },
         async Settings() { return JSON.parse(JSON.stringify(settings)) as SettingsView; },
         async StorageSettings() { return { defaultWorkspace: cwd, statePath: `${cwd}/.reasonix`, cachePath: `${cwd}/.reasonix/cache`, extensionsPath: `${cwd}/.reasonix/plugins` }; },
-        async HooksSettings(scope: string) {
-            const key = scope === "project" ? "project" : "global";
-            return JSON.parse(JSON.stringify(hookSettings[key])) as HooksSettingsView;
-        },
-        async SaveHooksSettings(scope: string, hooks: HookConfigView[]) {
-            const key = scope === "project" ? "project" : "global";
-            hookSettings[key].hooks = JSON.parse(JSON.stringify(hooks)) as HookConfigView[];
-        },
-        async SaveHooksSettingsForRoot(scope: string, _projectRoot: string, hooks: HookConfigView[]) {
-            const key = scope === "project" ? "project" : "global";
-            hookSettings[key].hooks = JSON.parse(JSON.stringify(hooks)) as HookConfigView[];
-        },
-        async TrustProjectHooks() {
-            // Compatibility no-op: project hooks are enabled automatically.
-        },
-        async TrustProjectHooksForRoot(_projectRoot: string) {
-            // Compatibility no-op: project hooks are enabled automatically.
-        },
         async SetDefaultModel(ref: string) {
             settings.defaultModel = ref;
         },

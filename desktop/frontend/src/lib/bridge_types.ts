@@ -5,7 +5,7 @@ import type * as GeneratedApp from "../../wailsjs/go/main/App";
 import type { InvocationRequest } from "./invocationDisplay";
 import { type HistoryCatalogBindings } from "./historyCatalogBridge";
 import { type TaskCatalogBindings } from "./taskCatalogBridge";
-import type { BalanceInfo, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
+import type { BalanceInfo, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
 // AppBindings is derived from the Wails-generated Go → TS method signatures, so
 // the compiler catches drift between the Go binding surface and the frontend mock.
 // Run `wails generate module` after adding/renaming a bound method on App, then
@@ -355,18 +355,13 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     SetAgentPreset(preset: string): Promise<void>;
     SetAgentPresetForTab(tabID: string, preset: string): Promise<void>;
     // ReloadRuntime rebuilds the tab's agent runtime in place (tools, skills,
-    // commands, hooks, providers, MCP servers) via boot.Rebuild, keeping the
+    // commands, providers, MCP servers) via boot.Rebuild, keeping the
     // session. Busy tabs queue one reload for when they go idle.
     ReloadRuntime(tabID: string): Promise<void>;
     AcceptSkillSuggestion(suggestion: SkillSuggestion): Promise<string>;
     AcceptSkillSuggestionForTab(tabID: string, suggestion: SkillSuggestion): Promise<string>;
     DesktopStartupSettings(): Promise<DesktopStartupSettingsView>;
     Settings(): Promise<SettingsView>;
-    HooksSettings(scope: string): Promise<HooksSettingsView>;
-    SaveHooksSettings(scope: string, hooks: HookConfigView[]): Promise<void>;
-    SaveHooksSettingsForRoot(scope: string, projectRoot: string, hooks: HookConfigView[]): Promise<void>;
-    TrustProjectHooks(): Promise<void>;
-    TrustProjectHooksForRoot(projectRoot: string): Promise<void>;
     SetDefaultModel(ref: string): Promise<void>;
     SetPlannerModel(ref: string): Promise<void>;
     SetSubagentModel(ref: string): Promise<void>;
