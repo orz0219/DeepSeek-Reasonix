@@ -40,3 +40,14 @@ func (a *Agent) recordToolReceipts(plan *toolCallPlan, result string, execution 
 		}
 	}
 }
+
+// recordMinimalReceipt records a basic evidence receipt for Fast Path
+// read-only tool calls. Skips execution metadata, capability tracking,
+// and todo state updates that are only relevant for mutation tools.
+func (a *Agent) recordMinimalReceipt(plan *toolCallPlan, result string, err error) {
+	if a.task.ledger == nil {
+		return
+	}
+	rec := evidence.ReceiptFromToolCall(plan.call.Name, json.RawMessage(plan.call.Arguments), err == nil, true)
+	a.task.ledger.Record(rec)
+}

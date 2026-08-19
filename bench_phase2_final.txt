@@ -1,0 +1,55 @@
+# Reasonix Execution Fast Path 第二阶段 - 最终 Benchmark 对比
+# Machine: Apple M1, macOS, arm64
+# Go: 1.26.5
+# benchtime=100x
+
+# 第一阶段 Baseline → 第二阶段 After 对比：
+
+Metric                      Baseline        After           Change
+SingleRead (1 call)         ~12us           ~12.7us         ~noise
+Write (2 calls)             ~17us           ~17.3us         ~same
+Bash (1 call)               ~320us          ~290us          -9%
+10 mixed calls              ~89us           ~86us           -3%
+50 mixed calls              ~364us          ~363us          ~same
+100 mixed calls             ~8.2ms          ~7.6ms          -7%
+Mixed R/W (5 calls)         ~469us          ~359us          -23%
+
+# Trace 子阶段数据（per-call）：
+Phase                 Baseline     After        Change
+parse                 37-57us      53-58us      ~same
+  policy              ~1us         1.5-1.75us   ~same
+    recovery          N/A          584-791ns    (new)
+    permission        N/A          0s           (new)
+  prepare             ~1us         1.1-1.75us   ~same
+    workspace         N/A          42-82ns      (new)
+    checkpoint        N/A          125-166ns    (new)
+    hook              N/A          42-84ns      (new)
+    context           N/A          541-750ns    (new)
+execute               ~0.5us       0.3-3.2us    ~same
+finalize              9-15us       16-41us      (trace overhead)
+  evidence            N/A          7-33us       (new)
+  recoveryObserve     N/A          84-167ns     (new)
+
+# Fast Path 效果：
+# - read_file/grep/ls/glob 等 read-only tool 跳过：
+#   - applyDeliveryPolicyGates
+#   - applyMutationDependencyBarrier
+#   - applyRecoveryAndPermission
+#   - workspace lease
+#   - parent write reservation
+#   - mutation barrier
+#   - checkpoint (observeBeforeMutation)
+#   - hooks (PreToolUse)
+#   - full recordToolReceipts (只用 recordMinimalReceipt)
+#   - after-mutation observation
+#   - recovery observation
+
+# 新增文件：
+# - internal/agent/fast_path.go (executionPath 类型 + classifyExecutionPath)
+# - internal/agent/plan_bash.go (buildToolContext 方法)
+
+# 修改文件：
+# - internal/agent/tool_trace.go (子阶段 trace 点)
+# - internal/agent/execute_one.go (resolveToolPolicy + prepareToolExecution Fast Path)
+# - internal/agent/execute_finish.go (finishToolExecution Fast Path)
+# - internal/agent/tool_receipts.go (recordMinimalReceipt)

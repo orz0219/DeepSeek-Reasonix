@@ -86,27 +86,41 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 
 	if plan.trace != nil {
 		plan.trace.executeDone = time.Now()
+		plan.trace.evidenceStart = time.Now()
 	}
 
 	if msg, refused := tool.BlockedMessage(err); refused {
 		return a.blockedToolOutcome(plan, msg)
 	}
-	a.recordToolReceipts(plan, result, execution, err)
-
-	a.noteCapabilityInvocation(call.Name, json.RawMessage(call.Arguments), err)
-
-	if a.svc.hooks != nil {
-		if err != nil {
-			a.svc.hooks.PostToolUseFailure(ctx, permName, permArgs, result, err)
-		} else {
-			a.svc.hooks.PostToolUse(ctx, permName, permArgs, result)
+	// Fast Path: skip hooks, after-mutation observation, and recovery
+	// observation for read-only tools. Only record minimal receipt.
+	if plan.executionPath == pathFast {
+		a.recordMinimalReceipt(plan, result, err)
+	} else {
+		a.recordToolReceipts(plan, result, execution, err)
+		a.noteCapabilityInvocation(call.Name, json.RawMessage(call.Arguments), err)
+		if a.svc.hooks != nil {
+			if err != nil {
+				a.svc.hooks.PostToolUseFailure(ctx, permName, permArgs, result, err)
+			} else {
+				a.svc.hooks.PostToolUse(ctx, permName, permArgs, result)
+			}
+		}
+		if plan.trace != nil {
+			plan.trace.evidenceDone = time.Now()
+			plan.trace.recoveryObserveStart = time.Now()
+		}
+		a.observeAfterMutation(plan)
+		plan.mutationAfterDone = true
+		if a.svc.recoveryGate != nil {
+			a.observeRecoveryResult(ctx, evidenceName, evidenceArgs, readOnly, mutates, result, err, false, false, recoveryGen)
+		}
+		if plan.trace != nil {
+			plan.trace.recoveryObserveDone = time.Now()
 		}
 	}
-
-	a.observeAfterMutation(plan)
-	plan.mutationAfterDone = true
-	if a.svc.recoveryGate != nil {
-		a.observeRecoveryResult(ctx, evidenceName, evidenceArgs, readOnly, mutates, result, err, false, false, recoveryGen)
+	if plan.trace != nil {
+		plan.trace.evidenceDone = time.Now()
 	}
 	if err != nil {
 		detail := result

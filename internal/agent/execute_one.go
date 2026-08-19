@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"reasonix/internal/checkpoint"
-	"reasonix/internal/event"
 	"reasonix/internal/evidence"
 	"reasonix/internal/permission"
 	"reasonix/internal/planmode"
@@ -58,6 +57,7 @@ type toolCallPlan struct {
 	executed          bool
 	trace             *toolCallTrace
 	parsedArgs        *parsedToolArgs
+	executionPath     executionPath
 	// cachedBashCommand is set once for bash tools to avoid repeated
 	// json.Unmarshal in permission/evidence classification.
 	cachedBashCommand string
@@ -206,6 +206,7 @@ func (a *Agent) parseToolCall(ctx context.Context, plan *toolCallPlan) (toolOutc
 		plan.readOnly = true
 		plan.resolvedMeta = &tool.ResolvedCall{TargetName: canonicalName, ReadOnly: true}
 	}
+	plan.executionPath = a.classifyExecutionPath(plan)
 	return toolOutcome{}, false
 }
 
@@ -218,6 +219,11 @@ func (a *Agent) resolveToolPolicy(ctx context.Context, turn *turnRuntime, plan *
 	if blocked, early := a.applyContextualToolGate(ctx, plan); early {
 		return blocked, true
 	}
+	// Fast Path: skip delivery gates, mutation barrier, recovery, and
+	// permission for read-only tools with no special policies.
+	if plan.executionPath == pathFast {
+		return toolOutcome{}, false
+	}
 	if blocked, early := a.applyDeliveryPolicyGates(turn, plan); early {
 		return blocked, true
 	}
@@ -228,8 +234,14 @@ func (a *Agent) resolveToolPolicy(ctx context.Context, turn *turnRuntime, plan *
 	if blocked, early := a.applyMutationDependencyBarrier(plan); early {
 		return blocked, true
 	}
+	if plan.trace != nil {
+		plan.trace.recoveryStart = time.Now()
+	}
 	if blocked, early := a.applyRecoveryAndPermission(ctx, plan); early {
 		return blocked, true
+	}
+	if plan.trace != nil {
+		plan.trace.recoveryDone = time.Now()
 	}
 	return toolOutcome{}, false
 }
@@ -642,11 +654,36 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 	if outcome, blocked := a.taskPolicyToolGate(plan, policyArgs); blocked {
 		return outcome, true
 	}
+	// Fast Path: skip workspace lease, parent write, mutation barrier,
+	// checkpoint, and hooks for read-only tools. Only build context.
+	if plan.executionPath == pathFast {
+		// Still need to resolve the concrete execution target.
+		plan.runTool = plan.execTool
+		plan.runArgs = plan.execArgs
+		if plan.resolved.Target != nil {
+			plan.runTool = plan.resolved.Target
+			plan.runArgs = plan.resolved.Args
+			if len(plan.runArgs) == 0 {
+				plan.runArgs = json.RawMessage(`{}`)
+			}
+		}
+		if plan.trace != nil {
+			plan.trace.contextStart = time.Now()
+		}
+		plan.cctx = a.buildToolContext(plan)
+		if plan.trace != nil {
+			plan.trace.contextDone = time.Now()
+		}
+		return toolOutcome{}, false
+	}
 	// Acquire after permission is granted but before PreToolUse: hooks are user
 	// shell code and can themselves change the workspace. This keeps readers
 	// concurrent and avoids holding the workspace during an approval prompt while
 	// still covering every write-side action that follows authorization.
 	// Lazy workspace lease on the first real writer for every role setting.
+	if plan.trace != nil {
+		plan.trace.workspaceStart = time.Now()
+	}
 	if plan.mutates && a.svc.workspaceLease != nil {
 		if err := a.svc.workspaceLease.AcquireWrite(ctx); err != nil {
 			return toolOutcome{
@@ -655,6 +692,9 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 				errMsg:  "blocked: workspace write lease unavailable",
 			}, true
 		}
+	}
+	if plan.trace != nil {
+		plan.trace.workspaceDone = time.Now()
 	}
 	// Resolve the concrete execution target before hooks. A proxy may carry a
 	// different target/name/argument set than the provider-visible call.
@@ -697,6 +737,9 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 	// still finalizes the fingerprint on every return path. Built-in
 	// Previewers get precise paths (complete coverage). Bash / opaque MCP
 	// writers record explicit coverage gaps instead of guessing targets.
+	if plan.trace != nil {
+		plan.trace.checkpointStart = time.Now()
+	}
 	if !plan.readOnly {
 		a.observeBeforeMutation(ctx, plan)
 		plan.mutationObserved = plan.mutationPath != ""
@@ -704,7 +747,13 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 			a.svc.mutationObserver.RecordGap(checkpoint.CoverageGap{Reason: checkpoint.GapHookWrite, Tool: plan.evidenceName, Detail: "tool hook may write paths that are not declared by the tool"})
 		}
 	}
+	if plan.trace != nil {
+		plan.trace.checkpointDone = time.Now()
+	}
 	// Proxy tools fire hooks against the real MCP target name and arguments.
+	if plan.trace != nil {
+		plan.trace.hookStart = time.Now()
+	}
 	if a.svc.hooks != nil {
 		if block, msg := a.svc.hooks.PreToolUse(ctx, plan.permName, plan.permArgs); block {
 			if msg == "" {
@@ -717,33 +766,15 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 			}, true
 		}
 	}
+	if plan.trace != nil {
+		plan.trace.hookDone = time.Now()
+		plan.trace.contextStart = time.Now()
+	}
 	// Start from session-level base context, add per-call values only.
-	cctx := a.toolContextBase
-	if cctx == nil {
-		cctx = context.Background()
+	plan.cctx = a.buildToolContext(plan)
+	if plan.trace != nil {
+		plan.trace.contextDone = time.Now()
 	}
-	cctx = tool.WithContextCompressor(withCallContext(cctx, plan.call.ID, a.svc.sink, a.svc.asker, a.planMode.Load()), a)
-	if a.task.ledger != nil {
-		cctx = evidence.WithSessionMessages(cctx, a.sess.conversation.Snapshot)
-	}
-	if plan.planReplacementAuthorized {
-		cctx = tool.WithPlanReplacementAuthorization(cctx)
-	}
-	if v := a.responseLanguage.Load(); v != nil {
-		if lang, ok := v.(string); ok {
-			cctx = WithResponseLanguagePreference(cctx, lang)
-		}
-	}
-	if v := a.reasoningLanguage.Load(); v != nil {
-		if lang, ok := v.(string); ok {
-			cctx = WithReasoningLanguagePreference(cctx, lang)
-		}
-	}
-	callID := plan.call.ID
-	cctx = tool.WithProgress(cctx, func(chunk string) {
-		a.svc.sink.Emit(event.Event{Kind: event.ToolProgress, Tool: event.Tool{ID: callID, Output: chunk}})
-	})
-	plan.cctx = cctx
 	return toolOutcome{}, false
 }
 

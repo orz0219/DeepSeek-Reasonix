@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"reasonix/internal/event"
 	"reasonix/internal/evidence"
 	"reasonix/internal/instruction"
 	"reasonix/internal/jobs"
@@ -62,4 +63,35 @@ func (a *Agent) rebuildToolContextBase() {
 		ctx = memory.WithQueue(ctx, a.svc.memQueue)
 	}
 	a.toolContextBase = ctx
+}
+
+// buildToolContext creates the per-call execution context from the session-level
+// base. Used by both Fast Path and Slow Path (the latter via prepareToolExecution).
+func (a *Agent) buildToolContext(plan *toolCallPlan) context.Context {
+	cctx := a.toolContextBase
+	if cctx == nil {
+		cctx = context.Background()
+	}
+	cctx = tool.WithContextCompressor(withCallContext(cctx, plan.call.ID, a.svc.sink, a.svc.asker, a.planMode.Load()), a)
+	if a.task.ledger != nil {
+		cctx = evidence.WithSessionMessages(cctx, a.sess.conversation.Snapshot)
+	}
+	if plan.planReplacementAuthorized {
+		cctx = tool.WithPlanReplacementAuthorization(cctx)
+	}
+	if v := a.responseLanguage.Load(); v != nil {
+		if lang, ok := v.(string); ok {
+			cctx = WithResponseLanguagePreference(cctx, lang)
+		}
+	}
+	if v := a.reasoningLanguage.Load(); v != nil {
+		if lang, ok := v.(string); ok {
+			cctx = WithReasoningLanguagePreference(cctx, lang)
+		}
+	}
+	callID := plan.call.ID
+	cctx = tool.WithProgress(cctx, func(chunk string) {
+		a.svc.sink.Emit(event.Event{Kind: event.ToolProgress, Tool: event.Tool{ID: callID, Output: chunk}})
+	})
+	return cctx
 }

@@ -18,12 +18,36 @@ type toolCallTrace struct {
 	interceptDone  time.Time
 	policyStart    time.Time
 	policyDone     time.Time
-	prepareStart   time.Time
-	prepareDone    time.Time
-	executeStart   time.Time
-	executeDone    time.Time
-	finalizeStart  time.Time
-	finalizeDone   time.Time
+
+	// Sub-stages within policy (resolveToolPolicy).
+	recoveryStart   time.Time
+	recoveryDone    time.Time
+	permissionStart time.Time
+	permissionDone  time.Time
+
+	prepareStart time.Time
+	prepareDone  time.Time
+
+	// Sub-stages within prepare (prepareToolExecution).
+	workspaceStart  time.Time
+	workspaceDone   time.Time
+	checkpointStart time.Time
+	checkpointDone  time.Time
+	hookStart       time.Time
+	hookDone        time.Time
+	contextStart    time.Time
+	contextDone     time.Time
+
+	executeStart  time.Time
+	executeDone   time.Time
+	finalizeStart time.Time
+	finalizeDone  time.Time
+
+	// Sub-stages within finalize (finishToolExecution).
+	evidenceStart        time.Time
+	evidenceDone         time.Time
+	recoveryObserveStart time.Time
+	recoveryObserveDone  time.Time
 }
 
 func (t *toolCallTrace) total() time.Duration {
@@ -80,6 +104,9 @@ func (r *traceReport) PrintReport(w io.Writer) {
 
 	var totalOverhead, totalExec, totalAll time.Duration
 	var parseTotal, policyTotal, prepareTotal, finalizeTotal time.Duration
+	var recoveryTotal, permissionTotal time.Duration
+	var workspaceTotal, checkpointTotal, hookTotal, contextTotal time.Duration
+	var evidenceTotal, recoveryObserveTotal time.Duration
 
 	for _, c := range r.calls {
 		total := c.total()
@@ -92,18 +119,50 @@ func (r *traceReport) PrintReport(w io.Writer) {
 		policyTotal += c.policyDone.Sub(c.policyStart)
 		prepareTotal += c.prepareDone.Sub(c.prepareStart)
 		finalizeTotal += c.finalizeDone.Sub(c.finalizeStart)
+		if !c.recoveryStart.IsZero() && !c.recoveryDone.IsZero() {
+			recoveryTotal += c.recoveryDone.Sub(c.recoveryStart)
+		}
+		if !c.permissionStart.IsZero() && !c.permissionDone.IsZero() {
+			permissionTotal += c.permissionDone.Sub(c.permissionStart)
+		}
+		if !c.workspaceStart.IsZero() && !c.workspaceDone.IsZero() {
+			workspaceTotal += c.workspaceDone.Sub(c.workspaceStart)
+		}
+		if !c.checkpointStart.IsZero() && !c.checkpointDone.IsZero() {
+			checkpointTotal += c.checkpointDone.Sub(c.checkpointStart)
+		}
+		if !c.hookStart.IsZero() && !c.hookDone.IsZero() {
+			hookTotal += c.hookDone.Sub(c.hookStart)
+		}
+		if !c.contextStart.IsZero() && !c.contextDone.IsZero() {
+			contextTotal += c.contextDone.Sub(c.contextStart)
+		}
+		if !c.evidenceStart.IsZero() && !c.evidenceDone.IsZero() {
+			evidenceTotal += c.evidenceDone.Sub(c.evidenceStart)
+		}
+		if !c.recoveryObserveStart.IsZero() && !c.recoveryObserveDone.IsZero() {
+			recoveryObserveTotal += c.recoveryObserveDone.Sub(c.recoveryObserveStart)
+		}
 	}
 
 	n := time.Duration(len(r.calls))
 	fmt.Fprintf(w, "--- Tool Call Trace Report (%d calls) ---\n", len(r.calls))
-	fmt.Fprintf(w, "  %-20s %10s  (per-call avg)\n", "Phase", "Total")
-	fmt.Fprintf(w, "  %-20s %10s\n", "parse", parseTotal)
-	fmt.Fprintf(w, "  %-20s %10s\n", "policy", policyTotal)
-	fmt.Fprintf(w, "  %-20s %10s\n", "prepare", prepareTotal)
-	fmt.Fprintf(w, "  %-20s %10s\n", "execute", totalExec)
-	fmt.Fprintf(w, "  %-20s %10s\n", "finalize", finalizeTotal)
-	fmt.Fprintf(w, "  %-20s %10s\n", "---", "---")
-	fmt.Fprintf(w, "  %-20s %10s  (%s/call)\n", "total", totalAll, totalAll/n)
-	fmt.Fprintf(w, "  %-20s %10s  (%s/call)\n", "host overhead", totalOverhead, totalOverhead/n)
-	fmt.Fprintf(w, "  %-20s %10s\n", "overhead ratio", fmt.Sprintf("%.1f%%", float64(totalOverhead)/float64(totalAll)*100))
+	fmt.Fprintf(w, "  %-22s %10s\n", "Phase", "Total")
+	fmt.Fprintf(w, "  %-22s %10s\n", "parse", parseTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "  policy", policyTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "    recovery", recoveryTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "    permission", permissionTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "  prepare", prepareTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "    workspace", workspaceTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "    checkpoint", checkpointTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "    hook", hookTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "    context", contextTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "execute", totalExec)
+	fmt.Fprintf(w, "  %-22s %10s\n", "finalize", finalizeTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "  evidence", evidenceTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "  recoveryObserve", recoveryObserveTotal)
+	fmt.Fprintf(w, "  %-22s %10s\n", "---", "---")
+	fmt.Fprintf(w, "  %-22s %10s  (%s/call)\n", "total", totalAll, totalAll/n)
+	fmt.Fprintf(w, "  %-22s %10s  (%s/call)\n", "host overhead", totalOverhead, totalOverhead/n)
+	fmt.Fprintf(w, "  %-22s %10s\n", "overhead ratio", fmt.Sprintf("%.1f%%", float64(totalOverhead)/float64(totalAll)*100))
 }
