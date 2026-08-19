@@ -7,7 +7,7 @@ import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems } from "./statusBarIt
 import { registerTrustedThemeBackgroundURLs } from "./themePack";
 import { modeWithAutoApproveTools, modeWithPlan, normalizeCollaborationMode, normalizeMode, normalizeTokenMode, normalizeToolApprovalMode } from "./types";
 import { decisionSurfaceMockFromInput, isLongDecisionOptionsMockInput } from "./decisionSurfaceMock";
-import type { CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, MemorySuggestion, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
+import type { CapabilityDiagnosticsReport, CommandInfo, DesktopStartupSettingsView, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, MCPServerInput, MCPMarketplaceView, NetworkView, PluginInstallOptions, PluginView, ProjectNode, PromptHistoryEntry, ProviderModelCatalogUpdate, ProviderView, ServerView, SessionMeta, SettingsView, SkillRootView, SkillSuggestion, SkillView, SubagentProfileInput, TabMeta, TerminalSessionView, ToolApprovalMode } from "./types";
 import { withMockTabScope, delay, emit, mockScopedTabId, stripLegacyGoalBudgetFlags, mockToolApprovalModeAfterModeChange, mockPreviewImageDataURL, bumpMockTopicActivationCounter, setMockPendingTopicActivation, mockPendingTopicActivation, GLOBAL_PROJECT_ORDER_KEY } from "./bridge";
 import { AppBindings } from "./bridge_types";
 import { mockScenario, baseName, mockProviderPresetViews, browserPreviewBashSandboxMode, browserPreviewEffectiveShell, browserPlatformOverride, mockExternalOpenerIconDataURL, cloneMockProviderTemplate } from "./bridge_mock_helpers";
@@ -2838,179 +2838,12 @@ export function makeMockApp(): AppBindings {
             mockTabs = mockTabs.map((tab) => (tab.id === tabID ? { ...tab, tokenMode } : tab));
         },
         async ReloadRuntime(_tabID) { },
-        async Memory() {
-            return {
-                available: true,
-                storeDir: "~/.reasonix/projects/-mock/memory",
-                storeGlobalDir: "~/.reasonix/memory/global",
-                docs: [
-                    {
-                        path: "REASONIX.md",
-                        scope: "project",
-                        directory: ".",
-                        body: "# Reasonix project memory\n\nMock doc shown in the browser dev seam.\n\n## Notes\n\n- prefers concise replies",
-                        imports: [],
-                        depth: 0,
-                        order: 0,
-                        precedence: 0,
-                    },
-                    {
-                        path: "~/.reasonix/REASONIX.md",
-                        scope: "user",
-                        body: t("mock.memoryBody"),
-                        imports: [],
-                        depth: -1,
-                        order: 1,
-                        precedence: 1,
-                    },
-                ],
-                instructionDiagnostics: [],
-                facts: [
-                    {
-                        name: "prefers-tabs",
-                        description: "User prefers tabs",
-                        type: "user",
-                        scope: "project",
-                        body: "Indent with tabs.",
-                        freshness: "fresh",
-                    },
-                ],
-                archives: [
-                    {
-                        name: "old-plan",
-                        description: "Superseded planning note",
-                        type: "project",
-                        scope: "project",
-                        body: "This plan was archived after the implementation changed.",
-                        path: "~/.reasonix/projects/-mock/memory/.archive/20260612-021500.000-old-plan.md",
-                        archivedAt: "2026-06-12T02:15:00Z",
-                        freshness: "current",
-                    },
-                ],
-                scopes: [
-                    { scope: "user", path: "~/.reasonix/REASONIX.md" },
-                    { scope: "project", path: "REASONIX.md" },
-                    { scope: "local", path: "REASONIX.local.md" },
-                ],
-                conflicts: [],
-                lastRecall: {
-                    query: "",
-                    hits: [],
-                    omitted: 0,
-                    charBudget: 2400,
-                    usedChars: 0,
-                    suppressed: "no user turn yet",
-                },
-            };
-        },
-        async MemorySuggestions() {
-            return {
-                memories: [
-                    {
-                        id: "memory-prefers-concise-replies",
-                        name: "prefers-concise-replies",
-                        title: "Prefers concise replies",
-                        description: "User prefers concise replies unless detail is requested.",
-                        type: "user",
-                        scope: "project",
-                        body: "User prefers concise replies unless detail is requested.\n\n**Why:** Suggested from recent local history.\n**How to apply:** Keep answers brief by default.",
-                        reason: "future-facing preference",
-                        evidence: ["mock-session: always keep replies concise"],
-                    },
-                ],
-                skills: [
-                    {
-                        id: "skill-reasonix-pr-followup",
-                        name: "reasonix-pr-followup",
-                        description: "Review or update a Reasonix GitHub PR, address feedback, verify, and publish safely.",
-                        scope: "project",
-                        body: "# Reasonix PR Followup\n\nUse this skill for repeated Reasonix PR work.\n\n## Workflow\n\n1. Confirm branch and PR state.\n2. Inspect the diff.\n3. Fix actionable feedback.\n4. Verify and update the PR.\n",
-                        reason: "recent history repeatedly touched PR workflows",
-                        evidence: ["mock-pr-session: 提交到pr，并更新内容", "mock-review-session: 解决该pr下机器人提出来的问题"],
-                    },
-                ],
-                generatedAt: new Date().toISOString(),
-                available: true,
-                source: "mock",
-            };
-        },
-        async AcceptMemorySuggestion(suggestion: MemorySuggestion) {
-            emit({ kind: "notice", level: "info", text: `saved suggested memory → ${suggestion.name}` });
-            return `${suggestion.name}.md`;
-        },
         async AcceptSkillSuggestion(suggestion: SkillSuggestion) {
             emit({ kind: "notice", level: "info", text: `created suggested skill → ${suggestion.name}` });
             return `.reasonix/skills/${suggestion.name}/SKILL.md`;
         },
-        async MemorySuggestionsForTab(_tabID: string) {
-            return this.MemorySuggestions();
-        },
-        async AcceptMemorySuggestionForTab(_tabID: string, suggestion: MemorySuggestion) {
-            return this.AcceptMemorySuggestion(suggestion);
-        },
         async AcceptSkillSuggestionForTab(_tabID: string, suggestion: SkillSuggestion) {
             return this.AcceptSkillSuggestion(suggestion);
-        },
-        async MemoryForTab(_tabID: string) {
-            return this.Memory();
-        },
-        async MemoryRevisions(_ref: string) {
-            return [];
-        },
-        async MemoryRevisionsForTab(_tabID: string, ref: string) {
-            return this.MemoryRevisions(ref);
-        },
-        async RestoreMemoryRevision(ref: string, revision: number) {
-            emit({ kind: "notice", level: "info", text: `restored revision → ${ref}@${revision}` });
-            return {
-                id: ref,
-                revision: revision + 1,
-                name: ref,
-                description: "Restored memory revision",
-                type: "project",
-                scope: "project",
-                body: "Restored guidance.",
-                freshness: "fresh",
-            };
-        },
-        async RestoreMemoryRevisionForTab(_tabID: string, ref: string, revision: number) {
-            return this.RestoreMemoryRevision(ref, revision);
-        },
-        async Remember(_scope: string, _note: string) {
-            emit({ kind: "notice", level: "info", text: `remembered → ${_scope}` });
-            return `${_scope} REASONIX.md (mock): ${_note}`;
-        },
-        async RememberForTab(_tabID: string, scope: string, note: string) {
-            return this.Remember(scope, note);
-        },
-        async Forget(_name: string) {
-            emit({ kind: "notice", level: "info", text: `forgot → ${_name}` });
-        },
-        async ForgetForTab(_tabID: string, name: string) {
-            return this.Forget(name);
-        },
-        async RestoreArchivedMemory(archivePath: string) {
-            emit({ kind: "notice", level: "info", text: `restored → ${archivePath}` });
-            return {
-                id: "mock-restored-memory",
-                revision: 2,
-                name: "restored-memory",
-                description: "Recovered archived memory",
-                type: "project",
-                scope: "project",
-                body: "Recovered guidance.",
-                freshness: "fresh",
-            };
-        },
-        async RestoreArchivedMemoryForTab(_tabID: string, archivePath: string) {
-            return this.RestoreArchivedMemory(archivePath);
-        },
-        async SaveDoc(_path: string, _body: string) {
-            emit({ kind: "notice", level: "info", text: `saved → ${_path}` });
-            return _path;
-        },
-        async SaveDocForTab(_tabID: string, path: string, body: string) {
-            return this.SaveDoc(path, body);
         },
         async DesktopStartupSettings() {
             const { desktopLanguage, desktopLayoutStyle, desktopTheme, desktopThemeStyle, desktopTerminalTheme, displayMode, reasoningDisplayMode, reasoningDisplayModeExplicit, statusBarStyle, statusBarItems, conversationWidth } = settings;

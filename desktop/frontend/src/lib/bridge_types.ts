@@ -5,7 +5,7 @@ import type * as GeneratedApp from "../../wailsjs/go/main/App";
 import type { InvocationRequest } from "./invocationDisplay";
 import { type HistoryCatalogBindings } from "./historyCatalogBridge";
 import { type TaskCatalogBindings } from "./taskCatalogBridge";
-import type { BalanceInfo, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, MemoryFact, MemorySuggestion, MemorySuggestionsView, MemoryView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
+import type { BalanceInfo, CapabilitiesView, CapabilityDiagnosticsReport, RuntimeDoctorReport, CheckpointMeta, CommandInfo, ControlResult, ContextInfo, ContextPanelInfo, DirEntry, DesktopStartupSettingsView, DeliveryWorktreeAvailability, DeliveryWorktreeOpenResult, DroppedItem, EffortInfo, ExtensionActionView, FilePreview, ExternalOpenersView, HistoryMessage, HistoryPage, HistoryContentChunk, HistoryContentRef, HistorySlice, HistorySliceRequest, TopicActivationRequest, TopicActivationTicket, HookConfigView, HooksSettingsView, JobView, ActiveWorkView, BackgroundRuntimeView, JobCancelBatchView, WorkspaceConflictView, MCPMarketplaceEntry, MCPServerInput, MCPInstallResult, MCPMarketplaceView, MCPToolView, Meta, ModelInfo, NetworkView, PluginInstallOptions, PluginView, ProjectNode, RecoveryLineageView, RecoveryCleanupRequest, RecoveryCleanupResult, SessionCatalogBindings, PromptHistoryResult, ProviderModelCatalogUpdate, ProviderView, QuestionAnswer, ServerView, SessionMeta, SettingsView, SkillsSettingsView, SkillSuggestion, TaskEvent, TaskSnapshot, SlashArgsResult, SubagentProfileInput, TabMeta, TerminalSessionView, TerminalWorkspaceView, TopicMeta, WorkspaceChangeDetailView, WorkspaceChangesView, WorkspaceRevisions, GitCommitView, GitCommitDetailView, WorkspaceView, SessionClearResult } from "./types";
 // AppBindings is derived from the Wails-generated Go → TS method signatures, so
 // the compiler catches drift between the Go binding surface and the frontend mock.
 // Run `wails generate module` after adding/renaming a bound method on App, then
@@ -358,26 +358,8 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     // commands, hooks, providers, MCP servers) via boot.Rebuild, keeping the
     // session. Busy tabs queue one reload for when they go idle.
     ReloadRuntime(tabID: string): Promise<void>;
-    Memory(): Promise<MemoryView>;
-    MemorySuggestions(): Promise<MemorySuggestionsView>;
-    AcceptMemorySuggestion(suggestion: MemorySuggestion): Promise<string>;
     AcceptSkillSuggestion(suggestion: SkillSuggestion): Promise<string>;
-    MemoryForTab(tabID: string): Promise<MemoryView>;
-    MemoryRevisions(ref: string): Promise<MemoryFact[]>;
-    MemoryRevisionsForTab(tabID: string, ref: string): Promise<MemoryFact[]>;
-    RestoreMemoryRevision(ref: string, revision: number): Promise<MemoryFact>;
-    RestoreMemoryRevisionForTab(tabID: string, ref: string, revision: number): Promise<MemoryFact>;
-    MemorySuggestionsForTab(tabID: string): Promise<MemorySuggestionsView>;
-    AcceptMemorySuggestionForTab(tabID: string, suggestion: MemorySuggestion): Promise<string>;
     AcceptSkillSuggestionForTab(tabID: string, suggestion: SkillSuggestion): Promise<string>;
-    Remember(scope: string, note: string): Promise<string>;
-    RememberForTab(tabID: string, scope: string, note: string): Promise<string>;
-    Forget(name: string): Promise<void>;
-    ForgetForTab(tabID: string, name: string): Promise<void>;
-    RestoreArchivedMemory(archivePath: string): Promise<MemoryFact>;
-    RestoreArchivedMemoryForTab(tabID: string, archivePath: string): Promise<MemoryFact>;
-    SaveDoc(path: string, body: string): Promise<string>;
-    SaveDocForTab(tabID: string, path: string, body: string): Promise<string>;
     DesktopStartupSettings(): Promise<DesktopStartupSettingsView>;
     Settings(): Promise<SettingsView>;
     HooksSettings(scope: string): Promise<HooksSettingsView>;

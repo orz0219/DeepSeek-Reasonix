@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ShellExpandProvider } from "./lib/shellExpand";
-import { Activity, Command, Download, Search, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, Brain, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
+import { Activity, Command, Download, Search, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
 import { useToast } from "./lib/toast";
 import { useGoalActionHandler } from "./lib/goalAction";
 import { useWailsResizeFix } from "./lib/useWailsResizeFix";

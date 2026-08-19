@@ -29,7 +29,6 @@ function settingsPageKind(tab: SettingsTab): "form" | "manager" {
         case "skills":
         case "subagents":
         case "plugins":
-        case "memory":
         case "appearance":
             return "manager";
         default:
@@ -93,7 +92,6 @@ function settingsTabPageTitle(id: SettingsTab, t: ReturnType<typeof useT>): stri
         case "mcp": return t("settings.tab.mcp");
         case "skills": return t("settings.tab.skills");
         case "plugins": return t("settings.tab.plugins");
-        case "memory": return t("settings.tab.memory");
         case "diagnostics": return t("settings.tab.diagnostics");
         case "shortcuts": return t("settings.tab.shortcuts");
         default: return settingsTabLabel(id, t);
@@ -115,8 +113,6 @@ export function settingsTabLabel(id: SettingsTab, t: ReturnType<typeof useT>): s
             return t("settings.tab.subagents");
         case "plugins":
             return t("settings.tab.plugins");
-        case "memory":
-            return t("settings.tab.memory");
         case "hooks":
             return t("settings.tab.hooks");
         case "diagnostics":
@@ -151,8 +147,6 @@ export function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<
             return t("subagents.tabHint");
         case "plugins":
             return t("settings.tabSub.plugins");
-        case "memory":
-            return t("settings.tabSub.memory");
         case "hooks":
             return t("settings.tabSub.hooks");
         case "diagnostics":

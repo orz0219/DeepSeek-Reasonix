@@ -16,7 +16,7 @@ import { uiPerfTracker } from "./uiPerf";
 import { getLocale, t } from "./i18n";
 import { hydratePlaceholderItems as resolveHydratePlaceholders } from "./hydrateErrorState";
 import { hydrateIdentityCurrent } from "./sessionIdentity";
-import type { BalanceInfo, CollaborationMode, DeliveryWorktreeOpenResult, HistoryMessage, HistoryPage, MemoryView, Meta, Mode, QuestionAnswer, SessionMeta, TabMeta, TokenMode, ToolApprovalMode, TopicActivationEvent } from "./types";
+import type { BalanceInfo, CollaborationMode, DeliveryWorktreeOpenResult, HistoryMessage, HistoryPage, Meta, Mode, QuestionAnswer, SessionMeta, TabMeta, TokenMode, ToolApprovalMode, TopicActivationEvent } from "./types";
 import { TURN_ACTIVITY_KINDS } from "./controller_subagent";
 import { ControllerLiveStore, MessageActionScope, HydrateReason, Item, initialState, SyncActiveTabOptions, PendingTopicActivation, ModelSwitchQueueResult, ModelSwitchQueueRequest, ModelSwitchQueueState, HISTORY_PAGE_TURNS } from "./controller_state";
 import { foregroundRunningFromRuntimeMeta, promptEventClock, runtimeSnapshotPredatesPrompt, metaFromTab, runtimeReadyForSubmit, normalizeTurnSubmit, createTurnSubmissionId, acceptsRuntimeEventEpoch, composerProfileApplicationKey, shouldReconcileStaleTurn, RuntimeMetaSnapshot, STALE_TURN_RECONCILE_MS, CANCEL_RECONCILE_DELAYS_MS, STALE_PROMPT_RECONCILE_MS, STARTUP_READY_META_RECONCILE_MS, STARTUP_READY_META_RECONCILE_ATTEMPTS, hasCachedLiveTurn, hasReusableCachedTranscript, historyFingerprintMatchesMeta } from "./controller_meta";
@@ -1817,14 +1817,6 @@ export function useController() {
             return false;
         }
     }, [activeTabId, dispatchTo, refreshMetaForTab]);
-    const fetchMemory = useCallback((): Promise<MemoryView> => app.Memory().catch(() => ({
-        docs: [], facts: [], archives: [], scopes: [], instructionDiagnostics: [], conflicts: [],
-        lastRecall: { query: "", hits: [], omitted: 0, charBudget: 0, usedChars: 0 },
-        storeDir: "", available: false,
-    })), []);
-    const remember = useCallback(async (scope: string, note: string) => { await app.Remember(scope, note).catch(() => { }); }, []);
-    const forget = useCallback(async (name: string) => { await app.Forget(name).catch(() => { }); }, []);
-    const saveDoc = useCallback(async (path: string, body: string) => { await app.SaveDoc(path, body).catch(() => { }); }, []);
     type RewindOutcome = {
         ok: boolean;
         transactionId?: string;
@@ -2285,7 +2277,6 @@ export function useController() {
         loadOlderHistory,
         requestHistoryFullContent,
         refreshMeta, pickWorkspace, switchWorkspace, compact, rewind, rewindForTab, rewindForTabDetailed, undoRewindForTab, setModel, setEffort, setTokenMode, cancelJob,
-        fetchMemory, remember, forget, saveDoc,
         switchTab, openProjectTab, openGlobalTab, openTopicSession, ensureBlankTab, activateTopic, ensureBlankSurface, createDeliveryWorktree, closeTab, reorderTabs,
         // Invalidate in-flight navigation completions (activateTopic's stale
         // guard) from outside the hook. The App-level navigation queue must call

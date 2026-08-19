@@ -1,5 +1,5 @@
-import { createContext, useState } from "react";
-import { ChevronRight, FileText, Folder, Image } from "lucide-react";
+import { createContext } from "react";
+import { FileText, Folder, Image } from "lucide-react";
 import type { DisplayAttachment } from "../lib/attachmentDisplay";
 import { useT } from "../lib/i18n";
 import { type InvocationMetadataMap } from "../lib/invocationDisplay";
