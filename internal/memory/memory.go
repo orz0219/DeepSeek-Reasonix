@@ -23,6 +23,12 @@ type Set struct {
 	UserDir                string   // user config root (may be "")
 	InstructionDiagnostics []instruction.Diagnostic
 
+	// SnapshotRevision is the store's monotonic revision counter at Load()
+	// time. The controller can compare it against a fresh CurrentRevision()
+	// read to detect cross-session mutations without touching the cache-stable
+	// system prompt prefix.
+	SnapshotRevision int
+
 	// recall is the snapshot's prebuilt retrieval index (nil when memory is
 	// hidden or empty); Set.AutoRecall serves each turn from it without disk.
 	recall *RecallIndex
@@ -61,6 +67,7 @@ func Load(opts Options) *Set {
 		CWD:                    cwd,
 		UserDir:                opts.UserDir,
 		InstructionDiagnostics: resolved.Diagnostics,
+		SnapshotRevision:       store.CurrentRevision(),
 		recall:                 BuildRecallIndex(store),
 	}
 }
@@ -97,6 +104,30 @@ func (s *Set) DocPath(scope Scope) string {
 // there is no memory at all.
 func (s *Set) Empty() bool {
 	return s == nil || (len(s.Docs) == 0 && len(s.PinnedGuidance) == 0 && strings.TrimSpace(s.Index) == "")
+}
+
+// IsStale reports whether the session's recall index may be out of date because
+// another process or session mutated the store since Load(). The controller can
+// call this at safe boundaries (end of turn, before the next user message) and
+// decide whether to call RefreshRecallIndex. It never mutates the cache-stable
+// system prompt prefix.
+func (s *Set) IsStale() bool {
+	if s == nil || s.Store.Dir == "" {
+		return false
+	}
+	return s.Store.CurrentRevision() != s.SnapshotRevision
+}
+
+// RefreshRecallIndex rebuilds only the prebuilt retrieval index from the
+// current store state, without touching Docs, PinnedGuidance, or Index. This
+// preserves the cache-stable prefix while keeping automatic recall fresh. The
+// caller should call this only at safe session boundaries, never mid-turn.
+func (s *Set) RefreshRecallIndex() {
+	if s == nil || s.Store.Dir == "" {
+		return
+	}
+	s.recall = BuildRecallIndex(s.Store)
+	s.SnapshotRevision = s.Store.CurrentRevision()
 }
 
 // docScopes are the scopes the panel can target for a quick-add or a new doc.

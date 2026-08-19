@@ -53,6 +53,7 @@ func (s Store) archiveLocked(name string) (string, error) {
 		return "", fmt.Errorf("memory needs a name")
 	}
 	var lastPath string
+	archived := false
 	for _, dir := range s.dirs() {
 		if dir == "" {
 			continue
@@ -68,7 +69,21 @@ func (s Store) archiveLocked(name string) (string, error) {
 		}
 		if p != "" {
 			lastPath = p
+			archived = true
 		}
+	}
+	if archived {
+		// Bump revision in every directory where an archive happened so
+		// concurrent sessions detect the mutation.
+		for _, dir := range s.dirs() {
+			if dir == "" {
+				continue
+			}
+			bumpRevision(dir)
+		}
+		// Best-effort compaction: remove orphaned lines when the index
+		// grows past the threshold. Hand-written content is preserved.
+		s.CompactIndexIfNeeded()
 	}
 	return lastPath, nil
 }

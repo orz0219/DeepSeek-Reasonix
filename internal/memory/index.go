@@ -2,6 +2,7 @@ package memory
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -167,4 +168,53 @@ func renderIndexLine(name string, m Memory) string {
 	return fmt.Sprintf("- [%s](%s.md) — [%s/%s%s] %s",
 		displayTitle(m.Title, name), name,
 		NormalizeFactScope(string(m.Scope)), NormalizeType(string(m.Type)), marker, oneLine(m.Description))
+}
+
+// compactIndexThreshold is the managed-line count above which a compaction is
+// triggered. The threshold is deliberately generous: compaction only removes
+// orphaned lines (file no longer exists) and is a no-op when the index is
+// already clean, so it never destroys hand-written content.
+const compactIndexThreshold = 200
+
+// CompactIndexIfNeeded removes orphaned managed lines from MEMORY.md when the
+// index exceeds the threshold. Orphaned lines reference .md files that no longer
+// exist on disk (archived or manually deleted). Hand-written content is always
+// preserved. This is a best-effort maintenance operation — errors are logged
+// but never propagated.
+func (s Store) CompactIndexIfNeeded() {
+	for _, dir := range s.dirs() {
+		if dir == "" {
+			continue
+		}
+		s.compactIndexIn(dir)
+	}
+}
+
+func (s Store) compactIndexIn(dir string) {
+	existing, err := fileencoding.ReadFileUTF8(filepath.Join(dir, indexFile))
+	if err != nil {
+		return
+	}
+	// Count managed lines only; hand-written content is untouched.
+	managed := 0
+	for line := range strings.SplitSeq(string(existing), "\n") {
+		if indexLineRe.MatchString(line) {
+			managed++
+		}
+	}
+	if managed <= compactIndexThreshold {
+		return
+	}
+	// Rebuild from scratch: only lines whose .md file still exists survive.
+	all := indexLinesExceptIn(dir, "")
+	compacted := map[string]string{}
+	for name, line := range all {
+		if _, err := os.Stat(filepath.Join(dir, name+".md")); err == nil {
+			compacted[name] = line
+		}
+	}
+	if len(compacted) == managed {
+		return // nothing to remove
+	}
+	_ = flushIndexIn(dir, compacted)
 }

@@ -40,6 +40,10 @@ var memoryStoreMutationMu sync.Mutex
 func (s Store) MigrateV2() (MigrationReport, error) {
 	memoryStoreMutationMu.Lock()
 	defer memoryStoreMutationMu.Unlock()
+	// Ensure revision files exist so pre-migration stores have a valid counter.
+	for _, dir := range s.dirs() {
+		ensureRevisionFile(dir)
+	}
 	var report MigrationReport
 	for _, dir := range s.dirs() {
 		if strings.TrimSpace(dir) == "" {
@@ -295,6 +299,8 @@ func (s Store) SaveWithOptions(m Memory, opts SaveOptions) (SaveResult, error) {
 			}
 		}
 	}
+
+	bumpRevision(dir)
 
 	result := SaveResult{Path: path, Memory: m}
 	if exists {

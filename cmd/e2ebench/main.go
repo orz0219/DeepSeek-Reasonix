@@ -127,12 +127,14 @@ type result struct {
 	Note    string
 	// Memory shadow: recall decisions and point-of-use evidence extracted from
 	// the trajectory (see memorybench.go). Zero for suites without seeds.
-	MemoryRecallEvents int `json:"memory_recall_events,omitempty"`
-	MemoryRecallHits   int `json:"memory_recall_hits,omitempty"`
-	MemoryRecallChars  int `json:"memory_recall_chars,omitempty"`
-	MemorySuppressed   int `json:"memory_suppressed,omitempty"`
-	MemoryMarkersUsed  int `json:"memory_markers_used,omitempty"`
-	MemoryShadowAgree  int `json:"memory_shadow_agree,omitempty"`
+	MemoryRecallEvents  int `json:"memory_recall_events,omitempty"`
+	MemoryRecallHits    int `json:"memory_recall_hits,omitempty"`
+	MemoryRecallChars   int `json:"memory_recall_chars,omitempty"`
+	MemorySuppressed    int `json:"memory_suppressed,omitempty"`
+	MemoryMarkersUsed   int `json:"memory_markers_used,omitempty"`
+	MemoryShadowAgree   int `json:"memory_shadow_agree,omitempty"`
+	MemoryFalseRecalls  int `json:"memory_false_recalls,omitempty"`
+	MemoryPrecisionHits int `json:"memory_precision_hits,omitempty"`
 	// WallMs is the harness's own clock, not the agent's self-report, so the
 	// number stays comparable when the same suite runs against another harness.
 	WallMs int64 `json:"wall_ms"`

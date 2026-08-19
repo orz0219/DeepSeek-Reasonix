@@ -183,17 +183,12 @@ func autoRecallIndexed(index *RecallIndex, result RecallResult, opts RecallOptio
 		if score <= 0 {
 			continue
 		}
-		if NormalizeFactScope(string(doc.memory.Scope)) == FactScopeProject {
-			score *= 1.08
-		}
+		score = applyRecallBoosts(score, doc.memory, now)
 		freshness := memoryFreshness(doc.memory, now)
 		// A hard expiry is a boundary, not a demotion: an expired fact is
 		// never worth prompt space, though explicit search still finds it.
 		if freshness == FreshnessExpired {
 			continue
-		}
-		if freshness == FreshnessStale {
-			score *= 0.92
 		}
 		hits = append(hits, RecallHit{
 			Memory:    doc.memory,
@@ -462,4 +457,52 @@ func clippedRecallEntry(hit RecallHit, maxRunes int) string {
 		runes = runes[:len(runes)-cut]
 	}
 	return ""
+}
+
+// applyRecallBoosts applies a composite boost to the BM25 lexical score based
+// on the memory's scope, freshness, origin, confidence, and type. Boosts are
+// conservative multipliers (0.85–1.15 range) so they refine ranking without
+// overriding a strong lexical match. The freshness classification is computed
+// here and returned for the RecallHit; callers should use the returned
+// freshness rather than recomputing it.
+func applyRecallBoosts(score float64, m Memory, now time.Time) float64 {
+	// 1. Scope boost: project-scoped facts are more immediately actionable.
+	if NormalizeFactScope(string(m.Scope)) == FactScopeProject {
+		score *= 1.08
+	}
+
+	// 2. Freshness penalty: stale facts are less reliable.
+	freshness := memoryFreshness(m, now)
+	if freshness == FreshnessStale {
+		score *= 0.92
+	}
+
+	// 3. Origin boost: user-curated facts rank above auto-generated ones.
+	switch NormalizeOrigin(string(m.Origin)) {
+	case OriginManual:
+		score *= 1.15
+	case OriginExplicit:
+		score *= 1.10
+	case OriginConsolidated:
+		// baseline — no boost
+	case OriginInferred:
+		score *= 0.85
+	}
+
+	// 4. Confidence boost: for consolidated memories, scale into 0.8–1.0.
+	if m.Confidence > 0 && NormalizeOrigin(string(m.Origin)) == OriginConsolidated {
+		score *= (0.8 + 0.2*m.Confidence)
+	}
+
+	// 5. Type relevance: guidance and user identity matter more than references.
+	switch NormalizeType(string(m.Type)) {
+	case TypeFeedback:
+		score *= 1.05
+	case TypeUser:
+		score *= 1.03
+	case TypeReference:
+		score *= 0.98
+	}
+
+	return score
 }

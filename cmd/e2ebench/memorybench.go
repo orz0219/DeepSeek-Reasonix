@@ -85,22 +85,26 @@ func applyMemoryStats(r *result, trajPath string, t task) {
 	r.MemoryRecallEvents, r.MemoryRecallHits = stats.RecallEvents, stats.RecallHits
 	r.MemoryRecallChars, r.MemorySuppressed = stats.RecallChars, stats.Suppressed
 	r.MemoryMarkersUsed, r.MemoryShadowAgree = stats.MarkersUsed, stats.ShadowAgree
+	r.MemoryFalseRecalls, r.MemoryPrecisionHits = stats.FalseRecalls, stats.PrecisionHits
 }
 
 // memoryRunStats is what one trajectory reveals about recall behavior.
 type memoryRunStats struct {
-	RecallEvents int // user turns where automatic recall ran and injected facts
-	RecallHits   int
-	RecallChars  int
-	Suppressed   int // recall decisions that stayed silent
-	MarkersUsed  int // task markers seen in tool args or answer text after recall
-	ShadowAgree  int // recall events where the V2 shadow's top hit matched production's
+	RecallEvents  int // user turns where automatic recall ran and injected facts
+	RecallHits    int
+	RecallChars   int
+	Suppressed    int // recall decisions that stayed silent
+	MarkersUsed   int // task markers seen in tool args or answer text after recall
+	ShadowAgree   int // recall events where the V2 shadow's top hit matched production's
+	FalseRecalls  int // recalled facts whose ID never appeared in tool args or answer text
+	PrecisionHits int // recalled facts that were actually used (RecallHits - FalseRecalls)
 }
 
 // scanMemoryRecall extracts recall decisions and point-of-use evidence: a
 // marker (a unique token planted in a seeded fact body) counts as used only
 // when it appears in tool arguments or answer text AFTER a recall injected
-// facts — the fact reached the decision path, not just the ranking.
+// facts — the fact reached the decision path, not just the ranking. It also
+// tracks which recalled fact IDs were never referenced, computing precision.
 func scanMemoryRecall(path string, markers []string, markersInPrefix bool) memoryRunStats {
 	var stats memoryRunStats
 	f, err := os.Open(path)
@@ -124,6 +128,8 @@ func scanMemoryRecall(path string, markers []string, markersInPrefix bool) memor
 		} `json:"event"`
 	}
 	used := make(map[string]bool, len(markers))
+	// Track which recalled fact IDs were seen in subsequent evidence.
+	recalledIDs := make(map[string]bool)
 	// Pinned facts arrive via the stable prefix, before any recall: their
 	// markers count from the first record.
 	recalled := markersInPrefix
@@ -140,6 +146,9 @@ func scanMemoryRecall(path string, markers []string, markersInPrefix bool) memor
 				stats.RecallHits += len(mr.Hits)
 				stats.RecallChars += mr.UsedChars
 				recalled = true
+				for _, h := range mr.Hits {
+					recalledIDs[h.ID] = false // not yet used
+				}
 				if len(mr.ShadowHits) > 0 && mr.ShadowHits[0].ID == mr.Hits[0].ID {
 					stats.ShadowAgree++
 				}
@@ -164,8 +173,25 @@ func scanMemoryRecall(path string, markers []string, markersInPrefix bool) memor
 				used[marker] = true
 			}
 		}
+		// Check if any recalled fact ID appears in the evidence. We
+		// match against the full record text to catch references in
+		// tool args and answer text alike.
+		evidence := rec.Event.Tool.Args + " " + rec.Event.Text
+		for id := range recalledIDs {
+			if !recalledIDs[id] && strings.Contains(evidence, id) {
+				recalledIDs[id] = true
+			}
+		}
 	}
 	stats.MarkersUsed = len(used)
+	// Compute precision: recalled IDs that were never referenced are false recalls.
+	for _, used := range recalledIDs {
+		if used {
+			stats.PrecisionHits++
+		} else {
+			stats.FalseRecalls++
+		}
+	}
 	return stats
 }
 
@@ -173,6 +199,7 @@ func scanMemoryRecall(path string, markers []string, markersInPrefix bool) memor
 // no run recalled anything and no task planted markers.
 func renderMemoryShadow(results []result) string {
 	runs, recallRuns, hits, chars, suppressed, markersUsed, markersTotal := 0, 0, 0, 0, 0, 0, 0
+	precisionHits, falseRecalls := 0, 0
 	for _, r := range results {
 		runs++
 		if r.MemoryRecallEvents > 0 {
@@ -183,6 +210,8 @@ func renderMemoryShadow(results []result) string {
 		suppressed += r.MemorySuppressed
 		markersUsed += r.MemoryMarkersUsed
 		markersTotal += len(r.MemoryMarkers)
+		precisionHits += r.MemoryPrecisionHits
+		falseRecalls += r.MemoryFalseRecalls
 	}
 	if hits == 0 && markersTotal == 0 {
 		return ""
@@ -198,6 +227,16 @@ func renderMemoryShadow(results []result) string {
 	}
 	if markersTotal > 0 {
 		line += fmt.Sprintf(" · **point-of-use** %d/%d markers", markersUsed, markersTotal)
+	}
+	if hits > 0 {
+		precision := 0.0
+		if precisionHits+falseRecalls > 0 {
+			precision = 100 * float64(precisionHits) / float64(precisionHits+falseRecalls)
+		}
+		line += fmt.Sprintf(" · **precision** %.0f%% (%d/%d useful)", precision, precisionHits, precisionHits+falseRecalls)
+		if falseRecalls > 0 {
+			line += fmt.Sprintf(" · **false recalls** %d", falseRecalls)
+		}
 	}
 	if suppressed > 0 {
 		line += fmt.Sprintf(" · suppressed %d", suppressed)
