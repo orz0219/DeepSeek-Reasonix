@@ -3,8 +3,6 @@ package main
 import (
 	"path/filepath"
 	"strings"
-
-	"reasonix/internal/memory"
 )
 
 func isImageExt(path string) bool {
@@ -144,4 +142,4 @@ type MemoryView struct {
 }
 
 // writableScopes are the quick-add targets the panel offers, broad → specific.
-var writableScopes = []memory.Scope{memory.ScopeUser, memory.ScopeProject, memory.ScopeLocal}
+var writableScopes = []string{"user", "project", "local"}
