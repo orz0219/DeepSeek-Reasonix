@@ -1154,13 +1154,6 @@ export default function App() {
             await switchModel(model[1]);
             return;
         }
-        if (trimmed === "/memory") {
-            if (activeTabIdRef.current !== sourceTabId)
-                return;
-            closeTransientOverlays();
-            setSettingsTarget("memory");
-            return;
-        }
         if (trimmed === "/clear") {
             if (activeTabIdRef.current !== sourceTabId)
                 return;
@@ -2591,7 +2584,6 @@ export default function App() {
                         .catch((err) => showToast(err instanceof Error ? err.message : String(err), "error"));
                 },
             },
-            { id: "cmd-memory", group: t("palette.group.commands"), title: t("palette.cmd.memory"), icon: <Brain size={15}/>, compact: true, keywords: ["memory", "记忆"], run: () => setSettingsTarget("memory") },
             { id: "cmd-models", group: t("palette.group.commands"), title: t("palette.cmd.models"), icon: <Cpu size={15}/>, compact: true, keywords: ["model", "模型"], run: () => setSettingsTarget("models") },
             { id: "cmd-task-center", group: t("palette.group.commands"), title: t("palette.cmd.taskCenter"), icon: <Activity size={15}/>, compact: true, keywords: ["task", "tasks", "center", "任务", "任务中心"], run: () => setTasksOpen("all") },
             { id: "cmd-terminal", group: t("palette.group.commands"), title: t("rightDock.terminal"), icon: <TerminalSquare size={15}/>, compact: true, keywords: ["terminal", "shell", "终端"], run: () => toggleTerminalPanel() },
@@ -2912,13 +2904,6 @@ export default function App() {
             }}>
                   <Command size={14} aria-hidden="true"/>
                   <span>{t("creation.sidebar.skills")}</span>
-                </button>
-                <button className="sidebar-feature-zone__item" type="button" onClick={() => {
-                closeTransientOverlays();
-                setSettingsTarget("memory");
-            }}>
-                  <Brain size={14} aria-hidden="true"/>
-                  <span>{t("settings.tab.memory")}</span>
                 </button>
               </div>
             </section>)}

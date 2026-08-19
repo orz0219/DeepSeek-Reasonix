@@ -270,14 +270,6 @@ export interface QuestionAnswer {
     questionId: string;
     selected: string[];
 }
-export interface MemoryCitation {
-    id?: string;
-    source: string;
-    lineStart?: number;
-    lineEnd?: number;
-    note?: string;
-    kind?: string;
-}
 export interface WireEvent {
     kind: EventKind;
     text?: string;
@@ -285,7 +277,6 @@ export interface WireEvent {
     // Stable notice id for localization; empty/absent = localize by text match.
     code?: string;
     reasoning?: string;
-    memoryCitations?: MemoryCitation[];
     level?: "info" | "warn";
     tool?: WireTool;
     usage?: WireUsage;

@@ -3,7 +3,6 @@ import {
   Activity,
   Box,
   Cable,
-  Database,
   HardDrive,
   Keyboard,
   LockKeyhole,
@@ -24,7 +23,7 @@ import { useT, type DictKey } from "../lib/i18n";
 import type { SettingsTab } from "../lib/types";
 
 export const SETTINGS_NAV_TABS: SettingsTab[] = [
-  "general", "models", "mcp", "skills", "subagents", "plugins", "memory",
+  "general", "models", "mcp", "skills", "subagents", "plugins",
   "hooks", "diagnostics", "shortcuts", "permissions", "sandbox", "network", "appearance", "storage", "about",
 ];
 
@@ -32,7 +31,6 @@ const SETTINGS_TAB_GROUPS: { labelKey: DictKey; tabs: SettingsTab[] }[] = [
   { labelKey: "settings.navGroup.preferences", tabs: ["general", "models"] },
   { labelKey: "settings.navGroup.connections", tabs: ["mcp"] },
   { labelKey: "settings.navGroup.capabilities", tabs: ["skills", "subagents", "plugins"] },
-  { labelKey: "settings.navGroup.context", tabs: ["memory"] },
   { labelKey: "settings.navGroup.automation", tabs: ["hooks", "diagnostics", "shortcuts"] },
   { labelKey: "settings.navGroup.security", tabs: ["permissions", "sandbox", "network"] },
   { labelKey: "settings.navGroup.application", tabs: ["appearance", "storage", "about"] },
@@ -131,7 +129,6 @@ function settingsTabIcon(id: SettingsTab): ReactNode {
     case "skills": return <Sparkles {...props} />;
     case "subagents": return <Users {...props} />;
     case "plugins": return <Package {...props} />;
-    case "memory": return <Database {...props} />;
     case "hooks": return <Webhook {...props} />;
     case "diagnostics": return <Activity {...props} />;
     case "shortcuts": return <Keyboard {...props} />;

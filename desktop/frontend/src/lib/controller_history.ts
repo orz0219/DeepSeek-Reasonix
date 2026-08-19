@@ -1,7 +1,7 @@
 import { asArray } from "./array";
 import { applyLiveSegments, type StreamSegment } from "./streamDeltaBatch";
 import { fileDiffFromWire, summarizeFileDiff } from "./tools";
-import type { BalanceInfo, CheckpointMeta, ContextInfo, EffortInfo, HistoryMessage, HistoryPage, JobView, MemoryCitation, Meta, WireEvent } from "./types";
+import type { BalanceInfo, CheckpointMeta, ContextInfo, EffortInfo, HistoryMessage, HistoryPage, JobView, Meta, WireEvent } from "./types";
 import { ToolItem, Item, HydrateReason, MessageActionState, State, LiveStream } from "./controller_state";
 import { RuntimeMetaSnapshot, foregroundRunningFromRuntimeMeta, isReadOnlyTool } from "./controller_meta";
 import { appendNoticeItem } from "./controller_notice";
@@ -243,7 +243,6 @@ export function historyMessagesToItems(messages: HistoryMessage[], idPrefix: str
         if (m.role === "assistant") {
             const hasText = m.content.trim() !== "" || (m.reasoning ?? "").trim() !== "";
             if (hasText) {
-                const memoryCitations = asArray<MemoryCitation>(m.memoryCitations);
                 items.push({
                     kind: "assistant",
                     id: `${idPrefix}${seq}`,
@@ -251,7 +250,6 @@ export function historyMessagesToItems(messages: HistoryMessage[], idPrefix: str
                     reasoning: m.reasoning ?? "",
                     streaming: false,
                     workDurationMs: m.workDurationMs,
-                    memoryCitations: memoryCitations.length > 0 ? memoryCitations : undefined,
                 });
                 seq++;
             }

@@ -5,7 +5,7 @@ import { completionSummaryNeedsAttention, completionSummaryNotice, normalizeComp
 import { completeLiveReasoning } from "./streamDeltaBatch";
 import { t } from "./i18n";
 import { fileDiffFromWire, summarize, summarizeFileDiff } from "./tools";
-import type { MemoryCitation, WireEvent, WireExtensionCard, WireExtensionStatus, WireExtensionSurface } from "./types";
+import type { WireEvent, WireExtensionCard, WireExtensionStatus, WireExtensionSurface } from "./types";
 import { State, extensionSurfaceKey, acceptsExtensionGeneration, ExtensionStatusEntry, Item, ExtensionNotificationEntry, ToolItem, STEER_NOTICE_PREFIX } from "./controller_state";
 import { applyTurnCheckpoint, ensureAssistant, applyDeltaSegments, liveReasoningDurationMs, currentTurnDurationMs, compactArchivedToolItems } from "./controller_history";
 import { promptEventClock, countsTowardCurrentTurn, updatesContextGauge, usageTotalTokens } from "./controller_meta";
@@ -350,7 +350,7 @@ export function applyEvent(s: State, e: WireEvent): State {
             const text = e.text ?? s.live?.text ?? existingAssistant?.text ?? "";
             const reasoning = e.reasoning ?? s.live?.reasoning ?? existingAssistant?.reasoning ?? "";
             if (text.trim() === "" && reasoning.trim() === "") {
-                const items = existingAssistant && existingAssistant.text.trim() === "" && existingAssistant.reasoning.trim() === "" && !existingAssistant.memoryCitations?.length
+                const items = existingAssistant && existingAssistant.text.trim() === "" && existingAssistant.reasoning.trim() === ""
                     ? s.items.filter((it) => !(it.kind === "assistant" && it.id === existingAssistant.id))
                     : s.items;
                 return { ...endTurnModelActivity(s, Date.now(), true), items, live: undefined, currentAssistant: undefined, turnOutputCharsAtUsage: 0 };
@@ -365,7 +365,6 @@ export function applyEvent(s: State, e: WireEvent): State {
             const workDurationMs = currentTurnDurationMs(settled, now);
             const next = items.map((it) => it.kind === "assistant" && it.id === id
                 ? (() => {
-                    const memoryCitations = asArray<MemoryCitation>(e.memoryCitations ?? it.memoryCitations);
                     return {
                         ...it,
                         text,
@@ -374,7 +373,6 @@ export function applyEvent(s: State, e: WireEvent): State {
                         reasoningComplete: reasoning !== "" || it.reasoningComplete,
                         reasoningDurationMs: reasoningDurationMs ?? it.reasoningDurationMs,
                         workDurationMs: Math.max(it.workDurationMs ?? 0, workDurationMs ?? 0) || undefined,
-                        memoryCitations: memoryCitations.length > 0 ? memoryCitations : undefined,
                     };
                 })()
                 : it);

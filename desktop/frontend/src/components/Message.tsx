@@ -13,7 +13,6 @@ import { ImageViewer } from "./ImageViewer";
 import { Tooltip } from "./Tooltip";
 import { useReasoningFoldBehavior } from "../lib/reasoningDisplayPreference";
 import { historyEntryIdForItemId } from "../lib/transcriptRows";
-import { stripMemoryCompilerExecution } from "../lib/memoryCompilerDisplay";
 import { invocationSegmentsFromMessage } from "../lib/invocationDisplay";
 import type { MessageActionScope } from "../lib/useController";
 import type { CheckpointMeta } from "../lib/types";
@@ -21,7 +20,7 @@ import { InvocationBadge } from "./InvocationBadge";
 import { CodeViewer } from "./CodeViewer";
 import { formatSelectionLabels, languageFor, parseSelectedTextContext, stripSelectionLabels } from "../lib/selectedTextContext";
 import { AssistantReasoningPanel } from "./AssistantReasoningPanel";
-import { TurnActionMenu, InvocationMetadataContext, parsePastedBlocks, SelectedTextBlockInfo, parseSelectedTextBlocks, AssistantItem, parseImSourceMessage, imSourceLabel, attachmentIcon, mergeDisplayAttachments, PastedBlockInfo, MemoryCitations } from "./message_helpers";
+import { TurnActionMenu, InvocationMetadataContext, parsePastedBlocks, SelectedTextBlockInfo, parseSelectedTextBlocks, AssistantItem, parseImSourceMessage, imSourceLabel, attachmentIcon, mergeDisplayAttachments, PastedBlockInfo } from "./message_helpers";
 function messageDate(value?: number): Date {
     return new Date(typeof value === "number" && Number.isFinite(value) && value > 0 ? value : Date.now());
 }
@@ -44,8 +43,7 @@ export function UserMessage({ text, submitText, failed, turn, anchorId, id, crea
     const t = useT();
     const invocationMetadata = useContext(InvocationMetadataContext);
     const imSource = parseImSourceMessage(text);
-    const actionText = stripMemoryCompilerExecution(imSource?.text ?? text);
-    const hasMemoryCompiler = Boolean(submitText?.includes("<memory-compiler-execution>"));
+    const actionText = imSource?.text ?? text;
     const selectedTextEntries = useMemo(() => parseSelectedTextContext(submitText), [submitText]);
     const editableActionText = stripSelectionLabels(actionText, selectedTextEntries);
     const { text: editableDisplayText, attachments } = parseAttachmentRefsForDisplay(editableActionText);
@@ -357,9 +355,6 @@ export function UserMessage({ text, submitText, failed, turn, anchorId, id, crea
           {sentAt && (<time className="msg-meta__time" dateTime={sentAt.toISOString()} title={sentAt.toLocaleString()}>
               {formatMessageTime(sentAt)}
             </time>)}
-          {hasMemoryCompiler && (<span className="msg-meta__indicator" title={t("msg.memoryCompilerApplied")} aria-hidden="true">
-              <BrainCircuit size={14}/>
-            </span>)}
           <CopyButton text={actionText} label={t("msg.copy")} showInlineLabel={false} className="msg-meta__btn msg-meta__copy"/>
           {onEdit && (<button className="msg-meta__btn" type="button" aria-label={t("common.edit")} title={t("common.edit")} disabled={!canEdit} onClick={startEdit}>
               <Pencil size={14}/>
@@ -568,7 +563,6 @@ export const AssistantMessage = memo(function AssistantMessage({ item, defaultEx
       {hasText && (<div className="msg__body" data-transcript-selectable="message">
           <Markdown text={item.text} plainStatusBlocks={creationMode} streaming={item.streaming} entryId={historyEntryIdForItemId(item.id)}/>
         </div>)}
-      <MemoryCitations citations={item.memoryCitations}/>
     </div>);
 });
 export type { TurnActionMenu as TurnActionMenu } from "./message_helpers";
@@ -582,5 +576,4 @@ export { imSourceLabel as imSourceLabel } from "./message_helpers";
 export { attachmentIcon as attachmentIcon } from "./message_helpers";
 export { mergeDisplayAttachments as mergeDisplayAttachments } from "./message_helpers";
 export type { PastedBlockInfo as PastedBlockInfo } from "./message_helpers";
-export { MemoryCitations as MemoryCitations } from "./message_helpers";
 

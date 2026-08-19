@@ -1,7 +1,6 @@
 import { parseAttachmentRefsForDisplay } from "./attachmentDisplay";
 import { contentRevision } from "./contentRevision";
 import { estimateHastBytes } from "./markdownByteEstimate";
-import { stripMemoryCompilerExecution } from "./memoryCompilerDisplay";
 import { parseSelectedTextContext, stripSelectionLabels } from "./selectedTextContext";
 import { getMarkdownWorkerClient } from "./markdownWorkerClient";
 import { getTranscriptStore } from "./transcriptStore";
@@ -19,7 +18,7 @@ function imMessageBody(text: string): string {
 }
 
 export function userMessageSelectionText(text: string, submitText?: string): string {
-  const actionText = stripMemoryCompilerExecution(imMessageBody(text));
+  const actionText = imMessageBody(text);
   const selected = parseSelectedTextContext(submitText);
   const withoutLabels = stripSelectionLabels(actionText, selected);
   const body = parseAttachmentRefsForDisplay(withoutLabels).text.trim();

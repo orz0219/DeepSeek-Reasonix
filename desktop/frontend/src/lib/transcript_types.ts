@@ -32,7 +32,7 @@
 import { asArray } from "./array";
 import { fileDiffFromWire, summarizeFileDiff } from "./tools";
 import { historyToolError, isReadOnlyTool, localizedNoticeText, quietTranscriptNoticeKey, type Item } from "./useController";
-import type { HistoryContentChunk, HistoryContentRef, HistoryEntry, HistoryMessage, HistorySlice, HistorySliceRequest, MemoryCitation } from "./types";
+import type { HistoryContentChunk, HistoryContentRef, HistoryEntry, HistoryMessage, HistorySlice, HistorySliceRequest } from "./types";
 export interface TranscriptBackend {
     HistorySliceForTab(tabID: string, req: HistorySliceRequest): Promise<HistorySlice>;
     HistoryContentForTab(tabID: string, ref: HistoryContentRef, chunkIndex: number): Promise<HistoryContentChunk>;
@@ -251,7 +251,6 @@ export function convertRecord(rec: TranscriptRecord, view: {
     if (m.role === "assistant") {
         const hasText = m.content.trim() !== "" || (m.reasoning ?? "").trim() !== "";
         if (hasText) {
-            const memoryCitations = asArray<MemoryCitation>(m.memoryCitations);
             items.push({
                 kind: "assistant",
                 id,
@@ -259,7 +258,6 @@ export function convertRecord(rec: TranscriptRecord, view: {
                 reasoning: m.reasoning ?? "",
                 streaming: false,
                 workDurationMs: m.workDurationMs,
-                memoryCitations: memoryCitations.length > 0 ? memoryCitations : undefined,
             });
         }
         const toolCalls = m.toolCalls ?? [];

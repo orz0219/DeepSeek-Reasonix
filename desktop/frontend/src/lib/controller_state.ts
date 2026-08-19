@@ -1,5 +1,5 @@
 import { type ToolFileDiff } from "./tools";
-import type { BalanceInfo, CheckpointMeta, ContextInfo, EffortInfo, JobView, MemoryCitation, Meta, TopicActivationEvent, WireApproval, WireAsk, WireCompletionSummary, WireDecisionReceipt, WireExtensionCard, WireExtensionForm, WireExtensionSurface, WireUsage, WireShellExecution } from "./types";
+import type { BalanceInfo, CheckpointMeta, ContextInfo, EffortInfo, JobView, Meta, TopicActivationEvent, WireApproval, WireAsk, WireCompletionSummary, WireDecisionReceipt, WireExtensionCard, WireExtensionForm, WireExtensionSurface, WireUsage, WireShellExecution } from "./types";
 import { ToolStatus, SubagentProgress } from "./controller_subagent";
 export type LiveStream = {
     id: string;
@@ -76,7 +76,6 @@ export type Item = {
     reasoningComplete?: boolean;
     reasoningDurationMs?: number;
     workDurationMs?: number;
-    memoryCitations?: MemoryCitation[];
 } | {
     kind: "phase";
     id: string;

@@ -1,17 +1,4 @@
-// Memory panel payloads (desktop/app.go MemoryView).
-export interface MemoryDoc {
-    path: string;
-    scope: string; // "user" | "ancestor" | "project" | "local"
-    directory?: string;
-    body: string;
-    imports: Array<{
-        path: string;
-        sourcePath: string;
-    }>;
-    depth: number;
-    order: number;
-    precedence: number;
-}
+// Instruction diagnostic for workspace instruction files.
 export interface InstructionDiagnostic {
     code: string;
     path: string;
@@ -19,66 +6,7 @@ export interface InstructionDiagnostic {
     line?: number;
     message: string;
 }
-export interface MemoryFact {
-    id?: string;
-    revision?: number;
-    createdAt?: string;
-    updatedAt?: string;
-    name: string;
-    title?: string;
-    description: string;
-    type: string; // "user" | "feedback" | "project" | "reference"
-    scope: string; // "project" | "global"
-    body: string;
-    freshness: string; // "fresh" | "current" | "stale"
-}
-export interface MemoryConflict {
-    key: string;
-    projectId: string;
-    projectName: string;
-    globalId: string;
-    globalName: string;
-    resolution: "project_over_global";
-}
-export interface MemoryRecallHit {
-    id: string;
-    revision: number;
-    name: string;
-    title?: string;
-    type: string;
-    scope: string;
-    score: number;
-    freshness: string;
-    reason: string;
-    snippet: string;
-}
-export interface MemoryRecallTrace {
-    query: string;
-    hits: MemoryRecallHit[];
-    omitted: number;
-    charBudget: number;
-    usedChars: number;
-    suppressed?: string;
-}
-export interface MemoryArchive extends MemoryFact {
-    path: string;
-    archivedAt?: string;
-}
-export interface MemoryScope {
-    scope: string; // "user" | "project" | "local"
-    path: string;
-}
-export interface MemorySuggestion {
-    id: string;
-    name: string;
-    title: string;
-    description: string;
-    type: string;
-    scope: string; // "project" | "global"
-    body: string;
-    reason: string;
-    evidence: string[];
-}
+// Skill suggestion for the skills management page.
 export interface SkillSuggestion {
     id: string;
     name: string;
@@ -88,27 +16,8 @@ export interface SkillSuggestion {
     reason: string;
     evidence: string[];
 }
-export interface MemorySuggestionsView {
-    memories: MemorySuggestion[];
-    skills: SkillSuggestion[];
-    generatedAt: string;
-    available: boolean;
-    source: string;
-}
-export interface MemoryView {
-    docs: MemoryDoc[];
-    facts: MemoryFact[];
-    archives: MemoryArchive[];
-    scopes: MemoryScope[];
-    instructionDiagnostics: InstructionDiagnostic[];
-    conflicts: MemoryConflict[];
-    lastRecall: MemoryRecallTrace;
-    storeDir: string;
-    storeGlobalDir?: string;
-    available: boolean;
-}
 // SettingsTab is the top-level navigation item in the Settings Centre modal.
-export type SettingsTab = "general" | "models" | "providers" | "mcp" | "skills" | "subagents" | "plugins" | "memory" | "hooks" | "diagnostics" | "shortcuts" | "permissions" | "sandbox" | "network" | "appearance" | "storage" | "about";
+export type SettingsTab = "general" | "models" | "providers" | "mcp" | "skills" | "subagents" | "plugins" | "hooks" | "diagnostics" | "shortcuts" | "permissions" | "sandbox" | "network" | "appearance" | "storage" | "about";
 /** Extension runtime doctor report from App.RuntimeDoctor. */
 export interface RuntimeDoctorReport {
     text: string;

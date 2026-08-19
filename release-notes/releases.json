@@ -2,6 +2,49 @@
   "schemaVersion": 1,
   "releases": [
     {
+      "version": "1.24.12",
+      "date": "2026-08-19",
+      "channel": "stable",
+      "title": {
+        "en": "Reasonix Desktop 1.24.12",
+        "zh": "Reasonix Desktop 1.24.12"
+      },
+      "summary": {
+        "en": "Local desktop build.",
+        "zh": "本地桌面打包。"
+      },
+      "surfaces": [
+        "desktop"
+      ],
+      "guides": [],
+      "highlights": [
+        {
+          "kind": "new",
+          "title": {
+            "en": "Local build 1.24.12",
+            "zh": "本地打包 1.24.12"
+          },
+          "body": {
+            "en": "Packaged locally with scripts/build-mac-desktop.sh.",
+            "zh": "通过 scripts/build-mac-desktop.sh 本地打包。"
+          }
+        }
+      ],
+      "changes": {
+        "new": [],
+        "improved": [],
+        "fixed": []
+      },
+      "upgrade": [],
+      "risks": [],
+      "contributors": [],
+      "links": {
+        "github": "https://github.com/esengine/DeepSeek-Reasonix/releases/tag/desktop-v1.24.12",
+        "compare": "https://github.com/esengine/DeepSeek-Reasonix/compare/desktop-v1.24.11...desktop-v1.24.12",
+        "download": "https://reasonix.io/?download=desktop&channel=stable#start"
+      }
+    },
+    {
       "version": "1.24.11",
       "date": "2026-08-18",
       "channel": "stable",

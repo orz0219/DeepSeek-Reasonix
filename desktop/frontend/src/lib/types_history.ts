@@ -2,7 +2,7 @@
 // One event channel carries every kind; `kind` discriminates the payload.
 import type { Todo } from "./tools";
 import type { ContextMaintenanceInfo } from "./contextMaintenanceTypes";
-import { MemoryCitation, WireShellExecution, WireDecisionReceipt, CostQuote } from "./types_events";
+import { WireShellExecution, WireDecisionReceipt, CostQuote } from "./types_events";
 import { TabMeta, SessionRuntimeView } from "./types_workspace";
 import { CollaborationMode, ToolApprovalMode, TokenMode, AgentPreset, GoalStatus, GoalRuntime } from "./types_mode";
 export interface UsageSourceStats {
@@ -46,7 +46,6 @@ export interface HistoryMessage {
     createdAt?: number;
     reasoning?: string;
     workDurationMs?: number;
-    memoryCitations?: MemoryCitation[];
     level?: "info" | "warn";
     toolCalls?: HistoryToolCall[];
     toolCallId?: string;
