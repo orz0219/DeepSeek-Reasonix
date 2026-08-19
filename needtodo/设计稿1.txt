@@ -1,0 +1,2517 @@
+# DeepSeek-Reasonix Stable：Workspace Memory v1 实施修改文档
+
+## 1. 修改目标
+
+在当前 `stable` 分支基础上增加真正的“工作目录跨会话记忆”能力。
+
+目标不是重新实现 Memory，而是在现有：
+
+* `internal/memory`
+* `internal/control`
+* Session History
+* 自动 BM25 Recall
+* `remember / memory / forget`
+* project/global Memory
+* revision/archive/restore
+
+之上增加一条自动沉淀链路：
+
+```text
+当前 Session
+    ↓
+Session Summary
+    ↓
+Memory Candidate Extraction
+    ↓
+Candidate Validation
+    ↓
+去重 / 冲突判断 / 生命周期判断
+    ↓
+Add / Update / Archive
+    ↓
+Workspace Project Memory
+    ↓
+下一次 Session 自动 Recall
+```
+
+最终达到：
+
+```text
+Session A：
+用户明确说明项目约束 / 技术决策 / 工作习惯
+        ↓
+Session 结束
+        ↓
+自动提取长期有效事实
+        ↓
+保存为 project memory
+
+Session B：
+进入同一个工作目录
+        ↓
+自动加载此前 project memory
+        ↓
+当前用户问题触发 BM25 Recall
+        ↓
+相关历史记忆自动进入当前 turn
+```
+
+核心原则：
+
+> Session History 保存“发生过什么”；Memory 保存“以后还需要知道什么”。
+
+---
+
+# 2. 当前代码基础，不要推翻
+
+当前 `internal/memory.Store` 已经是 one-fact-per-file Markdown 存储，并维护 `MEMORY.md` index；project memory 默认按照 workspace 隔离。`Memory` 已经具有 ID、Revision、Type、Scope、Activation、Volatility、SubjectKey、ExpiresAt、LastVerifiedAt、Keywords、Body 等字段。
+
+当前 Recall 已经基于 BM25 做检索，并考虑：
+
+* name
+* title
+* type
+* scope
+* description
+* keywords
+* body
+* relevance score
+* freshness
+* project/global 优先级
+
+不要第一阶段引入 embedding/vector database。
+
+当前 `memory.Set.Load()` 已经负责加载 Memory 并建立 RecallIndex。
+
+当前 `internal/control.Controller` 是统一 session / turn 生命周期入口。
+
+因此本次修改原则：
+
+> 在现有架构上增量实现，不重新设计 Memory Store，不重新设计 Session，不重新设计 Provider。
+
+---
+
+# 3. 本次修改范围
+
+第一阶段实现：
+
+```text
+A. Session Summary
+
+B. Memory Candidate
+
+C. Memory Consolidator
+
+D. Candidate Validation
+
+E. Memory Deduplication
+
+F. Memory Conflict Resolution
+
+G. Memory Lifecycle
+
+H. Controller Session Finalize Hook
+
+I. Project Memory 自动沉淀
+
+J. 下一 Session 自动读取已有 Memory
+
+K. 自动 Recall
+
+L. Memory provenance / debug 信息
+
+M. Memory suppression
+
+N. 自动 Memory 数量限制
+
+O. 完整测试
+```
+
+暂时不要实现：
+
+```text
+- 向量数据库
+- embedding
+- SQLite / DuckDB Memory DB
+- Web UI Memory 管理器
+- 完整 Memory 后台服务
+- 自动生成用户全局画像
+- 自动修改 REASONIX.md
+- 自动修改 AGENTS.md
+- 把所有 Session 历史转换成 Memory
+- 每一轮调用 Memory LLM
+- 自动扩大 pinned memory
+- 动态修改稳定 system prompt
+```
+
+---
+
+# 4. Memory 的职责边界
+
+系统中明确区分：
+
+```text
+Instruction
+    = 必须遵守的规则
+
+History
+    = 发生过的事情
+
+Memory
+    = 对未来有价值的长期事实
+
+Recall
+    = 当前任务需要哪些长期事实
+
+Consolidation
+    = 从过去发生的事情中筛选哪些值得成为长期事实
+```
+
+不要把这五者混成一个系统。
+
+---
+
+# 5. Session History 与 Memory 的区别
+
+Session History：
+
+```text
+用户：
+把数据库从 SQLite 改成 DuckDB。
+
+Agent：
+……
+
+Tool：
+……
+
+Agent：
+迁移完成。
+```
+
+完整保存。
+
+Memory：
+
+```text
+项目数据库使用 DuckDB。
+```
+
+只保存长期有效结论。
+
+不要把：
+
+```text
+完整 Session transcript
+完整 tool output
+完整思考过程
+```
+
+复制进 Memory。
+
+---
+
+# 6. Memory 层级
+
+第一阶段继续使用现有：
+
+```text
+project
+global
+```
+
+自动 Consolidation 只允许写：
+
+```text
+project
+```
+
+即：
+
+```text
+当前 workspace
+    ↓
+StoreFor(userDir, cwd)
+    ↓
+project memory
+```
+
+禁止自动 Consolidator 创建：
+
+```text
+global
+user
+```
+
+原因：
+
+> 一个项目中的事实不能因为 AI 自动总结而污染所有项目。
+
+Global Memory 仍然通过现有显式 `remember` 等用户主动路径管理。
+
+---
+
+# 7. 自动 Memory 不得默认 pinned
+
+这是硬性要求。
+
+当前系统已经区分：
+
+```text
+pinned
+retrieval
+```
+
+pinned Memory 会影响稳定 prompt prefix。
+
+因此自动 Consolidator 创建的新 Memory：
+
+```text
+activation = retrieval
+```
+
+禁止自动设置：
+
+```text
+activation = pinned
+```
+
+只有：
+
+```text
+用户显式 pin
+```
+
+或者现有明确的手动 Memory 操作，才允许进入 pinned。
+
+Consolidator 不得扩大 stable system prompt。
+
+这样可以避免长期使用后：
+
+```text
+Session 1 → Memory
+Session 2 → Memory
+Session 3 → Memory
+...
+```
+
+最终大量历史信息进入稳定 prompt prefix。
+
+---
+
+# 8. Memory 的真正目标
+
+Memory 不应该成为“第二份代码库”。
+
+不要自动保存：
+
+```text
+src/main.go 中存在 xxx 函数
+internal/foo/bar.go 当前有 xxx
+项目有 20 个 Go 文件
+```
+
+因为代码变化后这些信息很容易失效。
+
+应该优先保存：
+
+```text
+项目为什么这么设计
+用户要求什么
+哪些规则不能违反
+哪些架构决定已经确定
+哪些坑以前踩过
+哪些项目背景不容易从代码直接推断
+```
+
+核心原则：
+
+> Memory 记录“代码本身不可靠地表达的信息”。
+
+---
+
+# 9. 新增 SessionSummary
+
+建议增加：
+
+```go
+type SessionSummary struct {
+    SessionID string `json:"session_id"`
+
+    Goal string `json:"goal"`
+
+    Decisions []string `json:"decisions"`
+
+    Constraints []string `json:"constraints"`
+
+    DiscoveredFacts []string `json:"discovered_facts"`
+
+    ChangedFiles []string `json:"changed_files"`
+
+    Unresolved []string `json:"unresolved"`
+
+    UserPreferences []string `json:"user_preferences"`
+}
+```
+
+Session Summary 是会话摘要，不是 Memory。
+
+它允许包含：
+
+```text
+Goal
+Decisions
+Constraints
+ChangedFiles
+Unresolved
+```
+
+但这些内容不代表全部应该写入 Memory。
+
+---
+
+# 10. 新增 MemoryCandidate
+
+建议：
+
+```go
+type MemoryCandidate struct {
+    Action string `json:"action"`
+
+    Name string `json:"name"`
+
+    Title string `json:"title"`
+
+    Description string `json:"description"`
+
+    Type string `json:"type"`
+
+    Scope string `json:"scope"`
+
+    Keywords []string `json:"keywords"`
+
+    Body string `json:"body"`
+
+    SubjectKey string `json:"subject_key"`
+
+    Confidence float64 `json:"confidence"`
+
+    Volatility string `json:"volatility"`
+
+    Evidence []MemoryEvidence `json:"evidence"`
+
+    ExistingMemoryID string `json:"existing_memory_id"`
+}
+```
+
+Evidence：
+
+```go
+type MemoryEvidence struct {
+    SessionID string `json:"session_id"`
+
+    Source string `json:"source"`
+
+    Quote string `json:"quote"`
+}
+```
+
+`Action` 只允许：
+
+```text
+add
+update
+archive
+ignore
+```
+
+---
+
+# 11. Candidate Extraction 与 Validation 必须分离
+
+LLM 只负责：
+
+```text
+Session Summary
+    ↓
+Candidate Extraction
+```
+
+Go 代码负责：
+
+```text
+Candidate Validation
+Conflict Resolution
+Deduplication
+Memory Policy
+Store Mutation
+```
+
+不要让 LLM 直接决定：
+
+```text
+是否可以覆盖某个 Memory
+是否可以写 global
+是否可以 pinned
+是否可以删除文件
+```
+
+正确结构：
+
+```text
+LLM
+ ↓
+Candidate JSON
+ ↓
+Go Validation
+ ↓
+Policy
+ ↓
+Store
+```
+
+---
+
+# 12. Memory Candidate 判断规则
+
+## 应该保存
+
+```text
+1. 用户明确表达的项目长期约束
+
+2. 项目架构决定
+
+3. 技术选型
+
+4. 长期工作规则
+
+5. 反复出现的问题及解决方式
+
+6. 用户反复强调的项目级偏好
+
+7. 不容易单纯从源码推断出来的重要背景
+
+8. 后续任务很可能再次需要的信息
+```
+
+例如：
+
+```text
+项目数据库采用 DuckDB。
+
+generated/ 目录由代码生成器维护，Agent 不应直接修改。
+
+修改 Rust 后要求执行 cargo fmt 和 cargo test。
+
+HTTP API 的认证逻辑集中在 internal/auth。
+```
+
+---
+
+# 13. 不应该保存
+
+以下默认：
+
+```text
+ignore
+```
+
+包括：
+
+```text
+1. 一次性用户请求
+
+2. 普通聊天
+
+3. 临时变量状态
+
+4. 一次性命令
+
+5. Agent 的内部思考过程
+
+6. 大段工具输出
+
+7. 可以直接从源码获得的普通事实
+
+8. 未经确认的猜测
+
+9. 单次错误
+
+10. 完整 Session transcript
+
+11. 短期任务状态
+
+12. 敏感个人信息
+```
+
+例如：
+
+```text
+今天执行了 cargo test
+```
+
+不是 Memory。
+
+但：
+
+```text
+这个项目修改 Rust 后必须执行 cargo test
+```
+
+可以成为 Memory。
+
+---
+
+# 14. Confidence
+
+Candidate 增加：
+
+```go
+Confidence float64
+```
+
+建议：
+
+```text
+0.95 - 1.00
+用户明确声明的长期规则 / 明确架构决定
+
+0.85 - 0.94
+用户多次确认 / Session 中明确反复出现
+
+0.70 - 0.84
+稳定项目事实 / 长期行为模式
+
+0.50 - 0.69
+Agent 推断但没有明确确认
+
+< 0.50
+默认 ignore
+```
+
+自动 Consolidation：
+
+```text
+confidence < 0.70 → ignore
+```
+
+不要把低置信度推测写入长期 Memory。
+
+---
+
+# 15. Memory 生命周期
+
+现有 Memory 已经有：
+
+```text
+Volatility
+ExpiresAt
+LastVerifiedAt
+```
+
+本次应利用现有设计增加 Memory 生命周期策略。
+
+建议：
+
+```text
+临时事实
+    → volatile
+
+阶段性决定
+    → normal
+
+长期架构
+    → stable
+
+用户明确长期规则
+    → stable
+```
+
+自动 Consolidator 不允许随意设置任意过期时间。
+
+优先：
+
+```text
+Go Policy
+    ↓
+根据 volatility
+    ↓
+计算默认生命周期
+```
+
+而不是完全相信 LLM 给出的 ExpiresAt。
+
+如果现有 Memory Store 已经提供生命周期计算逻辑，必须复用。
+
+---
+
+# 16. SubjectKey 冲突规则
+
+当前 Memory 已经有：
+
+```text
+SubjectKey
+```
+
+它应该成为自动 Memory 冲突解决的核心。
+
+原则：
+
+> 同一个 scope + subject_key 原则上只能存在一个 active value。
+
+例如：
+
+旧 Memory：
+
+```text
+subject_key = project.database
+body = 项目使用 SQLite
+```
+
+新 Session：
+
+```text
+项目已经迁移到 DuckDB。
+```
+
+不应该产生：
+
+```text
+SQLite active
+DuckDB active
+```
+
+而应该：
+
+```text
+archive SQLite
+        ↓
+save DuckDB
+```
+
+最终：
+
+```text
+project.database
+    → DuckDB
+```
+
+---
+
+# 17. Memory 去重
+
+Candidate 必须先和已有 Memory 比较。
+
+至少考虑：
+
+```text
+Name
+SubjectKey
+Type
+Scope
+BM25 similarity
+```
+
+推荐：
+
+```text
+同 SubjectKey
+    ↓
+同 Name
+    ↓
+BM25
+    ↓
+必要时 LLM 判断
+```
+
+如果事实完全相同：
+
+```text
+ignore
+```
+
+不要创建新的 revision。
+
+---
+
+# 18. Memory Update
+
+只有以下情况允许 Update：
+
+```text
+旧事实被用户明确修正
+
+或者
+
+新 Session 获得更可靠、更准确、更新的信息
+```
+
+Update 时必须复用现有：
+
+```text
+revision
+archive
+restore
+MEMORY.md index
+```
+
+不要重新实现版本管理。
+
+---
+
+# 19. Memory Archive
+
+只有明确失效时才 Archive。
+
+例如：
+
+```text
+以后不再使用 SQLite
+已经迁移到 DuckDB
+旧方案已经废弃
+原架构已经替换
+```
+
+不要因为 Memory 很久没有访问就直接删除。
+
+Freshness 与 expiration 继续由现有 Memory 机制处理。
+
+---
+
+# 20. Memory Origin / Provenance
+
+建议增加 Memory 来源概念：
+
+```text
+manual
+explicit
+consolidated
+inferred
+```
+
+优先级：
+
+```text
+manual
+    >
+explicit remember
+    >
+consolidated
+    >
+inferred
+```
+
+目的：
+
+> 自动生成的 Memory 不应该覆盖用户自己明确维护的 Memory。
+
+如果修改现有 `Memory` 结构成本过高，可以先通过 metadata / 内部字段实现。
+
+如果增加字段，必须：
+
+1. 全部可选；
+2. 旧 Memory 正常读取；
+3. 不破坏现有 Markdown；
+4. 不破坏 MEMORY.md；
+5. 不影响旧 remember / forget / archive / restore。
+
+---
+
+# 21. 用户手动 Memory 的保护
+
+假设用户已经手工创建：
+
+```text
+database.md
+```
+
+Consolidator 发现：
+
+```text
+project.database
+```
+
+不能因为自动 Candidate 内容相似就直接覆盖。
+
+必须优先：
+
+```text
+manual > explicit > consolidated
+```
+
+自动系统只能：
+
+```text
+ignore
+```
+
+或者产生：
+
+```text
+update candidate
+```
+
+由明确策略决定。
+
+不能静默破坏用户手工维护的信息。
+
+---
+
+# 22. “不要记”机制
+
+Consolidator 必须识别用户表达：
+
+```text
+不要记这个
+不要保存
+仅本次
+临时
+先别记录
+这不是长期规则
+忘掉之前这个决定
+```
+
+至少实现：
+
+```text
+当前 Session ignore
+```
+
+更进一步可以增加：
+
+```text
+memory suppression
+```
+
+例如：
+
+```text
+subject_key = project.database.schema
+suppressed = true
+```
+
+防止下一次 Session 又自动重新创建同一类 Memory。
+
+第一阶段如果完整 suppression 成本较高，至少实现：
+
+```text
+Session-level suppression
+```
+
+并为后续 workspace-level suppression 预留接口。
+
+---
+
+# 23. 每个 Session 自动新增 Memory 数量限制
+
+必须增加保护。
+
+建议：
+
+```text
+max_new_memories_per_session = 3
+```
+
+或者从配置读取。
+
+第一阶段默认：
+
+```text
+3
+```
+
+如果 Candidate 超过：
+
+```text
+按 confidence 排序
+↓
+只保留 Top N
+```
+
+这样防止：
+
+```text
+一个 Session
+↓
+Consolidator
+↓
+自动生成 20 条 Memory
+```
+
+导致 Memory 快速膨胀。
+
+---
+
+# 24. Memory 不应该无限增长
+
+除了 Session 单次上限，还需要：
+
+```text
+去重
+subject conflict
+expiration
+archive
+```
+
+共同控制增长。
+
+目标：
+
+```text
+100 个 Session
+```
+
+不应该变成：
+
+```text
+5000 个 Memory
+```
+
+如果 Memory 数量持续增长，Recall 质量会下降。
+
+---
+
+# 25. Session Summary 如何生成
+
+不要把完整 Session transcript 直接传给 Consolidator。
+
+正确：
+
+```text
+Session History
+      ↓
+History Projection
+      ↓
+Summary LLM
+      ↓
+SessionSummary
+      ↓
+Memory Consolidator
+```
+
+Summary 输入优先包含：
+
+```text
+用户重要请求
+用户明确决定
+Agent 最终结论
+关键工具结果
+修改文件
+未解决问题
+用户明确约束
+```
+
+不要把所有工具输出原文全部发送给 Summary LLM。
+
+---
+
+# 26. Consolidator Prompt
+
+内部 Prompt 核心要求：
+
+```text
+你是项目记忆整理器。
+
+你的任务不是总结整个对话。
+
+你的任务是从本次 Session 中识别未来 Session 仍然值得知道的项目级事实。
+
+只保留稳定、可复用、具有长期价值的信息。
+
+不要保存：
+- 一次性的任务
+- 普通聊天
+- 临时状态
+- Agent 推测
+- 大段代码
+- 完整工具输出
+- 可直接从代码获得的信息
+- 不确定的信息
+- 敏感个人信息
+
+优先保存：
+- 项目架构决策
+- 技术选型
+- 长期约束
+- 用户明确的工作方式
+- 重要设计决定
+- 反复出现的项目事实
+- 后续任务很可能继续使用的信息
+
+默认 scope=project。
+
+不能创建 global memory。
+
+自动创建的 Memory 必须使用 retrieval activation，
+不能自动创建 pinned memory。
+
+如果已有 Memory 表达同一事实：
+- 不要重复创建
+- 如果内容相同，ignore
+- 如果新内容明确修正旧内容，update
+- 如果旧事实已经失效，archive
+
+如果用户明确表示“不要记”，则 ignore。
+
+输出严格 JSON。
+```
+
+---
+
+# 27. Consolidator 输出格式
+
+严格：
+
+```json
+{
+  "memories": [
+    {
+      "action": "add",
+      "name": "database-uses-duckdb",
+      "title": "Database uses DuckDB",
+      "description": "Project database is based on DuckDB.",
+      "type": "project",
+      "scope": "project",
+      "keywords": ["duckdb", "database", "db"],
+      "body": "该项目数据库使用 DuckDB。",
+      "subject_key": "project.database",
+      "confidence": 0.96,
+      "volatility": "stable"
+    }
+  ]
+}
+```
+
+不得：
+
+```text
+返回 Markdown
+返回代码块
+返回解释文本
+返回文件操作
+返回 SQL
+返回路径
+```
+
+只允许结构化 JSON。
+
+---
+
+# 28. LLM 不得直接修改 Memory
+
+LLM：
+
+```text
+Candidate
+```
+
+Go：
+
+```text
+parse JSON
+ ↓
+validate
+ ↓
+policy
+ ↓
+dedup
+ ↓
+conflict resolution
+ ↓
+Store mutation
+```
+
+禁止 LLM：
+
+```text
+直接写文件
+直接删除文件
+直接覆盖 Memory
+直接创建 global
+直接 pin
+```
+
+---
+
+# 29. Session Finalize Hook
+
+在 `internal/control.Controller` 增加统一的 Session Finalize Memory 流程。
+
+不要在：
+
+```text
+TUI
+Desktop
+HTTP
+```
+
+分别实现。
+
+统一：
+
+```text
+Controller
+```
+
+负责调用。
+
+目标：
+
+```text
+Session close / NewSession / Compact
+        ↓
+判断是否需要 Consolidation
+        ↓
+生成 SessionSummary
+        ↓
+Memory Consolidator
+        ↓
+Store mutation
+```
+
+---
+
+# 30. 触发时机
+
+第一版：
+
+```text
+1. /new
+
+2. Session 正常结束
+
+3. /compact
+```
+
+不允许：
+
+```text
+每个 Turn 都触发
+```
+
+避免每条消息都产生一次额外 LLM 调用。
+
+---
+
+# 31. Consolidation 防重复
+
+必须防止：
+
+```text
+同一个 Session
+同时触发两个 Consolidator
+```
+
+可以使用：
+
+```go
+sync.Mutex
+```
+
+或者：
+
+```text
+session-level singleflight
+```
+
+要求：
+
+```text
+同一个 Controller
+同一个 Session
+同一时间只能运行一个 Consolidation
+```
+
+---
+
+# 32. Consolidation 失败不能影响 Session
+
+Memory Consolidation 属于：
+
+```text
+辅助能力
+```
+
+不是：
+
+```text
+Session 主链路
+```
+
+因此：
+
+```text
+LLM failure
+JSON parse failure
+Memory write failure
+```
+
+都不能导致：
+
+```text
+Session failure
+```
+
+正确：
+
+```text
+Consolidation failure
+    ↓
+log / event
+    ↓
+Session 正常完成
+```
+
+---
+
+# 33. Cache Stability
+
+这是硬性要求。
+
+自动 Memory Consolidation 不得：
+
+```text
+动态修改 system prompt
+动态修改工具 schema
+动态修改稳定 system prefix
+动态把全部 Memory 塞入 system prompt
+```
+
+自动 Memory 默认：
+
+```text
+activation = retrieval
+```
+
+Recall 继续在动态 turn context 中按需注入。
+
+不要因为新增 Memory 导致已有 cache-stable prefix 失效。
+
+---
+
+# 34. 下一 Session Recall
+
+下一次同一个 workspace：
+
+```text
+memory.Load()
+    ↓
+StoreFor(userDir, cwd)
+    ↓
+读取 project memory
+    ↓
+BuildRecallIndex()
+```
+
+现有 Recall 机制继续工作。
+
+本次功能主要改变：
+
+```text
+Memory 数据来源
+```
+
+而不是：
+
+```text
+Memory 检索机制
+```
+
+---
+
+# 35. Recall 不要重新实现
+
+现有 Recall 已经支持 BM25。
+
+保持：
+
+```text
+BM25
++
+relevance
++
+freshness
++
+project/global scope
++
+keywords
++
+body
+```
+
+不因为增加 Consolidator 而重写 Recall。
+
+---
+
+# 36. Recall Query 可以增强，但不要改变现有行为
+
+如果现有架构允许，可以把 Recall Query 组合为：
+
+```text
+当前 User Query
++
+Current Goal
++
+Session Summary
+```
+
+例如用户：
+
+```text
+继续昨天的数据库改造。
+```
+
+单纯 BM25 对这句话可能没有很好的命中。
+
+但：
+
+```text
+Current Goal:
+database migration
+DuckDB
+schema
+```
+
+能够帮助 Recall 找到：
+
+```text
+project.database
+```
+
+这属于增强项。
+
+如果修改成本较高，第一版保持当前 Query 即可。
+
+---
+
+# 37. Workspace Memory 路径
+
+第一阶段：
+
+```text
+继续使用当前：
+~/.reasonix/projects/<workspace-slug>/memory/
+```
+
+不要为了本次功能强制迁移到：
+
+```text
+<workspace>/.reasonix/memory/
+```
+
+原因：
+
+1. 当前 Store 已经实现 workspace 隔离；
+2. 修改路径会影响已有 Memory；
+3. 可能影响 git/worktree；
+4. 需要单独设计 migration。
+
+Workspace-local Memory 可以作为第二阶段功能。
+
+---
+
+# 38. 不要修改 REASONIX.md / AGENTS.md
+
+Instruction 与 Memory 必须继续分离。
+
+REASONIX.md / AGENTS.md：
+
+```text
+高优先级
+稳定
+用户明确维护
+```
+
+Memory：
+
+```text
+背景知识
+可能过时
+可检索
+低优先级
+```
+
+自动 Consolidator 只能写 Memory。
+
+不能自动修改：
+
+```text
+REASONIX.md
+AGENTS.md
+```
+
+---
+
+# 39. Provider / Agent 调用
+
+不要硬编码 Provider。
+
+不要：
+
+```go
+http.Post(...)
+```
+
+不要新增独立 OpenAI SDK。
+
+必须复用当前项目已有：
+
+```text
+Agent
+Provider
+Runner
+Runtime
+```
+
+抽象。
+
+如果现有 Agent 抽象不适合直接做独立 LLM call：
+
+优先扩展现有能力，而不是创建第二套 Provider 系统。
+
+---
+
+# 40. 模型选择
+
+第一阶段使用当前配置模型。
+
+不要硬编码：
+
+```text
+deepseek-chat
+deepseek-reasoner
+其他固定模型
+```
+
+后续如需 cheap model / reasoning model，再单独增加配置。
+
+---
+
+# 41. 成本控制
+
+Consolidator 输入必须是：
+
+```text
+Session Summary
++
+少量关键 Context
++
+Relevant Existing Memories
+```
+
+不要：
+
+```text
+完整 Session transcript
++
+全部 Tool Output
++
+完整源码
+```
+
+Memory Consolidator 应该比正常 Coding Agent Turn 轻。
+
+---
+
+# 42. Memory Health / Debug
+
+建议增加内部：
+
+```go
+type ConsolidationResult struct {
+    SessionID string
+
+    Added []string
+
+    Updated []string
+
+    Archived []string
+
+    Ignored int
+
+    Error string
+}
+```
+
+并输出 debug/event：
+
+```text
+memory.consolidated
+```
+
+例如：
+
+```text
+session=abc
+added=2
+updated=1
+archived=0
+ignored=5
+```
+
+---
+
+# 43. Memory Provenance
+
+最终应该能够回答：
+
+```text
+“这个 Memory 是怎么来的？”
+```
+
+至少知道：
+
+```text
+source = manual / explicit / consolidated
+session_id
+```
+
+如果使用 Evidence：
+
+```text
+SessionID
+Source
+Quote
+```
+
+都应该可追踪。
+
+这对于后续 Memory Debug 非常重要。
+
+---
+
+# 44. Memory Health
+
+后续可以暴露统计：
+
+```text
+Active memories: 18
+Pinned: 3
+Expired: 2
+Archived: 11
+Auto-generated: 9
+Manual: 9
+```
+
+第一阶段可以只实现内部统计 API，不要求 UI。
+
+---
+
+# 45. 建议新增文件
+
+优先：
+
+```text
+internal/memory/
+    consolidate.go
+    summary.go
+    consolidate_test.go
+    summary_test.go
+```
+
+如果需要：
+
+```text
+internal/memory/
+    policy.go
+    provenance.go
+```
+
+如果项目结构已有合适文件，则优先复用，不要为了形式机械新增文件。
+
+---
+
+# 46. Controller 修改
+
+优先修改：
+
+```text
+internal/control/controller.go
+```
+
+增加：
+
+```text
+Session Finalize
+    ↓
+Memory Consolidation
+```
+
+但 Controller 不应该包含：
+
+```text
+Candidate parsing
+Dedup logic
+Memory policy
+Store mutation details
+```
+
+Controller 只负责生命周期调度。
+
+---
+
+# 47. Memory Policy 建议独立
+
+如果逻辑较多，可以：
+
+```text
+internal/memory/policy.go
+```
+
+集中负责：
+
+```text
+scope validation
+activation validation
+confidence threshold
+max memories per session
+volatility
+global restriction
+pinned restriction
+origin priority
+```
+
+这样 Consolidator 不会变成一个巨型文件。
+
+---
+
+# 48. Memory Candidate Pipeline
+
+最终：
+
+```text
+Session
+   ↓
+Summary
+   ↓
+Candidate Extraction
+   ↓
+Validation
+   ↓
+Confidence Filter
+   ↓
+Scope Policy
+   ↓
+Activation Policy
+   ↓
+Origin Policy
+   ↓
+Suppression Check
+   ↓
+Dedup
+   ↓
+Subject Conflict
+   ↓
+Lifecycle Policy
+   ↓
+Limit Top N
+   ↓
+Store Mutation
+```
+
+---
+
+# 49. 测试：Session → Add
+
+输入：
+
+```text
+用户明确说明：
+项目数据库使用 DuckDB。
+```
+
+预期：
+
+```text
+1 个 project memory
+```
+
+且：
+
+```text
+scope == project
+type == project
+activation == retrieval
+```
+
+下一次：
+
+```text
+memory.Load()
+```
+
+可以看到该 Memory。
+
+---
+
+# 50. 测试：重复 Memory
+
+第一次：
+
+```text
+项目使用 DuckDB
+```
+
+产生：
+
+```text
+database-uses-duckdb
+revision=1
+```
+
+第二次：
+
+```text
+项目数据库使用 DuckDB
+```
+
+预期：
+
+```text
+仍然只有 1 条
+revision 不增加
+```
+
+---
+
+# 51. 测试：Update
+
+初始：
+
+```text
+数据库使用 SQLite
+```
+
+第二次：
+
+```text
+已经迁移到 DuckDB。
+```
+
+预期：
+
+```text
+SQLite → archived
+DuckDB → active
+```
+
+并正确维护：
+
+```text
+revision
+archive
+MEMORY.md
+```
+
+---
+
+# 52. 测试：SubjectKey Conflict
+
+已有：
+
+```text
+subject_key = project.database
+value = SQLite
+```
+
+新 Candidate：
+
+```text
+subject_key = project.database
+value = DuckDB
+```
+
+预期：
+
+```text
+SQLite inactive/archive
+DuckDB active
+```
+
+不得两个都 active。
+
+---
+
+# 53. 测试：Global 禁止自动写入
+
+如果 LLM 返回：
+
+```json
+{
+  "scope": "global",
+  "type": "user"
+}
+```
+
+自动 Consolidator 必须：
+
+```text
+reject
+```
+
+或者降级为：
+
+```text
+scope=project
+```
+
+不能自动污染 Global Memory。
+
+---
+
+# 54. 测试：Pinned 禁止自动创建
+
+如果 LLM 返回：
+
+```json
+{
+  "activation": "pinned"
+}
+```
+
+Go Policy 必须覆盖：
+
+```text
+activation = retrieval
+```
+
+除非这是用户显式操作。
+
+---
+
+# 55. 测试：普通聊天
+
+输入：
+
+```text
+你好
+```
+
+预期：
+
+```text
+0 memories added
+```
+
+---
+
+# 56. 测试：临时操作
+
+例如：
+
+```text
+执行 go test
+查看 README
+打开 main.go
+修复一个临时 bug
+```
+
+如果没有长期意义：
+
+```text
+ignore
+```
+
+---
+
+# 57. 测试：不要记
+
+输入：
+
+```text
+这个只是临时的，不要记住。
+```
+
+预期：
+
+```text
+ignore
+```
+
+如果实现 suppression：
+
+```text
+对应 subject 不得在后续自动 Consolidation 中重新创建。
+```
+
+---
+
+# 58. 测试：Memory 数量限制
+
+模拟：
+
+```text
+Session Candidate = 10
+```
+
+如果：
+
+```text
+max_new_memories_per_session = 3
+```
+
+预期：
+
+```text
+最多新增 3 条
+```
+
+按照：
+
+```text
+confidence
++
+长期价值
+```
+
+选择。
+
+---
+
+# 59. 测试：手工 Memory 优先
+
+已有：
+
+```text
+origin = manual
+subject_key = project.database
+```
+
+Consolidator 产生冲突 Candidate。
+
+预期：
+
+```text
+不得静默覆盖 manual Memory
+```
+
+---
+
+# 60. 测试：自动 Memory 默认 retrieval
+
+自动创建 Memory：
+
+```text
+activation == retrieval
+```
+
+不能自动：
+
+```text
+pinned
+```
+
+---
+
+# 61. 测试：自动 Memory 生命周期
+
+验证：
+
+```text
+volatile
+normal
+stable
+```
+
+能够正确映射现有 Memory 生命周期策略。
+
+不要产生：
+
+```text
+永远有效的临时事实
+```
+
+---
+
+# 62. 测试：自动 Recall
+
+先创建：
+
+```text
+项目使用 DuckDB。
+```
+
+然后新的 Session：
+
+```text
+数据库查询性能有问题。
+```
+
+确认 Recall 可以找到相关 Memory。
+
+不得因为新增 Consolidator 而破坏已有 BM25 Recall。
+
+---
+
+# 63. 测试：Consolidation 失败
+
+模拟：
+
+```text
+LLM 返回非法 JSON
+```
+
+预期：
+
+```text
+Session 正常结束
+Memory unchanged
+错误被记录
+```
+
+---
+
+# 64. 测试：Store 写入失败
+
+模拟：
+
+```text
+Store.Save failure
+```
+
+预期：
+
+```text
+Session 正常结束
+错误记录
+```
+
+不能导致整个 Session 失败。
+
+---
+
+# 65. 测试：并发 Consolidation
+
+同时：
+
+```text
+FinalizeSession()
+FinalizeSession()
+```
+
+预期：
+
+```text
+Memory 不重复
+不会出现 revision 冲突
+不会损坏 MEMORY.md
+```
+
+---
+
+# 66. 向后兼容
+
+必须保证：
+
+```text
+旧 Memory 文件
+旧 MEMORY.md
+旧 Session
+旧 remember
+旧 memory search
+旧 forget
+旧 archive
+旧 restore
+```
+
+全部继续工作。
+
+不得要求用户删除：
+
+```text
+~/.reasonix/
+```
+
+不得要求重新初始化 Memory。
+
+---
+
+# 67. 实现顺序
+
+严格：
+
+```text
+Step 1
+阅读现有 Session History / persistence API
+
+Step 2
+找到 Controller 的：
+NewSession
+Compact
+Close
+TurnDone
+等生命周期
+
+Step 3
+阅读现有 Provider / Agent / Runner 抽象
+
+Step 4
+新增 SessionSummary
+
+Step 5
+实现 Summary 生成
+
+Step 6
+新增 MemoryCandidate
+
+Step 7
+新增 Consolidator
+
+Step 8
+实现 Candidate Validation
+
+Step 9
+实现 Memory Policy
+
+Step 10
+实现 Deduplication
+
+Step 11
+实现 SubjectKey Conflict Resolution
+
+Step 12
+实现 lifecycle / volatility
+
+Step 13
+实现 provenance
+
+Step 14
+实现 suppression
+
+Step 15
+实现 Session Memory 数量限制
+
+Step 16
+接入 Controller Session Finalize
+
+Step 17
+加入失败隔离
+
+Step 18
+加入并发保护
+
+Step 19
+增加完整测试
+
+Step 20
+运行 gofmt
+
+Step 21
+运行 go vet ./...
+
+Step 22
+运行 go test ./...
+
+Step 23
+重新读取所有修改过的文件
+
+Step 24
+检查 git diff
+
+Step 25
+确认没有无关修改
+```
+
+---
+
+# 68. CodeAgent 执行约束
+
+执行过程中必须：
+
+```text
+1. 先读现有代码，再修改。
+
+2. 不要根据本说明猜测不存在的 API。
+
+3. 如果已经存在 Summary / History / Runner / Provider 能力，直接复用。
+
+4. 不要新建第二套 Session Store。
+
+5. 不要新建第二套 Provider。
+
+6. 不要新建第二套 Memory Store。
+
+7. 不要引入第三方数据库。
+
+8. 不要引入 embedding/vector dependency。
+
+9. 不要修改 frontend。
+
+10. 不要自动写 global memory。
+
+11. 不要自动创建 pinned memory。
+
+12. 不要自动修改 REASONIX.md / AGENTS.md。
+
+13. Consolidation 失败必须隔离。
+
+14. 所有新增能力必须有测试。
+
+15. 保持当前代码风格。
+
+16. 保持 dependency direction。
+
+17. 避免循环依赖。
+
+18. 修改完成后重新读取修改过的文件。
+
+19. 不要依赖之前 tool-call 的代码输出判断修改是否正确。
+
+20. 最后检查 git diff，只保留本功能相关修改。
+```
+
+---
+
+# 69. 最终架构
+
+完成后：
+
+```text
+                     Workspace
+                         │
+                         ▼
+                 Session Controller
+                         │
+             ┌───────────┴───────────┐
+             │                       │
+             ▼                       ▼
+       Session History          Current Memory
+             │                       │
+             ▼                       │
+      Session Summary                │
+             │                       │
+             ▼                       │
+       Candidate Extraction          │
+             │                       │
+             ▼                       │
+       Candidate Validation          │
+             │                       │
+             ▼                       │
+        Memory Policy               │
+             │                       │
+             ▼                       │
+       Dedup / Conflict             │
+             │                       │
+             ▼                       │
+      Add / Update / Archive        │
+             │                       │
+             └──────────┬────────────┘
+                        ▼
+                  Project Store
+                        │
+                        ▼
+              MEMORY.md + facts
+                        │
+                        ▼
+             New Session memory.Load()
+                        │
+                        ▼
+                BuildRecallIndex()
+                        │
+                        ▼
+                Automatic Recall
+                        │
+                        ▼
+                 Current Turn
+```
+
+---
+
+# 70. 最终用户体验
+
+第一次 Session：
+
+```text
+用户：
+这个项目数据库统一使用 DuckDB，
+以后不要再引入 SQLite。
+```
+
+Agent 正常工作。
+
+Session 结束：
+
+```text
+自动 Consolidation
+        ↓
+database-uses-duckdb
+database-no-sqlite
+```
+
+下一天：
+
+```text
+用户：
+继续优化数据库部分。
+```
+
+Reasonix 自动 Recall：
+
+```text
+相关项目记忆：
+
+1. 项目数据库使用 DuckDB。
+2. 项目不应重新引入 SQLite。
+```
+
+Agent 自动继承昨天的项目上下文。
+
+用户不需要：
+
+```text
+/remember
+```
+
+也不需要：
+
+```text
+复制昨天聊天记录
+```
+
+---
+
+# 71. 第一阶段完成后的核心能力
+
+最终形成：
+
+```text
+Session History
+       ↓
+Summary
+       ↓
+Candidate
+       ↓
+Validation
+       ↓
+Policy
+       ↓
+Memory
+       ↓
+Recall
+       ↓
+下一 Session
+       ↓
+新的事实
+       ↓
+再次 Consolidation
+```
+
+形成稳定的：
+
+```text
+Workspace Memory Loop
+```
+
+并且必须保证：
+
+```text
+Memory 不污染 Prompt
+Memory 不污染 Global
+Memory 不污染 Instructions
+Memory 不替代 History
+Memory 不覆盖用户手工事实
+Memory 不无限增长
+Memory 不影响 Session 主链路
+```
+
+---
+
+# 72. 本次功能完成判定
+
+以下全部满足才视为完成：
+
+```text
+[ ] 同一个工作目录的 Session A 可以自动产生 project memory
+
+[ ] Session B 可以读取 Session A 的长期记忆
+
+[ ] 不需要用户手动 /remember
+
+[ ] 不会把完整历史复制到 Memory
+
+[ ] 不会每一轮触发 Memory LLM
+
+[ ] 自动 Memory 默认 retrieval
+
+[ ] 自动 Memory 不会进入 pinned
+
+[ ] 不自动写 global memory
+
+[ ] 不自动修改 REASONIX.md / AGENTS.md
+
+[ ] 不引入 vector database
+
+[ ] 不破坏已有 BM25 Recall
+
+[ ] 不破坏 remember / memory / forget
+
+[ ] 不破坏 revision/archive/restore
+
+[ ] SubjectKey 冲突能够正确解决
+
+[ ] 相同事实不会无限重复
+
+[ ] 自动 Memory 有生命周期策略
+
+[ ] 用户手工 Memory 优先级高于自动 Memory
+
+[ ] 支持“不要记”的基本语义
+
+[ ] 每个 Session 自动新增 Memory 有数量上限
+
+[ ] 可以追踪自动 Memory 来源
+
+[ ] Consolidation 失败不会导致 Session 失败
+
+[ ] 同一 Session 不会重复 Consolidate
+
+[ ] Session Summary 和 Memory 有明确边界
+
+[ ] Controller 是唯一 Session 生命周期入口
+
+[ ] TUI/Desktop/HTTP 不包含独立 Memory 逻辑
+
+[ ] Go 代码负责 Validation / Policy / Store Mutation
+
+[ ] LLM 只负责 Candidate Extraction
+
+[ ] gofmt 通过
+
+[ ] go vet ./... 通过
+
+[ ] go test ./... 通过
+
+[ ] git diff 中没有无关修改
+```
+
+# 73. 实现完成后的设计原则
+
+整个 Workspace Memory v1 最终遵循：
+
+```text
+Instruction
+    = 必须遵守
+
+History
+    = 发生过
+
+Summary
+    = Session 的压缩状态
+
+Candidate
+    = 可能值得长期保存
+
+Memory
+    = 已经通过策略验证的长期事实
+
+Recall
+    = 当前任务需要的 Memory
+
+Consolidation
+    = 将过去经验转化为长期事实
+```
+
+核心原则：
+
+> **不要让 Agent 记住整个过去，而是让 Agent 从过去中提炼出未来真正需要知道的东西。**
+

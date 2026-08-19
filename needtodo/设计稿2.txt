@@ -1,0 +1,335 @@
+有。你这版已经**可以让 CodeAgent 开工**了，但如果目标是把它做成以后能长期维护的“稳定版 Memory”，我还会补 **5 个点**。其中前 3 个我认为值得直接加进文档。
+
+### 1. 增加「Memory 原子性」要求
+
+现在的设计是 `Add / Update / Archive`，但还缺一个很重要的约束：
+
+> 一次 Consolidation 要么完整成功，要么不要产生任何部分结果。
+
+比如一次 Consolidation 有 3 个候选：
+
+```text
+A → Add
+B → Update
+C → Archive
+```
+
+如果：
+
+```text
+A 成功
+B 成功
+C 写入失败
+```
+
+不能留下半成功状态。
+
+尤其你现在 Memory 是 Markdown + `MEMORY.md` index，这里更容易出现：
+
+```text
+fact 文件已经写了
+但 MEMORY.md 没更新
+```
+
+所以建议加入：
+
+```text
+Consolidation Transaction Boundary
+
+一次 Consolidation 的 Store Mutation 必须具有原子性。
+
+至少保证：
+- fact 文件
+- MEMORY.md index
+- revision
+- archive
+```
+
+之间不会产生不一致。
+
+如果现有 Store 不方便做真正 transaction，至少：
+
+```text
+先完成所有 validation
+再执行 mutation
+mutation 失败时执行 rollback
+```
+
+这个我建议 **必须补**。
+
+---
+
+### 2. 增加「Memory Schema Version」
+
+以后你很可能会增加：
+
+```text
+origin
+evidence
+confidence
+subject_key
+suppression
+```
+
+那旧 Memory 怎么办？
+
+建议现在就加：
+
+```yaml
+schema_version: 1
+```
+
+未来：
+
+```text
+schema_version: 2
+schema_version: 3
+```
+
+然后 Store Load 的时候：
+
+```text
+旧 schema
+   ↓
+normalize
+   ↓
+当前 Memory struct
+```
+
+而不是每次升级都去批量修改用户磁盘上的 Memory。
+
+这个对于你维护开源项目特别重要。
+
+---
+
+### 3. 增加「Memory 可解释性」
+
+这是我非常建议你做的。
+
+以后用户很可能问：
+
+> 为什么你觉得我项目用 DuckDB？
+
+系统应该能回答：
+
+```text
+Memory:
+project.database = DuckDB
+
+Source:
+consolidated
+
+Session:
+2026-08-18 xxx
+
+Evidence:
+用户明确说明项目数据库统一使用 DuckDB。
+```
+
+所以建议每个自动 Memory 至少保存：
+
+```text
+source_session_id
+created_by = consolidated
+confidence
+```
+
+Evidence 可以先不完整保存，甚至可以只保存一个简短的 source reference。
+
+**不要保存完整对话。**
+
+---
+
+### 4. 增加「Memory 写入前的 Existing Memory Snapshot」
+
+Consolidator 不应该只把：
+
+```text
+Candidate
+```
+
+丢给 LLM。
+
+最好给它：
+
+```text
+Candidate
++
+Top-K Existing Memories
+```
+
+但这里一定是 **Top-K**，不是全部。
+
+例如：
+
+```text
+Candidate:
+项目数据库迁移到 DuckDB
+
+Existing relevant memories:
+1. project.database = SQLite
+2. project.storage = filesystem
+```
+
+这样 LLM 可以更准确判断：
+
+```text
+update SQLite
+```
+
+而不是创建：
+
+```text
+database-uses-duckdb
+database-uses-sqlite
+```
+
+不过最终的冲突判断仍然由 Go Policy 做。
+
+---
+
+### 5. 增加「Consolidation Observability」
+
+你以后调这个系统的时候，这个会非常有价值。
+
+建议内部增加类似：
+
+```text
+memory.consolidation.started
+
+memory.consolidation.completed
+
+memory.consolidation.failed
+
+memory.candidate.added
+
+memory.candidate.updated
+
+memory.candidate.archived
+
+memory.candidate.ignored
+```
+
+同时记录：
+
+```text
+session_id
+workspace
+duration
+candidate_count
+added
+updated
+archived
+ignored
+```
+
+但**不要默认把完整 Candidate / Prompt / Session 内容打日志**，避免日志膨胀以及敏感信息泄露。
+
+---
+
+## 我认为现在还有一个更大的架构问题
+
+你现在文档叫：
+
+> Workspace Memory v1
+
+但实际上已经开始涉及：
+
+```text
+Memory
++
+Session Summary
++
+Consolidation
++
+Recall
++
+Lifecycle
++
+Provenance
++
+Suppression
+```
+
+所以我建议你在代码层面明确一个接口边界：
+
+```go
+type Consolidator interface {
+    Consolidate(ctx context.Context, input ConsolidationInput) (*ConsolidationResult, error)
+}
+```
+
+然后：
+
+```go
+type ConsolidationInput struct {
+    Workspace string
+    SessionID string
+    Summary   SessionSummary
+}
+```
+
+这样以后你完全可以换：
+
+```text
+LLM Consolidator
+Rule Consolidator
+Local Model Consolidator
+Remote Model Consolidator
+```
+
+而 Controller 根本不用知道。
+
+架构就会变成：
+
+```text
+Controller
+    │
+    ▼
+Consolidator Interface
+    │
+    ├── LLM Consolidator
+    │
+    ├── Rule Consolidator
+    │
+    └── Future Consolidator
+            │
+            ▼
+       Memory Policy
+            │
+            ▼
+        Memory Store
+```
+
+这个比现在直接把 Consolidator 和 Controller 绑死要漂亮很多。
+
+---
+
+# 最后我的建议
+
+如果是我维护这个项目，我会把最终文档再补成：
+
+```text
+必须补
+├── Memory Atomicity
+├── Schema Version
+└── Provenance / Explainability
+
+建议补
+├── Existing Memory Snapshot
+└── Consolidation Observability
+
+架构上补
+└── Consolidator Interface
+```
+
+然后就**不要再继续加功能了**。
+
+因为现在已经到了一个很好的 v1 边界：
+
+> **Session → Summary → Candidate → Policy → Memory → Recall**
+
+先把这一条链跑稳定，比一开始就上 embedding、向量数据库、复杂 Memory Graph、Memory Agent 要重要得多。
+
+尤其你的项目本身是 Reasonix，后面如果这套机制稳定下来，**Memory 本身反而可以成为 Reasonix 的一个核心能力，而不只是一个功能补丁。**
+
