@@ -12,7 +12,6 @@ import (
 	"reasonix/internal/event"
 	"reasonix/internal/history"
 	"reasonix/internal/installsource"
-	"reasonix/internal/memory"
 	"reasonix/internal/plugin"
 	"reasonix/internal/productdocs"
 	"reasonix/internal/provider"
@@ -32,7 +31,6 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 	pluginSpecOptions := bc.pluginSpecOptions
 	implicitSkillInvocation := bc.implicitSkillInvocation
 	sessionDir := bc.sessionDir
-	mem := bc.mem
 	headlessGate := bc.headlessGate
 	keepPolicy := bc.keepPolicy
 	maxSubagentDepth := bc.maxSubagentDepth
@@ -80,25 +78,8 @@ func buildSubagents(ctx context.Context, bc *bootContext, opts Options) error {
 		reg.Add(sessiontool.NewReadSessionTool(sessionDir))
 		return "enabled history, list_sessions, read_session."
 	}
-	memoryToolsAdded := false
-	addMemoryTools := func() string {
-		if memoryToolsAdded {
-			return "memory tools are already enabled."
-		}
-		memoryToolsAdded = true
-		if opts.Ablation.Off(ablation.Retrieval) {
-			reg.Add(memory.NewRememberTool(mem.Store))
-			reg.Add(memory.NewForgetTool(mem.Store))
-			return "enabled remember, forget."
-		}
-		reg.Add(memory.NewRecallTool(mem.Store))
-		reg.Add(memory.NewRememberTool(mem.Store))
-		reg.Add(memory.NewForgetTool(mem.Store))
-		return "enabled memory, remember, forget."
-	}
 	addDocsTool()
 	addSessionTools()
-	addMemoryTools()
 
 	// `ask` puts structured multiple-choice questions to the user via the Asker
 	// on the call context; a headless run has none, so it resolves to

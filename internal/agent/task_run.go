@@ -13,7 +13,6 @@ import (
 	"reasonix/internal/event"
 	"reasonix/internal/evidence"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/planmode"
 	"reasonix/internal/provider"
 	"reasonix/internal/tool"
@@ -33,11 +32,6 @@ func RunSubAgentWithSession(ctx context.Context, prov provider.Provider, reg *to
 	}
 
 	ctx = tool.WithoutGoalTurnRecorder(ctx)
-	if opts.MemoryQueue != nil {
-		ctx = memory.WithQueue(ctx, opts.MemoryQueue)
-	} else {
-		ctx = memory.WithoutQueue(ctx)
-	}
 	if opts.Jobs == nil {
 		ctx = jobs.WithoutManager(ctx)
 	}

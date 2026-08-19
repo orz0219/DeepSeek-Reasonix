@@ -16,7 +16,6 @@ import (
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/guardian"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/provider"
 	"reasonix/internal/sessioninbox"
 	"reasonix/internal/store"
@@ -41,8 +40,6 @@ func (c *Controller) NewSession() error {
 		return err
 	}
 
-	// Enqueue memory consolidation from the old session (async, non-blocking).
-	c.enqueueConsolidation(memory.ConsolidationSessionEnd)
 
 	if err := c.extensionSessionPhase(context.Background(), extension.PointSessionRotate, dispatch.PhaseRotate, oldPath); err != nil {
 		return err

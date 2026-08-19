@@ -13,7 +13,6 @@ import (
 	"reasonix/internal/event"
 	"reasonix/internal/evidence"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/permission"
 	"reasonix/internal/planmode"
 	"reasonix/internal/tool"
@@ -471,7 +470,6 @@ func (t *TaskTool) prepareTranscriptRunWithPrompt(ctx context.Context, subReg *t
 
 func childToolIdentityContext(ctx context.Context) context.Context {
 	ctx = tool.WithoutGoalTurnRecorder(ctx)
-	ctx = memory.WithoutQueue(ctx)
 	ctx = jobs.WithoutManager(ctx)
 	return planmode.WithActive(ctx, PlanModeFromContext(ctx))
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reasonix/internal/control"
 	"reasonix/internal/i18n"
-	"reasonix/internal/memory"
 	"reasonix/internal/sessioninbox"
 	"runtime"
 	"strings"
@@ -443,19 +442,6 @@ func (m chatTUI) handleKeyPress(msg tea.KeyPressMsg, cmds []tea.Cmd, inputBefore
 			return m, finalize(m, cmds)
 		}
 		m.rememberSubmittedInput(line)
-
-		if note, ok := control.MemoryQuickAddNote(line); ok {
-			m.input.Reset()
-			m.pastedBlocks = nil
-			if note == "" {
-				m.notice(i18n.M.QuickRememberEmpty)
-			} else if path, err := m.ctrl.QuickAdd(memory.ScopeProject, note); err != nil {
-				m.notice("memory: " + err.Error())
-			} else {
-				m.notice(fmt.Sprintf(i18n.M.QuickRememberDoneFmt, path))
-			}
-			return m, finalize(m, cmds)
-		}
 
 		if after, ok := strings.CutPrefix(line, "!"); ok {
 			cmd := after

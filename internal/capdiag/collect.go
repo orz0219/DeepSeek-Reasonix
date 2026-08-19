@@ -10,7 +10,7 @@ import (
 	"reasonix/internal/command"
 	"reasonix/internal/config"
 	"reasonix/internal/hook"
-	"reasonix/internal/memory"
+	"reasonix/internal/instruction"
 	"reasonix/internal/plugin"
 	"reasonix/internal/pluginpkg"
 	"reasonix/internal/skill"
@@ -151,19 +151,16 @@ func collectInstructions(root, home string, disp func(string) string) (Instructi
 			}
 		}
 	}
-	set := memory.Load(memory.Options{CWD: root, UserDir: userDir})
+	resolved := instruction.Resolve(instruction.ResolveOptions{TargetDir: root, UserDir: userDir})
 	out := InstructionsReport{Docs: []InstructionDoc{}}
-	if set == nil {
-		return out, nil
-	}
-	for i, d := range set.Docs {
+	for i, d := range resolved.Documents {
 		out.Docs = append(out.Docs, InstructionDoc{
 			Path: disp(d.Path), Scope: string(d.Scope), Directory: disp(d.Directory),
 			Depth: d.Depth, Order: i + 1,
 		})
 	}
-	issues := make([]Issue, 0, len(set.InstructionDiagnostics))
-	for _, diagnostic := range set.InstructionDiagnostics {
+	issues := make([]Issue, 0, len(resolved.Diagnostics))
+	for _, diagnostic := range resolved.Diagnostics {
 		source := diagnostic.SourcePath
 		if source == "" {
 			source = diagnostic.Path

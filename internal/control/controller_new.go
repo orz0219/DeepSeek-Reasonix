@@ -21,7 +21,6 @@ import (
 	"reasonix/internal/guardian"
 	"reasonix/internal/hook"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/nilutil"
 	"reasonix/internal/permission"
 	"reasonix/internal/plugin"
@@ -88,10 +87,7 @@ type Options struct {
 	ReadOnlySkillRunner skill.SubagentRunner
 	SkillProfile        skill.ProfileResolver
 	Hooks               *hook.Runner
-	Memory              *memory.Set
-	// ConsolidationWorker runs async memory consolidation. nil disables it.
-	ConsolidationWorker *memory.ConsolidationWorker
-	Cleanup      func()
+	Cleanup             func()
 	// BalanceURL/BalanceKey wire the active provider's optional wallet-balance
 	// endpoint and bearer key; empty when the provider declares no balance_url.
 	BalanceURL    string
@@ -236,8 +232,6 @@ func New(opts Options) *Controller {
 		readOnlySkillRunner:               opts.ReadOnlySkillRunner,
 		skillProfile:                      opts.SkillProfile,
 		hooks:                             opts.Hooks,
-		memory:                            newMemoryManager(opts.Memory),
-		consolidationWorker:               opts.ConsolidationWorker,
 		cleanup:                           opts.Cleanup,
 		responseLanguage:                  config.NormalizeLanguage(opts.ResponseLanguage),
 		reasoningLanguage:                 config.NormalizeReasoningLanguage(opts.ReasoningLanguage),
@@ -296,7 +290,6 @@ func New(opts Options) *Controller {
 	c.commands.Store(&cmdsInit)
 	if c.executor != nil {
 		c.wireMutationObserver()
-		c.executor.SetMemoryQueue(c)
 	}
 
 	c.initRecoveryGate(opts.RecoveryReviewer, opts.RecoveryHeadless)

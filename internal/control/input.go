@@ -6,10 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"reasonix/internal/ablation"
 	"reasonix/internal/agent"
-	"reasonix/internal/event"
-	"reasonix/internal/memory"
 	"reasonix/internal/planmode"
 	"reasonix/internal/skill"
 )
@@ -159,7 +156,6 @@ func (c *Controller) composeWithGoal(
 	responseLanguage := c.responseLanguage
 	reasoningLanguage := c.reasoningLanguage
 	c.mu.Unlock()
-	notes := c.memory.drainPending()
 
 	if strings.TrimSpace(goal) != "" && goalStatus == GoalStatusRunning {
 		prefix := activeGoalBlock(goal)
@@ -170,20 +166,6 @@ func (c *Controller) composeWithGoal(
 	}
 	text = agent.WithResponseLanguage(text, responseLanguage)
 	text = agent.WithReasoningLanguageForSource(text, reasoningLanguage, source)
-
-	// Memory added mid-session rides the turn (never the cached system prefix),
-	// so it takes effect now without invalidating the prompt cache. It folds into
-	// the system prefix on the next session, where it costs nothing per turn.
-	if len(notes) > 0 {
-		var b strings.Builder
-		b.WriteString("<memory-update>\n")
-		b.WriteString("The following project-memory changes were just made and apply from now on:\n")
-		for _, n := range notes {
-			b.WriteString("- " + n + "\n")
-		}
-		b.WriteString("</memory-update>\n\n")
-		text = b.String() + text
-	}
 
 	// Background jobs that finished since the last turn ride the turn too, so the
 	// model learns of completions even though the user-facing notices don't reach
@@ -197,30 +179,10 @@ func (c *Controller) composeWithGoal(
 		if block := c.drainHookContextBlock(); block != "" {
 			text = block + "\n\n" + text
 		}
-		// Relevant facts ride only the real user-turn tail. This preserves the
-		// stable system/tool prefix and keeps synthetic recovery turns free of
-		// accidental recall. A just-written fact already arrives in memory-update.
-		if len(notes) == 0 && !c.ablation.Off(ablation.Retrieval) {
-			result := c.memory.recall(source)
-			event.RecordMemoryRecall(c.sink, memoryRecallAudit(result))
-			if block := result.Block(); block != "" {
-				text = strings.TrimRight(text, "\n") + "\n\n" + block
-			}
-		} else if len(notes) > 0 {
-			c.memory.recordRecall(memory.RecallResult{
-				Query:      strings.TrimSpace(source),
-				Suppressed: "memory update already supplies the new fact",
-			})
-		}
 	}
 	return text
 }
 
-// LastMemoryRecall returns the last real turn's automatic-recall decision for
-// diagnostics and context-management surfaces.
-func (c *Controller) LastMemoryRecall() memory.RecallResult {
-	return c.memory.lastRecallResult()
-}
 
 func (c *Controller) enqueueHookContexts(contexts []string) {
 	if len(contexts) == 0 {
@@ -318,22 +280,6 @@ const goalTaskContractInstructions = `Goal mode: pursue this goal autonomously. 
 Do not stop after describing a plan; execute the next useful step. End every goal-mode turn by calling the update_goal tool with your disposition: continue (work is ongoing — give the next concrete step in next_action), complete (only when fully done and verified), or blocked (only when the user can unblock). The host validates your claim and decides whether to continue automatically.`
 
 // MemoryQuickAddNote parses the "# <note>" memory shortcut. The space after
-// "#" is intentional: "#7", "#issue", and "#标题" are ordinary user prompts,
-// not memory writes. Multi-line input starting with "# " is NOT treated as a
-// quick-add note — it is almost certainly a Markdown heading in a structured
-// prompt (e.g. "# Context\n\n- file.go\n# Objective"). Only single-line input
-// may be a quick-add note.
-func MemoryQuickAddNote(input string) (note string, ok bool) {
-	trimmed := strings.TrimSpace(input)
-	if strings.Contains(trimmed, "\n") {
-		return "", false
-	}
-	if strings.HasPrefix(trimmed, "# ") || strings.HasPrefix(trimmed, "#\t") {
-		return strings.TrimSpace(trimmed[1:]), true
-	}
-	return "", false
-}
-
 // RememberCommandNote parses the explicit "/remember <note>" memory command.
 func RememberCommandNote(input string) (note string, ok bool) {
 	trimmed := strings.TrimSpace(input)

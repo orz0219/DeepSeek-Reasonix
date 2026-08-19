@@ -12,7 +12,6 @@ import (
 	"reasonix/internal/evidence"
 	"reasonix/internal/hook"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
 	"reasonix/internal/skill"
@@ -146,19 +145,6 @@ type SessionHistory interface {
 	SummarizeUpTo(ctx context.Context, turn int) error
 }
 
-// MemoryControl covers session/project memory reads and mutations.
-type MemoryControl interface {
-	Memory() *memory.Set
-	QuickAdd(scope memory.Scope, note string) (string, error)
-	SaveDoc(path, body string) (string, error)
-	SaveMemory(m memory.Memory) (string, error)
-	ForgetMemory(name string) error
-	QueueMemory(note string)
-	MemoryRevisions(ref string) []memory.Memory
-	RestoreMemory(ref string, revision int) (memory.Memory, error)
-	RestoreArchivedMemory(archivePath string) (memory.Memory, error)
-	LastMemoryRecall() memory.RecallResult
-}
 
 // Capabilities covers the session's pluggable surface — MCP servers, skills,
 // slash commands, hooks — and resolving prompt/command/skill inputs.
@@ -255,7 +241,6 @@ type SessionAPI interface {
 	Approvals
 	Goals
 	SessionHistory
-	MemoryControl
 	Capabilities
 	Status
 	SessionPersistence
@@ -273,7 +258,6 @@ var (
 	_ Approvals          = (*Controller)(nil)
 	_ Goals              = (*Controller)(nil)
 	_ SessionHistory     = (*Controller)(nil)
-	_ MemoryControl      = (*Controller)(nil)
 	_ Capabilities       = (*Controller)(nil)
 	_ Status             = (*Controller)(nil)
 	_ SessionPersistence = (*Controller)(nil)

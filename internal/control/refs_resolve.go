@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"reasonix/internal/config"
 	"reasonix/internal/instruction"
 )
 
@@ -35,11 +36,10 @@ func (c *Controller) resolveRefs(ctx context.Context, line string, scopedOnly bo
 	var b strings.Builder
 	includedInstructionPaths := map[string]bool{}
 	includedInstructionBodies := map[string]bool{}
-	if current := c.memory.current(); current != nil {
-		for _, doc := range current.Docs {
-			includedInstructionPaths[cleanAbsPath(doc.Path)] = true
-			includedInstructionBodies[doc.Body] = true
-		}
+	resolved := instruction.Resolve(instruction.ResolveOptions{TargetDir: c.workspaceRoot, UserDir: config.MemoryUserDir()})
+	for _, doc := range resolved.Documents {
+		includedInstructionPaths[cleanAbsPath(doc.Path)] = true
+		includedInstructionBodies[doc.Body] = true
 	}
 	for _, r := range refs {
 		switch r.kind {
@@ -84,8 +84,7 @@ func (c *Controller) resolveRefs(ctx context.Context, line string, scopedOnly bo
 }
 
 func (c *Controller) resolveReferencedInstructions(r ref, baseDir string, includedPaths, includedBodies map[string]bool) (string, []instruction.Diagnostic) {
-	mem := c.memory.current()
-	if mem == nil || strings.TrimSpace(c.workspaceRoot) == "" || r.baseDir != "" {
+	if strings.TrimSpace(c.workspaceRoot) == "" || r.baseDir != "" {
 		return "", nil
 	}
 	absPath, absBase, ok := resolveAbsRef(r.path, baseDir)
@@ -99,7 +98,7 @@ func (c *Controller) resolveReferencedInstructions(r ref, baseDir string, includ
 	resolved := instruction.Resolve(instruction.ResolveOptions{
 		WorkspaceRoot: c.workspaceRoot,
 		TargetDir:     targetDir,
-		UserDir:       mem.UserDir,
+		UserDir:       config.MemoryUserDir(),
 	})
 	var delta []instruction.Document
 	for _, doc := range resolved.Documents {

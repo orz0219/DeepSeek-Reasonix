@@ -33,26 +33,6 @@ type Record struct {
 	CompletionReport    *CompletionReport    `json:"completion_report,omitempty"`
 	OutcomeProgress     *OutcomeProgress     `json:"outcome_progress,omitempty"`
 	DelegationAdmission *DelegationAdmission `json:"delegation_admission,omitempty"`
-	MemoryRecall        *MemoryRecall        `json:"memory_recall,omitempty"`
-}
-
-// MemoryRecall mirrors event.MemoryRecallAudit with stable snake_case keys.
-type MemoryRecall struct {
-	Hits       []MemoryRecallHit `json:"hits,omitempty"`
-	UsedChars  int               `json:"used_chars,omitempty"`
-	Omitted    int               `json:"omitted,omitempty"`
-	Suppressed string            `json:"suppressed,omitempty"`
-	ShadowHits []MemoryRecallHit `json:"shadow_hits,omitempty"`
-}
-
-// MemoryRecallHit is one recalled fact's content-free fingerprint.
-type MemoryRecallHit struct {
-	ID        string  `json:"id"`
-	Revision  int     `json:"revision,omitempty"`
-	Scope     string  `json:"scope,omitempty"`
-	Type      string  `json:"type,omitempty"`
-	Freshness string  `json:"freshness,omitempty"`
-	Score     float64 `json:"score,omitempty"`
 }
 
 // DelegationAdmission mirrors event.DelegationAdmissionAudit with stable keys.
@@ -262,21 +242,6 @@ func (r *Recorder) RecordOutcomeProgress(sample evidence.OutcomeSample) {
 		GovernorEngaged:  sample.GovernorEngaged,
 	}})
 	event.RecordOutcomeProgress(r.inner, sample)
-}
-
-func (r *Recorder) RecordMemoryRecall(a event.MemoryRecallAudit) {
-	rec := &MemoryRecall{UsedChars: a.UsedChars, Omitted: a.Omitted, Suppressed: a.Suppressed}
-	for _, hit := range a.Hits {
-		rec.Hits = append(rec.Hits, MemoryRecallHit{
-			ID: hit.ID, Revision: hit.Revision, Scope: hit.Scope,
-			Type: hit.Type, Freshness: hit.Freshness, Score: hit.Score,
-		})
-	}
-	for _, hit := range a.Shadow {
-		rec.ShadowHits = append(rec.ShadowHits, MemoryRecallHit{ID: hit.ID, Score: hit.Score})
-	}
-	r.append(Record{MemoryRecall: rec})
-	event.RecordMemoryRecall(r.inner, a)
 }
 
 func (r *Recorder) RecordDelegationAdmission(a event.DelegationAdmissionAudit) {

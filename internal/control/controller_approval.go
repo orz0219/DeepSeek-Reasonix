@@ -10,7 +10,6 @@ import (
 	"reasonix/internal/agent"
 	"reasonix/internal/capability"
 	"reasonix/internal/event"
-	"reasonix/internal/memory"
 	"reasonix/internal/permission"
 	"reasonix/internal/provider"
 	"reasonix/internal/sandbox"
@@ -192,10 +191,6 @@ func (c *Controller) newInteractiveGate() *permission.Gate {
 	}
 
 	policy.SessionAllow = rulesWithoutFreshHumanApproval(policy.SessionAllow)
-	policy.Ask = append(policy.Ask,
-		permission.Rule{Tool: memoryRememberTool},
-		permission.Rule{Tool: memoryForgetTool},
-	)
 	var approver permission.Approver = gateApprover{c}
 	if mode == ToolApprovalDontAsk {
 		approver = denyPermissionApprover{}
@@ -209,23 +204,8 @@ func (c *Controller) newInteractiveGate() *permission.Gate {
 	return gate
 }
 
-func (c *Controller) allowLowRiskRemember(args json.RawMessage) bool {
-	mem := c.Memory()
-	if mem != nil {
-		if assessment := memory.AssessRememberWrite(mem.Store, args); assessment.AutoAllow {
-			c.memory.authorizeAutoRemember(args)
-			return true
-		}
-	}
-	c.memory.revokeAutoRemember(args)
-	return false
-}
-
 func (c *Controller) newHeadlessGate(mode string) *freshHumanHeadlessGate {
 	gate := BuildHeadlessApprovalGate(c.policy, mode)
-	gate.allowLowRiskFreshAction = func(toolName string, args json.RawMessage) bool {
-		return toolName == memoryRememberTool && c.allowLowRiskRemember(args)
-	}
 	return gate
 }
 

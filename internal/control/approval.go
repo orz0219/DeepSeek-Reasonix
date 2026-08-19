@@ -584,12 +584,10 @@ func normalizeToolApprovalMode(mode string) string {
 
 // RequiresFreshHumanApprovalTool reports whether a tool's unsafe variants must
 // be answered by a human decision, not by YOLO/auto approval, Guardian, or a
-// non-interactive nil approver. A controller that owns the scoped memory store
-// may still classify a bounded new project memory as create-only and allow that
-// narrow operation in interactive or headless mode.
+// non-interactive nil approver.
 func RequiresFreshHumanApprovalTool(tool string) bool {
 	switch tool {
-	case planApprovalTool, memoryRememberTool, memoryForgetTool, SandboxEscapeApprovalTool, ManagedConfigWriteApprovalTool:
+	case planApprovalTool, SandboxEscapeApprovalTool, ManagedConfigWriteApprovalTool:
 		return true
 	default:
 		return false
@@ -623,8 +621,6 @@ func permissionRequestHookPayload(tool, subject string, args json.RawMessage) (s
 	switch tool {
 	case planApprovalTool:
 		return "", nil, false
-	case memoryRememberTool, memoryForgetTool:
-		return "", nil, true
 	default:
 		return subject, args, true
 	}

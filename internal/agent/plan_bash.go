@@ -8,7 +8,6 @@ import (
 	"reasonix/internal/evidence"
 	"reasonix/internal/instruction"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/sandbox"
 	"reasonix/internal/tool"
 )
@@ -58,9 +57,6 @@ func (a *Agent) rebuildToolContextBase() {
 	}
 	if a.svc.configWrite != nil {
 		ctx = tool.WithConfigWriteApprover(ctx, a.svc.configWrite)
-	}
-	if a.svc.memQueue != nil {
-		ctx = memory.WithQueue(ctx, a.svc.memQueue)
 	}
 	a.toolContextBase = ctx
 }

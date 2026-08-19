@@ -12,7 +12,6 @@ import (
 	"reasonix/internal/diff"
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/instruction"
-	"reasonix/internal/memory"
 	"reasonix/internal/nilutil"
 	"reasonix/internal/plancontract"
 	"reasonix/internal/provider"
@@ -409,9 +408,7 @@ func (a *Agent) withTurnPreferences(input string) string {
 // Interactive frontends wire one in; headless runs leave it nil.
 func (a *Agent) SetAsker(as Asker) { a.svc.asker = as }
 
-// SetMemoryQueue installs the sink the remember/forget tools use to apply a
-// memory change in the current session. The controller wires itself in.
-func (a *Agent) SetMemoryQueue(q memory.Queue) { a.svc.memQueue = q }
+
 
 // SetPreEditHook installs the pre-edit snapshot hook (see onPreEdit). The
 // controller wires it to its per-session checkpoint store; nil disables capture.

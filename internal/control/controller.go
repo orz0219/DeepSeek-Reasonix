@@ -33,7 +33,6 @@ import (
 	"reasonix/internal/guardian"
 	"reasonix/internal/hook"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/permission"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
@@ -116,10 +115,7 @@ type Controller struct {
 	// memory owns the loaded memory snapshot, the pending turn-tail notes queue,
 	// and write serialization behind its own locks, off c.mu — so a memory-panel
 	// save never stalls an approval or status poll. See memory.go.
-	memory memoryManager
-	// consolidationWorker runs async memory consolidation. nil disables it.
-	consolidationWorker *memory.ConsolidationWorker
-	cleanup             func()
+	cleanup                func()
 	responseLanguage       string
 	reasoningLanguage      string
 	disableColdResumePrune bool // legacy; rewrite elision removed, still gates cold notice
@@ -342,11 +338,6 @@ const (
 	ToolApprovalAuto    = "auto"
 	ToolApprovalDontAsk = "dontAsk"
 	ToolApprovalYolo    = "yolo"
-)
-
-const (
-	memoryRememberTool = "remember"
-	memoryForgetTool   = "forget"
 )
 
 // RememberResult describes what happened when an approval rule was persisted.

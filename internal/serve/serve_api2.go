@@ -226,22 +226,6 @@ func (s *Server) resume(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// forget deletes a saved memory by name.
-func (s *Server) forget(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Name string `json:"name"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" {
-		http.Error(w, "missing name", http.StatusBadRequest)
-		return
-	}
-	if err := s.ctl().ForgetMemory(body.Name); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
 // checkpoints returns the session's checkpoint list for the rewind picker.
 func (s *Server) checkpoints(w http.ResponseWriter, _ *http.Request) {
 	type cp struct {

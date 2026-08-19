@@ -12,15 +12,15 @@ import (
 
 var reservedSubagentSlashNames = map[string]bool{
 	"new": true, "clear": true, "compact": true, "model": true, "provider": true,
-	"effort": true, "memory": true, "migrate": true, "migration": true,
-	"goal": true, "remember": true, "mcp": true, "hooks": true, "plugin": true, "plugins": true,
+	"effort": true, "migrate": true, "migration": true,
+	"goal": true, "mcp": true, "hooks": true, "plugin": true, "plugins": true,
 	"theme": true, "skill": true, "skills": true, "reload-cmd": true, "tree": true,
 	"branch": true, "switch": true, "rewind": true, "plan-exec": true, "prometheus": true,
 	"resume": true, "rename": true, "todo": true, "verbose": true, "mouse": true,
 	"sandbox": true, "work-mode": true, "profile": true,
 	"reasoning-language": true, "paste-image": true, "output-style": true,
 	"output-styles": true, "diff-fold": true, "language": true, "help": true,
-	"quit": true, "exit": true, "copy": true, "export": true, "forget": true,
+	"quit": true, "exit": true, "copy": true, "export": true,
 }
 
 // ValidateSubagentProfileName protects the shared slash namespace used by

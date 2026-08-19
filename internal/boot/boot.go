@@ -31,7 +31,6 @@ import (
 	"reasonix/internal/instruction"
 	"reasonix/internal/jobs"
 	"reasonix/internal/lsp"
-	"reasonix/internal/memory"
 	"reasonix/internal/netclient"
 	"reasonix/internal/permission"
 	"reasonix/internal/plugin"
@@ -225,7 +224,6 @@ type bootContext struct {
 	reconcileCleanupPending func(sessionDir string) error
 	extWarn                 func(msg string)
 
-	mem                     *memory.Set
 	projectChecks           []instruction.VerifyCheck
 	skillStore              *skill.Store
 	skills                  []skill.Skill

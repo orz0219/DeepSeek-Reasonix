@@ -499,7 +499,6 @@ func (s *Server) handler() http.Handler {
 	mux.HandleFunc("POST /goal", s.goal)
 	mux.HandleFunc("POST /answer", s.answer)
 	mux.HandleFunc("POST /resume", s.resume)
-	mux.HandleFunc("POST /forget", s.forget)
 	mux.HandleFunc("GET /checkpoints", s.checkpoints)
 	mux.HandleFunc("GET /branches", s.branches)
 	mux.HandleFunc("GET /models", s.models)

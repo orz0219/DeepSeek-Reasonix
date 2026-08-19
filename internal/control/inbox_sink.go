@@ -92,15 +92,6 @@ func (s *inboxEventSink) RecordDelegationAdmission(a event.DelegationAdmissionAu
 	}
 }
 
-func (s *inboxEventSink) RecordMemoryRecall(a event.MemoryRecallAudit) {
-	if s == nil {
-		return
-	}
-	if rs, ok := s.inner.(interface{ RecordMemoryRecall(event.MemoryRecallAudit) }); ok {
-		rs.RecordMemoryRecall(a)
-	}
-}
-
 func (s *inboxEventSink) RecordProtocolRecovery(a event.ProtocolRecoveryAudit) {
 	if s == nil {
 		return

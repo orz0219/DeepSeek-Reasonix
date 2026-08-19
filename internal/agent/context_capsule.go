@@ -20,7 +20,6 @@ const (
 // record exists so that stays a decision rather than an accident.
 type InheritedContext struct {
 	StandingInstructions bool `json:"standingInstructions"`
-	Memory               bool `json:"memory"`
 	ParentConversation   bool `json:"parentConversation"`
 	Goal                 bool `json:"goal"`
 	PlannerOutput        bool `json:"plannerOutput"`

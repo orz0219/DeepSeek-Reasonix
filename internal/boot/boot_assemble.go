@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"reasonix/internal/agent"
-	"reasonix/internal/boundedllm"
 	"reasonix/internal/capability"
 	"reasonix/internal/config"
 	"reasonix/internal/control"
@@ -18,7 +17,6 @@ import (
 	"reasonix/internal/extension/sidecar"
 	"reasonix/internal/goaleval"
 	"reasonix/internal/guardian"
-	"reasonix/internal/memory"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
 	"reasonix/internal/recovery"
@@ -39,7 +37,6 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 	modelRef := bc.modelRef
 	agentPreset := bc.agentPreset
 	jm := bc.jm
-	mem := bc.mem
 	projectChecks := bc.projectChecks
 	implicitSkillInvocation := bc.implicitSkillInvocation
 	reg := bc.reg
@@ -224,7 +221,7 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 			if err != nil {
 				return nil, fmt.Errorf("planner %q: %w", pm, err)
 			}
-			plannerSess := agent.NewSession(agent.PlannerPromptWithContext(mem.Block()))
+			plannerSess := agent.NewSession(agent.PlannerPromptWithContext(""))
 			// Planner owns an independent ledger/audit and use_capability frontend
 			// so its MCP calls cannot satisfy or poison Executor Delivery gates.
 			plannerLedger := capability.NewLedger()
@@ -285,8 +282,6 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		ReadOnlySkillRunner:            readOnlySkillRunner,
 		SkillProfile:                   skillProfile,
 		Hooks:                          hookRunner,
-		Memory:                         mem,
-		ConsolidationWorker:               buildConsolidationWorker(mem, execProv, entry, sink),
 		// Indirection: the cleanup variable gains the extension runtime set at
 		// the end of build (snapshot assembly runs after control.New), and the
 		// controller must observe the final chain at Close time.
@@ -551,30 +546,4 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 	return finalizeBuildResult(&BuildResult{Controller: ctrl, Snapshot: snap, Runtime: runtimeSet, Owner: owner, Extensions: extensionMgr, Dispatcher: extensionDispatcher, ExtensionUI: extUIHub, ProviderResolver: providerResolver, BaseProviderResolver: baseResolver, Assembly: assembly}, !opts.deferPublish), nil
 }
 
-// buildConsolidationWorker creates an async memory consolidation worker when
-// the memory store is available and a provider exists. Returns nil when
-// consolidation cannot be configured, which disables the feature gracefully.
-func buildConsolidationWorker(mem *memory.Set, prov provider.Provider, entry *config.ProviderEntry, sink event.Sink) *memory.ConsolidationWorker {
-	if mem == nil || mem.Store.Dir == "" {
-		return nil
-	}
-	if prov == nil {
-		return nil
-	}
-	cfg := boundedllm.Config{
-		Provider:       prov,
-		Pricing:        entry.Price,
-		ModelRef:       entry.Model,
-		Sink:           sink,
-		UsageSource:    "consolidation",
-		Timeout:        boundedllm.DefaultTimeout,
-		MaxTokens:      2048,
-		MaxOutputBytes: 16 * 1024,
-		MaxTotalBytes:  32 * 1024,
-	}
-	completionFn := func(ctx context.Context, system, user string) (string, error) {
-		return boundedllm.Call(ctx, cfg, system, user)
-	}
-	consolidator := memory.NewLLMConsolidator(completionFn, mem.Store, memory.ConsolidationPolicy{})
-	return memory.NewConsolidationWorker(consolidator, memory.ConsolidationWorkerConfig{})
-}
+

@@ -2,13 +2,11 @@ package control
 
 import (
 	"context"
-	"encoding/json"
 
 	"reasonix/internal/agent"
 	"reasonix/internal/extension"
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/sessiontemp"
 	"reasonix/internal/workspacelease"
 )
@@ -73,12 +71,8 @@ func (c *Controller) close(fireSessionEnd bool, jobsMode closeJobsMode) {
 			cancel()
 		}
 		if fireSessionEnd && started {
-			c.enqueueConsolidation(memory.ConsolidationSessionEnd)
 			c.hooks.SessionEnd(context.Background(), "other")
 			c.extensionSessionEvent(extension.PointSessionEnd, dispatch.PhaseEnd, c.SessionPath())
-		}
-		if c.consolidationWorker != nil {
-			c.consolidationWorker.Close()
 		}
 		if c.jobs != nil {
 			switch jobsMode {
@@ -258,67 +252,6 @@ func (c *Controller) Bypass() bool {
 	return c.AutoApproveTools()
 }
 
-// QuickAdd appends a one-line note to the doc-memory file for scope (project
-// REASONIX.md by default) — the write side of "#<note>". Returns the file written.
-func (c *Controller) QuickAdd(scope memory.Scope, note string) (string, error) {
-	return c.memory.quickAdd(scope, note)
-}
-
-// SaveDoc overwrites a recognized memory doc with body — the save side of the
-// desktop panel's in-place editor. Returns the file written.
-func (c *Controller) SaveDoc(path, body string) (string, error) {
-	return c.memory.saveDoc(path, body)
-}
-
-// SaveMemory writes an active auto-memory fact and refreshes the in-session
-// snapshot. It is the explicit user-confirmed counterpart to the model-owned
-// remember tool, used by management surfaces that preview a candidate first.
-func (c *Controller) SaveMemory(m memory.Memory) (string, error) {
-	return c.memory.saveMemory(m)
-}
-
-// ForgetMemory removes a saved auto-memory by name — the panel/TUI forget action,
-// the manual counterpart to the model's `forget` tool.
-func (c *Controller) ForgetMemory(name string) error {
-	return c.memory.forget(name)
-}
-
-// QueueMemory implements memory.Queue: when the model runs the remember/forget
-// tool, the tool calls this with a note that rides the next turn so the change
-// applies this session without touching the cache-stable prefix. It also
-// refreshes the snapshot a memory panel reads.
-func (c *Controller) QueueMemory(note string) {
-	c.memory.queue(note)
-}
-
-// ClaimAutoMemoryWrite consumes the one-shot create-only authorization issued
-// by gateApprover for a low-risk project fact.
-func (c *Controller) ClaimAutoMemoryWrite(args json.RawMessage) bool {
-	return c.memory.claimAutoRemember(args)
-}
-
-func (c *Controller) MemoryRevisions(ref string) []memory.Memory {
-	return c.memory.revisions(ref)
-}
-
-// RestoreMemory restores an older active-memory revision as a new audited
-// revision and applies it to the next user turn.
-func (c *Controller) RestoreMemory(ref string, revision int) (memory.Memory, error) {
-	return c.memory.restore(ref, revision)
-}
-
-// RestoreArchivedMemory recovers an archived fact as a new audited revision and
-// applies it to the next user turn.
-func (c *Controller) RestoreArchivedMemory(archivePath string) (memory.Memory, error) {
-	return c.memory.restoreArchived(archivePath)
-}
-
-// Memory returns the loaded memory snapshot (nil when memory is disabled), for
-// frontends that surface a memory panel or the /memory command. The returned
-// *Set is immutable — mutations go through QuickAdd / SaveDoc.
-func (c *Controller) Memory() *memory.Set {
-	return c.memory.current()
-}
 
 const (
 	closeJobsWithGrace closeJobsMode = iota

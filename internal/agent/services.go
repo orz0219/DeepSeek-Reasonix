@@ -6,7 +6,6 @@ import (
 	"reasonix/internal/event"
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/provider"
 	"reasonix/internal/sandbox"
 	"reasonix/internal/tool"
@@ -71,10 +70,6 @@ type agentServices struct {
 	// session, acquired lazily on the first mutation and held through the final
 	// participating run so verification stays isolated.
 	workspaceLease *workspacelease.Owner
-	// memQueue lets the remember/forget tools fold a turn-tail note about a
-	// just-made memory change into the next turn, so it applies this session
-	// without touching the cache-stable prefix.
-	memQueue memory.Queue
 }
 
 // newAgentServices binds the collaborators New resolved. It exists so New stays
@@ -97,7 +92,6 @@ func newAgentServices(
 		configWrite:      configWrite,
 		hooks:            hooks,
 		jobs:             opts.Jobs,
-		memQueue:         opts.MemoryQueue,
 		writeScheduler:   opts.WriteScheduler,
 		workspaceLease:   opts.WorkspaceLease,
 		warnState:        missingReasoningWarnStateFor(opts.MissingReasoningWarnStateDir),

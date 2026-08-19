@@ -52,7 +52,6 @@ func prepareBuild(ctx context.Context, opts Options) (*bootContext, error) {
 	deepSeekProtocolMigrated, deepSeekProtocolMigErr := config.MigrateLegacyDeepSeekProtocolUserConfig()
 	stepLimitsMigrated, stepLimitMigErr := config.MigrateLegacyAgentStepLimitsForRoot(root)
 	redactToolOutputMigrated, redactToolOutputMigErr := config.MigrateLegacyRedactToolOutputForRoot(root)
-	memoryCompilerMigrated, memoryCompilerMigErr := config.MigrateLegacyMemoryCompilerForRoot(root)
 	multiThresholdMigrated, multiThresholdMigErr := config.MigrateLegacyMultiThresholdCompactionForRoot(root)
 	cfg, err := config.LoadForRoot(root)
 	if err != nil {
@@ -318,17 +317,6 @@ func prepareBuild(ctx context.Context, opts Options) (*bootContext, error) {
 		}
 		sink.Emit(event.Event{Kind: event.Notice, Level: level, Text: text, Detail: detail})
 	}
-	if memoryCompilerMigrated || memoryCompilerMigErr != nil {
-		level := event.LevelInfo
-		text := "Deprecated memory_compiler setting was removed."
-		detail := "The Memory v5 execution compiler has been removed from Reasonix: [agent].memory_compiler no longer has any effect, user turns are never replaced by compiled execution contracts, and no compiler state is written. Old transcripts containing compiled turns still display normally."
-		if memoryCompilerMigErr != nil {
-			level = event.LevelWarn
-			text = "Deprecated memory_compiler setting was ignored."
-			detail += " The old key could not be removed: " + memoryCompilerMigErr.Error()
-		}
-		sink.Emit(event.Event{Kind: event.Notice, Level: level, Text: text, Detail: detail})
-	}
 	if multiThresholdMigrated || multiThresholdMigErr != nil {
 		level := event.LevelInfo
 		text := "上下文维护已简化为单一自动压缩阈值。"
@@ -340,7 +328,6 @@ func prepareBuild(ctx context.Context, opts Options) (*bootContext, error) {
 		}
 		sink.Emit(event.Event{Kind: event.Notice, Level: level, Text: text, Detail: detail})
 	}
-	migration.MigrateLegacyMemorySources(sink)
 	migration.MigrateLegacySessionSources(sink)
 	if ignored := cfg.IgnoredProjectDefaultModel(); ignored != "" {
 		sink.Emit(event.Event{Kind: event.Notice, Level: event.LevelWarn, Text: "Ignored the project config's default_model.", Detail: fmt.Sprintf("./reasonix.toml sets default_model = %q but no configured provider serves it; using %q from your user config instead. Edit or remove that default_model line to silence this notice.", ignored, cfg.DefaultModel)})

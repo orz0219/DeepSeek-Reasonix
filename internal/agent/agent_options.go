@@ -15,7 +15,6 @@ import (
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/instruction"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/nilutil"
 	"reasonix/internal/provider"
 	"reasonix/internal/sandbox"
@@ -112,9 +111,6 @@ type Options struct {
 
 	// Jobs is the session's background-job manager (nil disables background tools).
 	Jobs *jobs.Manager
-	// MemoryQueue optionally gives a child agent an explicitly owned live-memory
-	// queue. When nil, child construction shadows inherited queues.
-	MemoryQueue memory.Queue
 
 	// WriteScheduler is the session-scoped subagent concurrency/write-claim
 	// controller. When set on the parent executor, write-capable tools reserve

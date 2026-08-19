@@ -11,7 +11,6 @@ import (
 	"reasonix/internal/checkpoint"
 	"reasonix/internal/event"
 	"reasonix/internal/i18n"
-	"reasonix/internal/memory"
 	"reasonix/internal/permission"
 	"reasonix/internal/sandbox"
 	"reasonix/internal/tool"
@@ -42,9 +41,6 @@ func combineApprovalReasons(reasons ...string) string {
 }
 
 func (g gateApprover) approveWithPolicyReason(ctx context.Context, tool, subject string, args json.RawMessage, policyReason string) (bool, bool, string, error) {
-	if tool == memoryRememberTool && g.c.allowLowRiskRemember(args) {
-		return true, false, "", nil
-	}
 	subject = approvalDisplaySubject(tool, subject, args)
 	requireHuman := strings.EqualFold(tool, "bash") && permission.BashSubjectRequiresExplicitApproval(subject)
 
@@ -189,10 +185,6 @@ func (p planModeReadOnlyTrustApprover) checkBashReadOnlyCommandTrust(ctx context
 
 func approvalDisplaySubject(tool, subject string, args json.RawMessage) string {
 	switch tool {
-	case memoryRememberTool:
-		return rememberApprovalSubject(subject, args)
-	case memoryForgetTool:
-		return forgetApprovalSubject(subject, args)
 	case "move_file":
 		return moveApprovalSubject(subject, args)
 	default:
@@ -215,71 +207,6 @@ func moveApprovalSubject(fallback string, args json.RawMessage) string {
 		return fallback
 	}
 	return in.SourcePath + " -> " + in.DestinationPath
-}
-
-func rememberApprovalSubject(fallback string, args json.RawMessage) string {
-	if len(args) == 0 {
-		return fallback
-	}
-	var in struct {
-		Name        string `json:"name"`
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		Type        string `json:"type"`
-		Body        string `json:"body"`
-	}
-	if err := json.Unmarshal(args, &in); err != nil {
-		return fallback
-	}
-	name := approvalCompactText(firstNonEmpty(in.Name, in.Title))
-	desc := approvalTruncate(approvalCompactText(in.Description), 180)
-	body := approvalTruncate(approvalCompactText(in.Body), 240)
-	typ := string(memory.NormalizeType(in.Type))
-
-	var b strings.Builder
-	b.WriteString(i18n.M.MemoryApprovalSaveUpdate)
-	baseLen := b.Len()
-	if name != "" {
-		fmt.Fprintf(&b, " %q", name)
-	}
-	if typ != "" {
-		fmt.Fprintf(&b, " [%s]", typ)
-	}
-	if desc != "" {
-		b.WriteString(": ")
-		b.WriteString(desc)
-	}
-	if body != "" {
-		if desc == "" {
-			b.WriteString(": ")
-		} else {
-			b.WriteString(" | ")
-		}
-		b.WriteString(i18n.M.MemoryApprovalBodyLabel)
-		b.WriteString(": ")
-		b.WriteString(body)
-	}
-	if b.Len() == baseLen && fallback != "" {
-		return fallback
-	}
-	return b.String()
-}
-
-func forgetApprovalSubject(fallback string, args json.RawMessage) string {
-	if len(args) == 0 {
-		return fallback
-	}
-	var in struct {
-		Name string `json:"name"`
-	}
-	if err := json.Unmarshal(args, &in); err != nil {
-		return fallback
-	}
-	name := approvalCompactText(in.Name)
-	if name == "" {
-		return fallback
-	}
-	return fmt.Sprintf(i18n.M.MemoryApprovalArchiveFmt, name)
 }
 
 func firstNonEmpty(values ...string) string {

@@ -9,23 +9,10 @@ import (
 
 	"reasonix/internal/event"
 	"reasonix/internal/i18n"
-	"reasonix/internal/memory"
 	"reasonix/internal/sandbox"
 	"reasonix/internal/shellrun"
 	"reasonix/internal/tool"
 )
-
-func (c *Controller) rememberProjectNote(note string) {
-	if note == "" {
-		c.notice("nothing to remember")
-		return
-	}
-	if path, err := c.QuickAdd(memory.ScopeProject, note); err != nil {
-		c.notice("memory: " + err.Error())
-	} else {
-		c.notice("remembered → " + path)
-	}
-}
 
 func (c *Controller) applyGoalCommand(input, display string) bool {
 	cmd, ok := ParseGoalCommand(input)

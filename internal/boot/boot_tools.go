@@ -13,7 +13,6 @@ import (
 	"reasonix/internal/instruction"
 	"reasonix/internal/lsp"
 	"reasonix/internal/mcplaunch"
-	"reasonix/internal/memory"
 	"reasonix/internal/permission"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
@@ -55,12 +54,12 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 	// durable, cache-stable prefix every turn reuses, so memory costs nothing per
 	// turn. Mid-session changes never touch this prefix — they ride the
 	// controller's transient turn-injection and fold in on the next session.
-	if _, err := memory.StoreFor(config.MemoryUserDir(), root).MigrateV2(); err != nil {
-		sink.Emit(event.Event{Kind: event.Notice, Level: event.LevelWarn, Text: "Memory metadata migration did not complete.", Detail: err.Error()})
+	resolved := instruction.Resolve(instruction.ResolveOptions{TargetDir: root, UserDir: config.MemoryUserDir()})
+	projectChecks := instruction.ExtractHostChecks(resolved.Documents)
+	instrBlock := instruction.Block(resolved.Documents)
+	if instrBlock != "" {
+		sysPrompt = strings.TrimRight(sysPrompt, "\n") + "\n\n" + instrBlock
 	}
-	mem := memory.Load(memory.Options{CWD: root, UserDir: config.MemoryUserDir()})
-	projectChecks := instruction.ExtractHostChecks(mem.Docs)
-	sysPrompt = memory.Compose(sysPrompt, mem)
 
 	implicitSkillInvocation := cfg.ImplicitSkillInvocationEnabled()
 	// Skills: rediscovery skipped on no-op/interceptor/UI rebuilds when
@@ -543,7 +542,6 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 	addTaskTool()
 	addReadOnlyTaskTool()
 
-	bc.mem = mem
 	bc.projectChecks = projectChecks
 	bc.sysPrompt = sysPrompt
 	bc.skillStore = skillStore

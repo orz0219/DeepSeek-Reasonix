@@ -8,7 +8,6 @@ import (
 
 	"reasonix/internal/event"
 	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/planmode"
 )
 
@@ -130,11 +129,6 @@ func (a *Agent) withAgentContext(ctx context.Context) context.Context {
 		ctx = jobs.WithManager(ctx, a.svc.jobs)
 	} else {
 		ctx = jobs.WithoutManager(ctx)
-	}
-	if a.svc.memQueue != nil {
-		ctx = memory.WithQueue(ctx, a.svc.memQueue)
-	} else {
-		ctx = memory.WithoutQueue(ctx)
 	}
 	return planmode.WithActive(ctx, a.planMode.Load())
 }

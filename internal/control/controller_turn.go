@@ -48,7 +48,6 @@ func (c *Controller) spawnGuardedTurn(ctx context.Context, cancel context.Cancel
 // beginRotation refuses while running or finishing, and the drain flips
 // finishing directly into running.
 func (c *Controller) finishGuardedTurn(err error, completion *guardedTurnCompletion) {
-	c.memory.clearAutoRemember()
 	c.mu.Lock()
 	cancelRequested := c.canceling
 	c.running = false
@@ -248,9 +247,6 @@ func isNonTurnHTTPInput(input string) bool {
 		return true
 	}
 
-	if _, ok := MemoryQuickAddNote(trimmed); ok {
-		return true
-	}
 	if _, ok := RememberCommandNote(trimmed); ok {
 		return true
 	}
@@ -391,14 +387,6 @@ func (c *Controller) SubmitUserTurn(input, display string) {
 
 func (c *Controller) submit(input, display, editedOriginal string) {
 	trimmed := strings.TrimSpace(input)
-	if note, ok := MemoryQuickAddNote(trimmed); ok {
-		c.rememberProjectNote(note)
-		return
-	}
-	if note, ok := RememberCommandNote(trimmed); ok {
-		c.rememberProjectNote(note)
-		return
-	}
 	if c.applyGoalCommand(trimmed, display) {
 		return
 	}
@@ -415,14 +403,6 @@ func (c *Controller) submitHTTP(input, display string) {
 
 func (c *Controller) submitHTTPWithFormat(input, display, format string) {
 	trimmed := strings.TrimSpace(input)
-	if note, ok := MemoryQuickAddNote(trimmed); ok {
-		c.rememberProjectNote(note)
-		return
-	}
-	if note, ok := RememberCommandNote(trimmed); ok {
-		c.rememberProjectNote(note)
-		return
-	}
 	if c.applyGoalCommand(trimmed, display) {
 		return
 	}

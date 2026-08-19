@@ -127,10 +127,6 @@ func (a *Agent) finalReadinessCheckFor() finalReadinessCheck {
 			out.missingActionEvidence++
 			missing = append(missing, "perform host-observable work for this technical task before answering")
 		}
-		if a.turn.deliveryPersistentExpected && !a.task.ledger.HasSuccessfulToolReceipt("remember") {
-			out.missingMutation++
-			missing = append(missing, "save the requested durable memory with the remember tool before answering")
-		}
 		if a.turn.deliveryMutationExpected && !deliveryMutation {
 			out.missingMutation++
 			missing = append(missing, "the request requires a state change, but no successful mutation was observed")
@@ -146,16 +142,6 @@ func (a *Agent) finalReadinessCheckFor() finalReadinessCheck {
 			out.applies = true
 			out.missingCapabilities++
 			missing = append(missing, msg)
-		}
-		if a.turn.deliveryPersistentExpected && !a.turn.deliveryMutationExpected && !a.task.ledger.HasSuccessfulMutationOtherThan("remember") {
-			// A durable-memory-only request has its own concrete receipt contract.
-			// It must not inherit code-delivery todo/test/diff/review ceremonies;
-			// any unrelated mutation falls through to the full contract below.
-			out.applies = true
-			if len(missing) > 0 {
-				out.reason = strings.Join(missing, "; ")
-			}
-			return out
 		}
 	}
 	if !hasWriter {

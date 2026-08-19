@@ -2,8 +2,6 @@ package cli
 
 import (
 	tea "charm.land/bubbletea/v2"
-
-	"reasonix/internal/memory"
 )
 
 // showContextReport prints the window, the thresholds derived from it, and how
@@ -17,17 +15,4 @@ func (m *chatTUI) showContextReport(input string) tea.Cmd {
 	}
 	m.commitLine(summary)
 	return nil
-}
-
-func (m *chatTUI) rememberNote(note string) {
-	if note == "" {
-		m.notice("nothing to remember")
-		return
-	}
-	path, err := m.ctrl.QuickAdd(memory.ScopeProject, note)
-	if err != nil {
-		m.notice("memory: " + err.Error())
-		return
-	}
-	m.notice("remembered → " + path)
 }

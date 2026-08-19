@@ -184,9 +184,6 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 		return m.runCurrencySubcommand(input)
 	case "/help", "/web":
 		return m.runHelpOrWebSlash(input, typedCmd)
-	case "/memory":
-		m.echoLocalCommand(input)
-		m.showMemory(input)
 	case "/migrate", "/migration":
 		m.echoLocalCommand(input)
 		migration.RunLegacyRescueCommand(strings.TrimSpace(strings.TrimPrefix(input, typedCmd)), event.FuncSink(func(e event.Event) {
@@ -196,16 +193,12 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 		}))
 	case "/goal":
 		return m.runGoalSubcommand(input)
-	case "/remember":
-		m.rememberNote(strings.TrimSpace(strings.TrimPrefix(input, typedCmd)))
 	case "/quit", "/exit":
 		return shutdownNow
 	case "/copy":
 		return m.runCopyCommand(input)
 	case "/export":
 		m.runExportCommand(input)
-	case "/forget":
-		m.forgetMemory(strings.TrimSpace(strings.TrimPrefix(input, typedCmd)))
 	default:
 		if control.IsBuiltinDocsSlash(typedCmd, m.commands, m.skills) {
 			query := strings.TrimSpace(strings.TrimPrefix(input, typedCmd))

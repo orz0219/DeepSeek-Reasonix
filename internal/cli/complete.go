@@ -304,7 +304,6 @@ func (m *chatTUI) slashArgData() control.ArgData {
 		data.DisabledSkills = m.ctrl.DisabledSkills()
 		data.ConfiguredMCP = m.ctrl.ConfiguredMCPNames()
 		data.DisconnectedMCP = m.ctrl.DisconnectedMCPNames()
-		data.MemoryRefs, data.MemoryArchives = control.MemoryCompletionData(m.ctrl.Memory())
 	}
 	if m.host != nil {
 		data.ServerNames = m.host.ServerNames()
