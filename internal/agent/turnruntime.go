@@ -2,6 +2,7 @@ package agent
 
 import (
 	"reasonix/internal/completion"
+	"reasonix/internal/run"
 	"reasonix/internal/taskpolicy"
 )
 
@@ -87,6 +88,14 @@ type turnRuntime struct {
 	// SetAgentPreset change. policySet marks that beginRunTurn derived it.
 	policy    taskpolicy.TaskPolicy
 	policySet bool
+
+	// runSpec is the harness-centric description of this Run, derived from the
+	// turn input and the frozen policy; it carries no execution state.
+	runSpec run.RunSpec
+	// run is the harness-centric lifecycle record of this Agent.Run. The legacy
+	// loop observes it rather than driving on it; harness.Loop takes over in a
+	// later phase.
+	run *run.Run
 
 	// reviewWarnings are warn-level findings to surface in the final summary.
 	reviewWarnings []string

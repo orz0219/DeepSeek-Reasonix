@@ -118,6 +118,50 @@ const (
 	// CompletionSummary reports a content-free end-of-turn quality summary for
 	// role-setting strategies (preset, verdict, check counts, review status).
 	CompletionSummary
+	// RunStarted marks the start of one harness Run (Text = run ID). The
+	// harness execution journal (Run* / Model* / Tool* / Verification* /
+	// Context*) describes the lifecycle of a Run as the harness loop drives
+	// it, distinct from the UI-facing TurnStarted/TurnDone stream.
+	RunStarted
+	// RunCompleted marks a Run that passed verification (Text = run ID).
+	RunCompleted
+	// RunFailed marks a Run that failed (Text = run ID, Detail = reason).
+	RunFailed
+	// RunPaused marks a Run suspended on a budget or host boundary (Text = run
+	// ID, Detail = reason). A paused run is resumable.
+	RunPaused
+	// RunResumed marks a paused Run returning to running (Text = run ID).
+	RunResumed
+	// RunCancelled marks a Run cancelled by the user or host (Text = run ID).
+	RunCancelled
+	// ModelRequested marks the harness asking the model for the next decision
+	// (Text = run ID).
+	ModelRequested
+	// ModelResponded marks a model decision (Text = run ID, Detail = summary).
+	ModelResponded
+	// ToolRequested marks the harness about to hand an action to the executor
+	// (Tool: ID/Name/Args). Precursor of ToolStarted.
+	ToolRequested
+	// ToolStarted marks a tool execution beginning (Tool: ID/Name/Args).
+	ToolStarted
+	// ToolCompleted marks a tool execution finishing successfully (Tool:
+	// ID/Name/Output).
+	ToolCompleted
+	// ToolFailed marks a tool execution failing (Tool: ID/Name, Err).
+	ToolFailed
+	// VerificationStarted marks the Verifier beginning to prove a final claim
+	// (Text = run ID).
+	VerificationStarted
+	// VerificationPassed marks a final claim proven (Text = run ID).
+	VerificationPassed
+	// VerificationFailed marks a final claim disproven (Text = run ID, Detail =
+	// reason). The loop folds the result back into context as an observation.
+	VerificationFailed
+	// ContextUpdated marks context gaining a new observation (Text = run ID).
+	ContextUpdated
+	// ContextCompacted marks a context-compaction pass (Text = run ID, Detail =
+	// trigger).
+	ContextCompacted
 	// KindCount is a sentinel one past the last real Kind. New event kinds must
 	// be inserted above it so completeness tests cover them automatically.
 	KindCount

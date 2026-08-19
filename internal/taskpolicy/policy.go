@@ -1,6 +1,17 @@
 // Package taskpolicy builds the host-side TaskPolicy that freezes planning,
 // verification, review, and natural-language constraints for one turn before
 // the first model request. It never calls a classification model.
+//
+// MIGRATION NOTICE: TaskPolicy is being replaced by harness.Policy. The
+// harness-centric architecture separates:
+//
+//   - Policy (harness.Policy): answers "allowed or not" for each action
+//   - RunSpec (run.RunSpec): describes what to accomplish
+//   - Run (run.Run): the sole execution lifecycle
+//
+// See internal/harness/policy.go for the ConstraintPolicy that adapts
+// run.Constraints into the harness.Policy interface. This package remains
+// for backward compatibility; new code should use run.RunSpec + harness.Policy.
 package taskpolicy
 
 import (

@@ -634,6 +634,23 @@ var kindNames = map[event.Kind]string{
 	event.WorkspaceChanged:        "workspace_changed",
 	event.TurnPhase:               "turn_phase",
 	event.CompletionSummary:       "completion_summary",
+	event.RunStarted:              "run_started",
+	event.RunCompleted:            "run_completed",
+	event.RunFailed:               "run_failed",
+	event.RunPaused:               "run_paused",
+	event.RunResumed:              "run_resumed",
+	event.RunCancelled:            "run_cancelled",
+	event.ModelRequested:          "model_requested",
+	event.ModelResponded:          "model_responded",
+	event.ToolRequested:           "tool_requested",
+	event.ToolStarted:             "tool_started",
+	event.ToolCompleted:           "tool_completed",
+	event.ToolFailed:              "tool_failed",
+	event.VerificationStarted:     "verification_started",
+	event.VerificationPassed:      "verification_passed",
+	event.VerificationFailed:      "verification_failed",
+	event.ContextUpdated:          "context_updated",
+	event.ContextCompacted:        "context_compacted",
 }
 
 // ContextMaintenance is the JSON form of event.ContextMaintenance.

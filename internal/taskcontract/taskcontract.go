@@ -4,6 +4,23 @@
 // criteria, and the evidence ledger's receipts. Building or updating a
 // contract never makes a model call; every termination arbiter reads the
 // same record instead of keeping its own.
+//
+// MIGRATION NOTICE: This package is being replaced by the harness-centric
+// architecture. The new execution model is:
+//
+//	user input → RunSpecBuilder → Run → Harness Loop → Action/Observation → Verification → Event → Projection
+//
+// The Contract's descriptive parts (Goal, Constraints, Verification) are
+// projected into a run.RunSpec via ToRunSpec and BuildRunSpec. The execution
+// state (Requirement.Status, Check.Status, Evidence, epoch) is being replaced
+// by the Harness Loop's Observation and VerificationResult. This package
+// remains as the bridge for the legacy agent loop; new code should use:
+//
+//   - internal/run      for Run, RunSpec, and lifecycle
+//   - internal/harness  for the Loop, Action, Observation, Policy
+//   - internal/verification for the Verifier interface
+//
+// See internal/harness/integration.go for the bridge functions.
 package taskcontract
 
 import (

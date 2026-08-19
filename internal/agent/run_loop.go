@@ -13,6 +13,8 @@ import (
 	"reasonix/internal/evidence"
 	"reasonix/internal/jobs"
 	"reasonix/internal/provider"
+	"reasonix/internal/run"
+	"reasonix/internal/taskcontract"
 	"reasonix/internal/taskintent"
 	"reasonix/internal/taskpolicy"
 	"reasonix/internal/tool"
@@ -204,6 +206,14 @@ func (a *Agent) beginRunTurn(ctx context.Context, input string) (rawInput string
 		})
 	}
 	a.turn.policySet = true
+	// Derive the harness-centric run record from the frozen policy. It is a
+	// projection the legacy loop observes — intent is classified once, no
+	// execution state lives in the spec, and the harness.Loop drives on this
+	// object in a later phase.
+	a.turn.runSpec = taskcontract.BuildRunSpec(a.turn.turnInput)
+	foldPolicyIntoRunSpec(&a.turn.runSpec, a.turn.policy)
+	a.turn.run = run.New(a.turn.runSpec)
+	a.turn.run.Start()
 	// Align legacy delivery gates with the frozen role setting. Delivery always
 	// enables the full readiness contract. Light/Balanced only elevate when the
 	// turn is a mutation that requires forced review or is high-risk.

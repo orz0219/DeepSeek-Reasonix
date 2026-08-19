@@ -11,4 +11,11 @@
 // and the heuristic files carry a hard size budget, so growth is a reviewed
 // decision, never an accretion. When a classification is wrong, prefer
 // fixing it downstream with evidence over teaching this package more words.
+//
+// MIGRATION NOTICE: Intent classification is becoming a one-shot derived
+// value (run.IntentHint) computed by RunSpecBuilder, not a persisted entity.
+// See internal/run/spec.go for the IntentHint type and
+// internal/taskcontract/spec.go for the bridge. This package remains for
+// backward compatibility during the migration; new code should use
+// run.IntentHint directly.
 package taskintent
