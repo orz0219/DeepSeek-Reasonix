@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ShellExpandProvider } from "./lib/shellExpand";
-import { Activity, Command, Download, Search, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
+import { Activity, Download, SquarePen, PanelLeft, PanelRight, FileDown, FileImage, FileText, FileJson, GitBranch, MessageSquare, Settings as SettingsIcon, Pencil, RotateCw, Trash2, Cpu, Palette, Puzzle, TerminalSquare } from "lucide-react";
 import { useToast } from "./lib/toast";
 import { useGoalActionHandler } from "./lib/goalAction";
 import { useWailsResizeFix } from "./lib/useWailsResizeFix";
@@ -47,7 +47,7 @@ import { workspaceTreeVisitId } from "./lib/workspaceTreeMemory";
 import { resolveTaskMonitorSession, taskSessionIDFromPath } from "./lib/taskMonitorNavigation";
 import { composerProfileFromMeta, composerProfileFromTab, composerProfileMode, composerProfileWithMode, controllerComposerProfileCollaborationMode, defaultComposerProfile, displayedComposerProfileCollaborationMode, hydrateComposerProfileFromMeta, hydrateComposerProfilesFromTabs, patchComposerProfile, pruneUserPlanModeIntents, resolvePlanRestoreTabId, shouldRestoreUserPlanModeForProfile, updateUserPlanModeIntent, type ComposerProfile, type ComposerProfileField, type UserPlanModeIntents } from "./lib/composerProfile";
 import { restorableToolApprovalMode, toggleYoloToolApprovalMode, type RestorableToolApprovalMode } from "./lib/toolApprovalMode";
-import { CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH, CREATION_RIGHT_DOCK_TREE_MIN_WIDTH, CREATION_SIDEBAR_MIN_WIDTH, RIGHT_DOCK_MAX_WIDTH, RIGHT_DOCK_MIN_RENDER_WIDTH, RIGHT_DOCK_PREVIEW_DEFAULT_WIDTH, RIGHT_DOCK_PREVIEW_MIN_WIDTH, RIGHT_DOCK_TREE_MAX_WIDTH, RIGHT_DOCK_TREE_MIN_WIDTH, type RightDockMode, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, TERMINAL_DEFAULT_HEIGHT, TERMINAL_MIN_HEIGHT, applyLayoutStyleDefaults, clampCreationRightDockTreeWidth, clampCreationSidebarWidth, clampRightDockPreviewWidth, clampRightDockTreeWidth, clampSidebarWidth, clampTerminalHeight, defaultCreationRightDockTreeWidth, defaultCreationSidebarWidth, defaultRightDockTreeWidth, defaultSidebarWidth, saveRightDockPreviewWidth, saveRightDockTreeWidth, saveSidebarCollapsed, saveSidebarWidth, saveTerminalHeight, saveTerminalPanelOpen, terminalMaxHeight, saveWorkspacePanelOpen, useLayoutStore } from "./store/layout";
+import { RIGHT_DOCK_MAX_WIDTH, RIGHT_DOCK_MIN_RENDER_WIDTH, RIGHT_DOCK_PREVIEW_DEFAULT_WIDTH, RIGHT_DOCK_PREVIEW_MIN_WIDTH, RIGHT_DOCK_TREE_MAX_WIDTH, RIGHT_DOCK_TREE_MIN_WIDTH, type RightDockMode, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, TERMINAL_DEFAULT_HEIGHT, TERMINAL_MIN_HEIGHT, clampRightDockPreviewWidth, clampRightDockTreeWidth, clampSidebarWidth, clampTerminalHeight, defaultRightDockTreeWidth, defaultSidebarWidth, saveRightDockPreviewWidth, saveRightDockTreeWidth, saveSidebarCollapsed, saveSidebarWidth, saveTerminalHeight, saveTerminalPanelOpen, terminalMaxHeight, saveWorkspacePanelOpen, useLayoutStore } from "./store/layout";
 import { useOverlayStore } from "./store/overlays";
 import { hydrateDisplayMode } from "./lib/displayMode";
 import { DEFAULT_STATUS_BAR_ITEMS, normalizeStatusBarItems, type StatusBarItemId } from "./lib/statusBarItems";
@@ -68,7 +68,7 @@ import { continueDelivery } from "./lib/deliveryContinue";
 import { activateGoalAndSubmitOnTab } from "./lib/goalSubmit";
 import logoWordmark from "./assets/logo-wordmark.svg";
 import { CHAT_MIN_WIDTH, CHAT_COMFORT_MIN_WIDTH, WORKSPACE_RESIZER_WIDTH, DesktopPlatform, isMacOSWorkbenchSidebarTitlebar, useWindowsMaximised, WindowsWindowControls, normalizeDesktopPlatform, browserPlatformOverride } from "./app_window";
-import { DecisionSurfaceKind, TERMINAL_CLOSE_TRANSITION_MS, noticePreviewMockEnabled, runtimeProfileShortKey, NoticePreviewPanel, stripLegacyGoalBudgetFlags, hasLegacyGoalBudgetFlag, isThemeMode, DesktopLayoutStyle, normalizeDesktopLayoutStyle, SHOW_CONTEXT_DOCK, WorkspaceInsertTarget, HistoryViewState, DesktopNavigationIntent, DesktopNavigationInput, PendingDesktopNavigationRequest, loadDismissedTodoKeys, saveDismissedTodoKeys, GUIDANCE_QUEUE_MOCK_ITEMS, browserMockScenarioParam, isGuidanceMockScenario, detectBrowserPlatform, tabWorkspaceTitle, topicTitle, topicDisplayTitle, sessionsForScope, isMissingSessionError, workspaceDisplayName, sessionItemsToMarkdown, sessionItemsToJson, safeFilename, ShellHotkeys, TextSizeHotkeys } from "./app_helpers";
+import { DecisionSurfaceKind, TERMINAL_CLOSE_TRANSITION_MS, noticePreviewMockEnabled, runtimeProfileShortKey, NoticePreviewPanel, stripLegacyGoalBudgetFlags, hasLegacyGoalBudgetFlag, isThemeMode, SHOW_CONTEXT_DOCK, WorkspaceInsertTarget, HistoryViewState, DesktopNavigationIntent, DesktopNavigationInput, PendingDesktopNavigationRequest, loadDismissedTodoKeys, saveDismissedTodoKeys, GUIDANCE_QUEUE_MOCK_ITEMS, browserMockScenarioParam, isGuidanceMockScenario, detectBrowserPlatform, tabWorkspaceTitle, topicTitle, topicDisplayTitle, sessionsForScope, isMissingSessionError, workspaceDisplayName, sessionItemsToMarkdown, sessionItemsToJson, safeFilename, ShellHotkeys, TextSizeHotkeys } from "./app_helpers";
 // Hold reasoning UI until the authoritative desktop startup settings arrive;
 // this prevents a hidden preference from flashing content during first paint.
 setReasoningFoldBehaviorPending();
@@ -103,8 +103,7 @@ export default function App() {
     const setSettingsTarget = useOverlayStore((s) => s.setSettingsTarget);
     const settingsFocus = useOverlayStore((s) => s.settingsFocus);
     const setSettingsFocus = useOverlayStore((s) => s.setSettingsFocus);
-    const [desktopLayoutStyle, setDesktopLayoutStyle] = useState<DesktopLayoutStyle>("workbench");
-    const singleSurfaceLayout = desktopLayoutStyle === "workbench" || desktopLayoutStyle === "creation";
+    const singleSurfaceLayout = true;
     const { configLoadWarnings, applySnapshot: applyConfigWarningSnapshot, reload: reloadConfigWarnings, dismiss: dismissConfigWarnings } = useConfigLoadWarnings();
     const [histView, setHistView] = useState<HistoryViewState | null>(null);
     const paletteOpen = useOverlayStore((s) => s.paletteOpen);
@@ -235,10 +234,8 @@ export default function App() {
     const [topicTitleDraft, setTopicTitleDraft] = useState("");
     const topicExportOpen = useOverlayStore((s) => s.topicExportOpen);
     const setTopicExportOpen = useOverlayStore((s) => s.setTopicExportOpen);
-    const sidebarSearchOpen = useOverlayStore((s) => s.sidebarSearchOpen);
     const setSidebarSearchOpen = useOverlayStore((s) => s.setSidebarSearchOpen);
     const sidebarSearchFocusSignal = useOverlayStore((s) => s.sidebarSearchFocusSignal);
-    const setSidebarSearchFocusSignal = useOverlayStore((s) => s.setSidebarSearchFocusSignal);
     const [sidebarTogglePressed, setSidebarTogglePressed] = useState(false);
     const [workspaceTogglePressed, setWorkspaceTogglePressed] = useState(false);
     const [clearContextPending, setClearContextPending] = useState(false);
@@ -392,7 +389,7 @@ export default function App() {
             cancelled = true;
         };
     }, []);
-    const applyDesktopPreferences = useCallback((settings: Pick<SettingsView, "desktopTheme" | "desktopThemeStyle" | "desktopTerminalTheme" | "desktopLayoutStyle" | "desktopLanguage" | "statusBarStyle" | "statusBarItems" | "conversationWidth"> & {
+    const applyDesktopPreferences = useCallback((settings: Pick<SettingsView, "desktopTheme" | "desktopThemeStyle" | "desktopTerminalTheme" | "desktopLanguage" | "statusBarStyle" | "statusBarItems" | "conversationWidth"> & {
         reasoningDisplayMode?: string;
         reasoningDisplayModeExplicit?: boolean;
     }) => {
@@ -401,9 +398,6 @@ export default function App() {
         applyConfiguredBaseAppearance(nextTheme, nextStyle);
         applyTerminalThemePreference(settings.desktopTerminalTheme);
         applyConversationWidth(settings.conversationWidth);
-        const nextLayoutStyle = normalizeDesktopLayoutStyle(settings.desktopLayoutStyle);
-        setDesktopLayoutStyle(nextLayoutStyle);
-        applyLayoutStyleDefaults(nextLayoutStyle);
         setLocalePref(normalizeLangPref(settings.desktopLanguage));
         setStatusBarStyle(settings.statusBarStyle === "text" ? "text" : "icon");
         setStatusBarItems(normalizeStatusBarItems(settings.statusBarItems));
@@ -505,11 +499,9 @@ export default function App() {
     }, []);
     const rightDockDetailActive = rightDockMode !== "context" && workspacePreviewActive;
     const preferredWorkspacePanelWidth = rightDockDetailActive ? rightDockPreviewWidth : rightDockTreeWidth;
-    const rightDockTreeMinWidth = desktopLayoutStyle === "creation" ? CREATION_RIGHT_DOCK_TREE_MIN_WIDTH : RIGHT_DOCK_TREE_MIN_WIDTH;
-    const rightDockTreeWidthClamp = desktopLayoutStyle === "creation" ? clampCreationRightDockTreeWidth : clampRightDockTreeWidth;
-    const rightDockMinRenderWidth = desktopLayoutStyle === "creation" && !rightDockDetailActive
-        ? CREATION_RIGHT_DOCK_MIN_RENDER_WIDTH
-        : RIGHT_DOCK_MIN_RENDER_WIDTH;
+    const rightDockTreeMinWidth = RIGHT_DOCK_TREE_MIN_WIDTH;
+    const rightDockTreeWidthClamp = clampRightDockTreeWidth;
+    const rightDockMinRenderWidth = RIGHT_DOCK_MIN_RENDER_WIDTH;
     const workspacePanelMinWidth = rightDockDetailActive ? RIGHT_DOCK_PREVIEW_MIN_WIDTH : rightDockTreeMinWidth;
     const chatReservedWidth = workspacePanelOpen && !workspacePanelMaximized ? CHAT_COMFORT_MIN_WIDTH : CHAT_MIN_WIDTH;
     const workspacePanelAvailableWidth = availableWorkspacePanelWidth({
@@ -1499,37 +1491,21 @@ export default function App() {
         setSidebarCollapsed(nextCollapsed);
         saveSidebarCollapsed(nextCollapsed);
     }, [anchorAppScrollToChat, closeTransientOverlays, pulseSidebarToggle, sidebarCollapsed]);
-    const sidebarWidthClamp = desktopLayoutStyle === "creation" ? clampCreationSidebarWidth : clampSidebarWidth;
+    const sidebarWidthClamp = clampSidebarWidth;
     const sidebarRenderWidth = liveSidebarWidth ?? sidebarWidth;
-    const sidebarResizeMinWidth = desktopLayoutStyle === "creation" ? CREATION_SIDEBAR_MIN_WIDTH : SIDEBAR_MIN_WIDTH;
+    const sidebarResizeMinWidth = SIDEBAR_MIN_WIDTH;
     useEffect(() => {
-        if (desktopLayoutStyle === "creation" || sidebarWidth >= SIDEBAR_MIN_WIDTH)
+        if (sidebarWidth >= SIDEBAR_MIN_WIDTH)
             return;
         setSidebarWidth(SIDEBAR_MIN_WIDTH);
         saveSidebarWidth(SIDEBAR_MIN_WIDTH);
-    }, [desktopLayoutStyle, sidebarWidth]);
+    }, [sidebarWidth]);
     useEffect(() => {
-        if (desktopLayoutStyle === "creation") {
-            if (rightDockTreeWidth >= CREATION_RIGHT_DOCK_TREE_MIN_WIDTH)
-                return;
-            setRightDockTreeWidth(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH);
-            saveRightDockTreeWidth(CREATION_RIGHT_DOCK_TREE_MIN_WIDTH);
-            return;
-        }
         if (rightDockTreeWidth >= RIGHT_DOCK_TREE_MIN_WIDTH)
             return;
         setRightDockTreeWidth(RIGHT_DOCK_TREE_MIN_WIDTH);
         saveRightDockTreeWidth(RIGHT_DOCK_TREE_MIN_WIDTH);
-    }, [desktopLayoutStyle, rightDockTreeWidth]);
-    // Creation no longer exposes the overview tab. If a previous session left
-    // rightDockMode on "context", coerce it to files so 文件 stays selected.
-    useEffect(() => {
-        if (desktopLayoutStyle !== "creation")
-            return;
-        if (rightDockMode !== "context")
-            return;
-        setRightDockMode("files");
-    }, [desktopLayoutStyle, rightDockMode, setRightDockMode]);
+    }, [rightDockTreeWidth]);
     const setExpandedSidebarWidth = useCallback((width: number) => {
         closeTransientOverlays();
         const next = sidebarWidthClamp(width);
@@ -1778,14 +1754,8 @@ export default function App() {
             closeWorkspacePanel();
             return;
         }
-        // Creation hides the overview tab; never reopen into the invisible "context"
-        // mode or neither 文件/改动 will show an active selection.
-        if (desktopLayoutStyle === "creation") {
-            openWorkspacePanel(rightDockMode === "changed" ? "changed" : "files");
-            return;
-        }
         openWorkspacePanel("context");
-    }, [closeWorkspacePanel, desktopLayoutStyle, openWorkspacePanel, pulseWorkspaceToggle, rightDockMode, workspacePanelRenderable]);
+    }, [closeWorkspacePanel, openWorkspacePanel, pulseWorkspaceToggle, rightDockMode, workspacePanelRenderable]);
     const openRightDockMode = useCallback((mode: RightDockMode) => {
         openWorkspacePanel(mode);
     }, [openWorkspacePanel]);
@@ -2118,12 +2088,6 @@ export default function App() {
         state.items.length === 0 &&
         state.hydratePlaceholderItems?.length);
     const transcriptHydrating = state.hydrating && !state.hydrateHistoryLoaded;
-    // Creation hero only after history hydration settles on a truly empty session.
-    // Avoid flash while switching tabs: items may be empty while placeholders show.
-    const creationEmptyHero = desktopLayoutStyle === "creation" &&
-        !sessionHasContent &&
-        !transcriptHydrating &&
-        !hydratePlaceholderActive;
     const transcriptItems = hydratePlaceholderActive ? state.hydratePlaceholderItems! : state.items;
     // Display items: backend history is authoritative after immediate commit.
     // rewindState only drives the undo banner, not optimistic truncation.
@@ -2784,26 +2748,21 @@ export default function App() {
     const sidebarToggleTitle = sidebarCollapsed
         ? t("sidebar.expand")
         : t("sidebar.collapse");
-    const sidebarNavTooltipDisabled = !sidebarCollapsed;
     const browserPreviewChrome = typeof window !== "undefined" && !window.runtime;
     const browserMockScenario = browserPreviewChrome ? browserMockScenarioParam() : "";
     const guidanceQueueMockItems = isGuidanceMockScenario(browserMockScenario) ? GUIDANCE_QUEUE_MOCK_ITEMS : undefined;
     const workspacePanelResetWidth = rightDockDetailActive
         ? RIGHT_DOCK_PREVIEW_DEFAULT_WIDTH
-        : desktopLayoutStyle === "creation"
-            ? defaultCreationRightDockTreeWidth()
-            : defaultRightDockTreeWidth();
+        : defaultRightDockTreeWidth();
     const workspacePanelResizeMinWidth = workspacePanelAriaMinWidth(workspacePanelMinWidth, workspacePanelRenderWidth);
     const workspacePanelMaxWidth = rightDockDetailActive ? RIGHT_DOCK_MAX_WIDTH : RIGHT_DOCK_TREE_MAX_WIDTH;
-    const sidebarCreation = desktopLayoutStyle === "creation";
     const topicbarTitle = topicDisplayTitle(activeTab);
     const topicbarWorkspaceLabel = activeTab ? tabWorkspaceTitle(activeTab) : "";
     const topicbarWorkspacePath = activeTab?.scope === "project" ? activeTab.workspaceRoot || state.meta?.cwd : "";
-    const topicbarSubtitleVisible = !sidebarCreation && Boolean(topicbarWorkspaceLabel);
+    const topicbarSubtitleVisible = Boolean(topicbarWorkspaceLabel);
     const topicbarSubtitleTitle = [topicbarWorkspacePath || topicbarWorkspaceLabel].filter(Boolean).join(" · ");
     const topicbarCanRename = Boolean(activeTab?.topicId);
-    const topicbarTitleEditSize = Math.min(56, Math.max(4, topicTitleDraft.length || topicbarTitle.length || 1));
-    const sidebarWorkbench = desktopLayoutStyle === "workbench";
+    const sidebarWorkbench = true;
     // The Wails drag runtime ignores anything with detail !== 1, so a double click
     // on a --wails-draggable region never reaches the OS. Both platforms that hide
     // their native title bar need this handled here.
@@ -2823,14 +2782,12 @@ export default function App() {
             .then(() => window.setTimeout(syncMainWindowMaximised, 80))
             .catch(() => undefined);
     }, [chromeDoubleClickZooms, desktopPlatform, syncMainWindowMaximised]);
-    // Creation keeps the classic sidebar/chat structure while gating chrome tweaks
-    // behind its own style flag so classic/workbench remain unchanged.
-    const appChromeHidden = sidebarWorkbench || sidebarCreation;
-    const workbenchChromeHidden = sidebarWorkbench;
+    const appChromeHidden = true;
+    const workbenchChromeHidden = true;
     const sidebarClassName = [
         "sidebar",
         sidebarCollapsed ? "sidebar--collapsed" : "",
-        sidebarWorkbench ? "sidebar--workbench" : "",
+        "sidebar--workbench",
     ].filter(Boolean).join(" ");
     return (<ShellExpandProvider>
     <ShellHotkeys />
@@ -2840,16 +2797,13 @@ export default function App() {
             `app--${desktopPlatform}`,
             windowsFramelessChrome ? "app--windows-frameless" : "",
             browserPreviewChrome ? "app--browser-preview" : "",
-            sidebarWorkbench ? "app--workbench" : "",
-            sidebarCreation ? "app--creation" : "",
-            !sidebarWorkbench && !sidebarCreation ? "app--classic" : "",
+            "app--workbench",
         ].filter(Boolean).join(" ")}>
       <ThemeBackground />
       <div ref={layoutRef} className={[
             "layout",
-            sidebarWorkbench ? "layout--workbench" : "",
+            "layout--workbench",
             workbenchChromeHidden ? "layout--workbench-chrome-hidden" : "",
-            sidebarCreation ? "layout--creation-chrome-hidden" : "",
             sidebarCollapsed ? "layout--sidebar-collapsed" : "",
             sidebarResizing ? "layout--resizing layout--sidebar-resizing" : "",
             workspacePanelGridOpen ? "layout--workspace-open" : "",
@@ -2867,8 +2821,7 @@ export default function App() {
         </a>
 
         <aside className={sidebarClassName} aria-label={t("sidebar.navigation")}>
-          {sidebarWorkbench ? (<>
-              <div className="sidebar__head" aria-hidden={sidebarCollapsed}>
+          <div className="sidebar__head" aria-hidden={sidebarCollapsed}>
                 <div className="sidebar__brand sidebar__brand--workbench">
                   <img src={logoWordmark} alt="Reasonix" className="sidebar__brand-logo sidebar__brand-logo--workbench" draggable={false}/>
                 </div>
@@ -2882,39 +2835,14 @@ export default function App() {
                   <span>{t("topbar.newSession")}</span>
                 </button>
               </div>
-            </>) : (<>
-              <div className="sidebar__brand" aria-hidden={sidebarCollapsed}>
-                <img src={logoWordmark} alt="Reasonix" className="sidebar__brand-logo" draggable={false}/>
-              </div>
-
-              <button className="sidebar__new" onClick={() => {
-                void handleNewTab();
-            }}>
-                <SquarePen size={18}/>
-                <span>{sidebarCreation ? t("creation.sidebar.newChat") : t("topbar.newSession")}</span>
-              </button>
-            </>)}
-
-          {sidebarCreation && (<section className="sidebar-feature-zone" aria-label={t("settings.title")}>
-              <div className="sidebar-feature-zone__title">{t("creation.sidebar.features")}</div>
-              <div className="sidebar-feature-zone__items">
-                <button className="sidebar-feature-zone__item" type="button" onClick={() => {
-                closeTransientOverlays();
-                setSettingsTarget("skills");
-            }}>
-                  <Command size={14} aria-hidden="true"/>
-                  <span>{t("creation.sidebar.skills")}</span>
-                </button>
-              </div>
-            </section>)}
 
           <section className="sidebar__section sidebar__section--projects">
             <ProjectTree activeScope={activeTab?.scope} activeWorkspaceRoot={activeTab?.workspaceRoot} activeTopicId={activeTab?.topicId} activeSessionPath={activeTab?.sessionPath} onOpenTopic={handleOpenTopic} onCreateTopic={(scope, workspaceRoot) => openBlankSession(scope, scope === "project" ? workspaceRoot : "")} onCreateDeliveryWorktree={(workspaceRoot) => enqueueNavigation({ kind: "delivery-worktree", workspaceRoot })} onTopicsChanged={refreshProjectsAndTabs} onRenameTopic={renameTopic} refreshSignal={projectRevision} onAddProject={async () => {
             await switchFolder();
-        }} timeFilter={topicTimeFilter} onTimeFilterChange={setTopicTimeFilter} variant={sidebarWorkbench ? "workbench" : sidebarCreation ? "creation" : "classic"} searchExpanded={!sidebarCreation || sidebarSearchOpen} searchFocusSignal={sidebarSearchFocusSignal} showShortcutBadges={showTopicBadges} shortcutPlatform={desktopPlatform} onVisibleTopicsChange={handleVisibleTopicsChange}/>
+        }} timeFilter={topicTimeFilter} onTimeFilterChange={setTopicTimeFilter} variant="workbench" searchFocusSignal={sidebarSearchFocusSignal} showShortcutBadges={showTopicBadges} shortcutPlatform={desktopPlatform} onVisibleTopicsChange={handleVisibleTopicsChange}/>
           </section>
 
-          {sidebarWorkbench ? (<nav className="sidebar__nav sidebar__nav--footer">
+          <nav className="sidebar__nav sidebar__nav--footer">
               <div className="sidebar__utility-row" aria-label={t("sidebar.utilityActions")}>
                 <Tooltip label={t("sidebar.trash")} fill side="top">
                   <button className="sidebar__utility-button" type="button" onClick={() => void openTrash()}>
@@ -2932,40 +2860,12 @@ export default function App() {
                   </button>
                 </Tooltip>
               </div>
-            </nav>) : (<nav className="sidebar__nav">
-              {sidebarCreation && (<Tooltip label={t("projectTree.searchPlaceholder")} fill side="right" disabled={sidebarNavTooltipDisabled}>
-                  <button className={`sidebar__navitem sidebar__navitem--search${sidebarSearchOpen ? " sidebar__navitem--active" : ""}`} type="button" aria-label={t("projectTree.searchPlaceholder")} aria-pressed={sidebarSearchOpen} onClick={() => {
-                    setSidebarSearchOpen((open) => !open);
-                    setSidebarSearchFocusSignal((signal) => signal + 1);
-                }}>
-                    <Search size={15}/>
-                    <span>{t("tabBar.commandSearchCompact")}</span>
-                  </button>
-                </Tooltip>)}
-              <Tooltip label={t("sidebar.trash")} fill side="right" disabled={sidebarNavTooltipDisabled}>
-                <button className="sidebar__navitem" onClick={() => void openTrash()}>
-                  <Trash2 size={15}/>
-                  <span>{t("sidebar.trash")}</span>
-                </button>
-              </Tooltip>
-              <Tooltip label={t("topbar.settings")} fill side="right" disabled={sidebarNavTooltipDisabled}>
-                <button className="sidebar__navitem" onClick={() => {
-                closeTransientOverlays();
-                setSettingsTarget("general");
-            }}>
-                  <SettingsIcon size={15}/>
-                  <span>{t("topbar.settings")}</span>
-                </button>
-              </Tooltip>
-            </nav>)}
+            </nav>
 
         </aside>
-        <button className="sidebar-resizer" type="button" role="separator" aria-orientation="vertical" aria-label={t("sidebar.resize")} aria-valuemin={sidebarResizeMinWidth} aria-valuemax={SIDEBAR_MAX_WIDTH} aria-valuenow={sidebarRenderWidth} onPointerDown={startSidebarResize} onKeyDown={resizeSidebarWithKeyboard} onDoubleClick={() => setExpandedSidebarWidth(desktopLayoutStyle === "creation" ? defaultCreationSidebarWidth() : defaultSidebarWidth())}/>
-        {sidebarCreation && (<button className={`sidebar-collapse-toggle${sidebarCollapsed ? " sidebar-collapse-toggle--collapsed" : ""}${sidebarTogglePressed ? " sidebar-collapse-toggle--pressed" : ""}`} type="button" onClick={toggleSidebar} aria-label={sidebarToggleTitle} aria-pressed={!sidebarCollapsed} title={sidebarToggleTitle}>
-            {sidebarCollapsed ? <PanelRight size={14}/> : <PanelLeft size={14}/>}
-          </button>)}
+        <button className="sidebar-resizer" type="button" role="separator" aria-orientation="vertical" aria-label={t("sidebar.resize")} aria-valuemin={sidebarResizeMinWidth} aria-valuemax={SIDEBAR_MAX_WIDTH} aria-valuenow={sidebarRenderWidth} onPointerDown={startSidebarResize} onKeyDown={resizeSidebarWithKeyboard} onDoubleClick={() => setExpandedSidebarWidth(defaultSidebarWidth())}/>
 
-        <section className={`chat-pane${creationEmptyHero ? " chat-pane--creation-empty" : ""}`}>
+        <section className="chat-pane">
           <>
           <header className="topicbar">
             {workbenchChromeHidden && (<Tooltip label={sidebarToggleTitle}>
@@ -2980,7 +2880,7 @@ export default function App() {
             <div className="topicbar__identity">
               <div className="topicbar__title-row">
                 {topicbarEditing ? (<div className="topicbar__title-edit">
-                    <input autoFocus className="topicbar__title-input" aria-label={t("topicBar.renameSession")} size={sidebarCreation ? topicbarTitleEditSize : undefined} value={topicTitleDraft} onChange={(event) => setTopicTitleDraft(event.target.value)} onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                    <input autoFocus className="topicbar__title-input" aria-label={t("topicBar.renameSession")} value={topicTitleDraft} onChange={(event) => setTopicTitleDraft(event.target.value)} onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
                 if (event.key === "Enter") {
                     event.preventDefault();
                     void commitActiveTopicRename();
@@ -2990,16 +2890,12 @@ export default function App() {
                     cancelActiveTopicRename();
                 }
             }} onBlur={() => void commitActiveTopicRename()}/>
-                  </div>) : sidebarCreation && topicbarCanRename ? (<h1 title={topicTitle(activeTab)}>
-                    <button className="topicbar__title-button" type="button" onClick={startActiveTopicRename} aria-label={t("topicBar.renameSession")}>
-                      {topicbarTitle}
-                    </button>
-                  </h1>) : (<h1 title={topicTitle(activeTab)}>{topicbarTitle}</h1>)}
-                {!sidebarCreation && (<Tooltip label={t("topicBar.renameSession")}>
+                  </div>) : (<h1 title={topicTitle(activeTab)}>{topicbarTitle}</h1>)}
+                <Tooltip label={t("topicBar.renameSession")}>
                     <button className="topicbar__icon-btn" type="button" disabled={!topicbarCanRename || topicbarEditing} onClick={startActiveTopicRename} aria-label={t("topicBar.renameSession")}>
                       <Pencil size={14}/>
                     </button>
-                  </Tooltip>)}
+                  </Tooltip>
               </div>
               {topicbarSubtitleVisible && (<div className="topicbar__subtitle" title={topicbarSubtitleTitle}>
                   {topicbarWorkspaceLabel && <span>{topicbarWorkspaceLabel}</span>}
@@ -3008,7 +2904,6 @@ export default function App() {
             </div>
             <div className="topicbar__spacer"/>
             <div className="topicbar__actions">
-              {sidebarCreation && shouldMountExternalOpener(activeTab) && activeTab && (<ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal}/>)}
               <>
               <Tooltip label={t("topicBar.copyAll")}>
                 <CopyButton getText={getSessionMarkdown} label={t("topicBar.copyAll")} className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility" showInlineLabel={false}/>
@@ -3039,24 +2934,24 @@ export default function App() {
                   </div>)}
               </div>
               </>
-              {!sidebarCreation && (<Tooltip label={t("workspace.changedTab")}>
+              <Tooltip label={t("workspace.changedTab")}>
                   <button className="topicbar__action-btn topicbar__action-btn--label" type="button" aria-label={t("workspace.changedTab")} aria-pressed={workspacePanelRenderable && rightDockMode === "changed"} onClick={() => openRightDockMode("changed")}>
                     <GitBranch size={14}/>
                     <span>{t("workspace.changedTab")}</span>
                   </button>
-                </Tooltip>)}
+                </Tooltip>
               <Tooltip label={t("rightDock.terminal")}>
                   <button className="topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility" type="button" aria-label={t("rightDock.terminal")} aria-pressed={terminalPanelOpen} onClick={toggleTerminalPanel}>
                     <TerminalSquare size={14}/>
                   </button>
                 </Tooltip>
-              {!sidebarCreation && shouldMountExternalOpener(activeTab) && activeTab && (<ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal}/>)}
+              {shouldMountExternalOpener(activeTab) && activeTab && (<ExternalOpener key={activeTab.id} tabId={activeTab.id} dismissSignal={transientOverlayDismissSignal}/>)}
               <Tooltip label={t("summary.session")}>
                 <button className={`topicbar__action-btn topicbar__action-btn--icon topicbar__action-btn--utility${tasksOpen ? " topicbar__action-btn--active" : ""}`} type="button" aria-label={t("summary.session")} aria-expanded={Boolean(tasksOpen)} onClick={() => setTasksOpen((open) => open ? false : "session")}>
                   <Activity size={14}/>
                 </button>
               </Tooltip>
-              {(sidebarCreation || workbenchChromeHidden) && (<Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
+              {workbenchChromeHidden && (<Tooltip label={workspacePanelRenderable ? t("rightDock.collapse") : t("rightDock.expand")}>
                   <button className={[
                 "topicbar__chrome-btn",
                 "topicbar__chrome-btn--workspace",
@@ -3115,12 +3010,12 @@ export default function App() {
           <main className="main">
             {noticePreviewMockEnabled() ? (<NoticePreviewPanel />) : (<>
                 <Transcript items={displayItems} live={state.live} liveStore={liveStore} tabId={activeTabId} footerHeight={footerHeight} onPrompt={handleTranscriptPrompt} onDeliveryContinue={() => void handleDeliveryContinue()} onDeliveryWaive={() => { setWaivedTodoKey(todoKey); if (activeTabIdRef.current && controllerReady)
-            void waiveDeliveryToTab(activeTabIdRef.current, `${t("notice.deliveryWaivePrompt")}\n${todos.map((td) => `- ${td.content} [${td.status}]`).join("\n")}`); }} onOpenChanges={() => openRightDockMode("changed")} onEditPrompt={handleEditPrompt} onRewind={handleMessageAction} checkpoints={state.checkpoints} actionPending={state.messageAction != null} rewindDisabled={Boolean(activeTab?.readOnly) || !controllerReady || hydratePlaceholderActive || rewindState != null || rewindCommitting || state.running || state.messageAction != null || state.approval != null || state.ask != null || clearContextPending} running={state.running || rewindCommitting} turnStartAt={state.turnStartAt} welcomeVariant={sidebarCreation ? "creation" : "default"} creationMode={sidebarCreation} actionHoverMenus={sidebarCreation && !hydratePlaceholderActive} rewindSignal={rewindSignal} revealSignal={transcriptRevealSignal} hydrating={transcriptHydrating} hasOlderHistory={state.historyHasOlder && !rewindState} olderHistoryCount={state.historyStartTurn} loadingOlderHistory={state.historyOlderLoading} onLoadOlderHistory={() => activeTabId && loadOlderHistory(activeTabId)} invocationMetadata={activeTabId ? invocationMetadataByTab[activeTabId] : undefined}/>
+            void waiveDeliveryToTab(activeTabIdRef.current, `${t("notice.deliveryWaivePrompt")}\n${todos.map((td) => `- ${td.content} [${td.status}]`).join("\n")}`); }} onOpenChanges={() => openRightDockMode("changed")} onEditPrompt={handleEditPrompt} onRewind={handleMessageAction} checkpoints={state.checkpoints} actionPending={state.messageAction != null} rewindDisabled={Boolean(activeTab?.readOnly) || !controllerReady || hydratePlaceholderActive || rewindState != null || rewindCommitting || state.running || state.messageAction != null || state.approval != null || state.ask != null || clearContextPending} running={state.running || rewindCommitting} turnStartAt={state.turnStartAt} welcomeVariant="default" creationMode={false} actionHoverMenus={false} rewindSignal={rewindSignal} revealSignal={transcriptRevealSignal} hydrating={transcriptHydrating} hasOlderHistory={state.historyHasOlder && !rewindState} olderHistoryCount={state.historyStartTurn} loadingOlderHistory={state.historyOlderLoading} onLoadOlderHistory={() => activeTabId && loadOlderHistory(activeTabId)} invocationMetadata={activeTabId ? invocationMetadataByTab[activeTabId] : undefined}/>
                 {state.hydrateError ? <div className="history-load-error" role="alert"><span>{state.hydrateError}</span><button type="button" className="btn btn--small" onClick={() => void retrySessionHistory(activeTabId)}>{t("common.retry")}</button></div> : null}
               </>)}
           </main>
 
-          <footer className={["footer", terminalPanelOpen && !sidebarCreation ? "footer--compact" : "", decisionSurface ? "footer--decision" : ""].filter(Boolean).join(" ")} ref={footerRef}>
+          <footer className={["footer", terminalPanelOpen ? "footer--compact" : "", decisionSurface ? "footer--decision" : ""].filter(Boolean).join(" ")} ref={footerRef}>
             {showTodos && (<TodoPanel key={scopedTodoBatch} stateKey={scopedTodoBatch} todos={todos} onDismiss={dismissTodos} finished={waivedTodoKey === todoKey} signedSteps={signedSteps}/>)}
             {rewindState && (<Suspense fallback={null}><UndoRewindBanner meta={{
                     turns: rewindState.turnDiff,
@@ -3234,10 +3129,8 @@ export default function App() {
             <div className={[
                 "composer-decision-host",
                 decisionSurface ? "composer-decision-host--hidden" : "",
-                creationEmptyHero ? "composer-decision-host--creation-hero" : "",
             ].filter(Boolean).join(" ")} hidden={Boolean(decisionSurface) || undefined} inert={decisionSurface ? true : undefined} aria-hidden={decisionSurface ? true : undefined}>
-            {creationEmptyHero && (<h2 className="welcome-creation__headline">{t("welcome.creation.title")}</h2>)}
-            <Composer running={state.running || rewindCommitting} collaborationMode={collaborationMode} toolApprovalMode={toolApprovalMode} tokenMode={tokenMode} turnPhase={state.turnPhase} goal={goal} goalStatus={state.meta?.goalStatus} goalRuntime={state.meta?.goalRuntime} cwd={state.meta?.cwd} modelLabel={state.meta?.label ?? t("status.connecting")} imageInputEnabled={state.meta?.imageInputEnabled !== false} tabId={activeTabId} effort={state.effort} onSend={handleSend} onInvocationMetadataChange={handleInvocationMetadataChange} onSteer={handleSteer} onCancel={cancel} onCycleMode={cycleMode} onSetMode={applyMode} onSetCollaborationMode={setCollaborationModeFromUi} onSetToolApprovalMode={applyToolApprovalMode} onToggleYoloApprovalMode={toggleYoloApprovalMode} onClearGoal={clearGoalFromUi} onPauseGoal={pauseGoalFromUi} onResumeGoal={resumeGoalFromUi} onSwitchModel={switchModelFromUi} onSetEffort={setEffort} onSetTokenMode={applyTokenMode} insertRequest={composerInsertRequest} selectedTextRequest={selectedTextRequest} readOnly={Boolean(activeTab?.readOnly)} disabled={runtimeTransitioning || rewindCommitting || state.messageAction != null || Boolean(decisionSurface)} submitDisabled={!controllerReady} decisionPending={rewindCommitting || state.messageAction != null || Boolean(decisionSurface)} ready={controllerReady} turnStartAt={state.turnStartAt} turnWaitAccumMs={state.turnWaitAccumMs} promptWaitStartedAt={state.promptWaitStartedAt} turnTokens={state.turnTokens} turnOutputTokens={state.turnOutputTokens} turnOutputCharsAtUsage={state.turnOutputCharsAtUsage} turnModelActiveAt={state.turnModelActiveAt} turnModelActiveMs={state.turnModelActiveMs} liveStore={liveStore} turnArgChars={state.turnArgChars} retry={state.retry} suspendedByDecision={Boolean(decisionSurface)} transientDismissSignal={transientOverlayDismissSignal} sessionKey={composerSessionKey} workspaceScopeKey={workspaceScopeKey} fileRefRefreshKey={composerFileRefRefreshKey} guidanceConsumedKey={latestGuidanceConsumed?.key} guidanceConsumedText={latestGuidanceConsumed?.text} guidanceQueuePreviewItems={guidanceQueueMockItems} showContextWindowRing={sidebarCreation} heroMode={creationEmptyHero} context={state.context} turnCost={state.turnCost} currency={state.sessionCurrency} cacheHitTokens={state.usage?.cacheHitTokens} cacheMissTokens={state.usage?.cacheMissTokens} balance={state.balance}/>
+            <Composer running={state.running || rewindCommitting} collaborationMode={collaborationMode} toolApprovalMode={toolApprovalMode} tokenMode={tokenMode} turnPhase={state.turnPhase} goal={goal} goalStatus={state.meta?.goalStatus} goalRuntime={state.meta?.goalRuntime} cwd={state.meta?.cwd} modelLabel={state.meta?.label ?? t("status.connecting")} imageInputEnabled={state.meta?.imageInputEnabled !== false} tabId={activeTabId} effort={state.effort} onSend={handleSend} onInvocationMetadataChange={handleInvocationMetadataChange} onSteer={handleSteer} onCancel={cancel} onCycleMode={cycleMode} onSetMode={applyMode} onSetCollaborationMode={setCollaborationModeFromUi} onSetToolApprovalMode={applyToolApprovalMode} onToggleYoloApprovalMode={toggleYoloApprovalMode} onClearGoal={clearGoalFromUi} onPauseGoal={pauseGoalFromUi} onResumeGoal={resumeGoalFromUi} onSwitchModel={switchModelFromUi} onSetEffort={setEffort} onSetTokenMode={applyTokenMode} insertRequest={composerInsertRequest} selectedTextRequest={selectedTextRequest} readOnly={Boolean(activeTab?.readOnly)} disabled={runtimeTransitioning || rewindCommitting || state.messageAction != null || Boolean(decisionSurface)} submitDisabled={!controllerReady} decisionPending={rewindCommitting || state.messageAction != null || Boolean(decisionSurface)} ready={controllerReady} turnStartAt={state.turnStartAt} turnWaitAccumMs={state.turnWaitAccumMs} promptWaitStartedAt={state.promptWaitStartedAt} turnTokens={state.turnTokens} turnOutputTokens={state.turnOutputTokens} turnOutputCharsAtUsage={state.turnOutputCharsAtUsage} turnModelActiveAt={state.turnModelActiveAt} turnModelActiveMs={state.turnModelActiveMs} liveStore={liveStore} turnArgChars={state.turnArgChars} retry={state.retry} suspendedByDecision={Boolean(decisionSurface)} transientDismissSignal={transientOverlayDismissSignal} sessionKey={composerSessionKey} workspaceScopeKey={workspaceScopeKey} fileRefRefreshKey={composerFileRefRefreshKey} guidanceConsumedKey={latestGuidanceConsumed?.key} guidanceConsumedText={latestGuidanceConsumed?.text} guidanceQueuePreviewItems={guidanceQueueMockItems} showContextWindowRing={false} heroMode={false} context={state.context} turnCost={state.turnCost} currency={state.sessionCurrency} cacheHitTokens={state.usage?.cacheHitTokens} cacheMissTokens={state.usage?.cacheMissTokens} balance={state.balance}/>
             </div>
           </footer>
           </>
@@ -3251,7 +3144,7 @@ export default function App() {
             ].join(" ")} aria-label={t("rightDock.workbench")}>
             <div className="workbench-dock__tools">
               <div className="workbench-dock__tabs" role="tablist" aria-label={t("rightDock.views")}>
-                {SHOW_CONTEXT_DOCK && desktopLayoutStyle !== "creation" && (<button type="button" role="tab" aria-selected={rightDockMode === "context"} className={`workbench-dock__tab${rightDockMode === "context" ? " workbench-dock__tab--active" : ""}`} onClick={() => openRightDockMode("context")}>
+                {SHOW_CONTEXT_DOCK && (<button type="button" role="tab" aria-selected={rightDockMode === "context"} className={`workbench-dock__tab${rightDockMode === "context" ? " workbench-dock__tab--active" : ""}`} onClick={() => openRightDockMode("context")}>
                     <Activity size={13}/>
                     <span className="workbench-dock__tab-label">{t("rightDock.overview")}</span>
                   </button>)}
@@ -3267,13 +3160,13 @@ export default function App() {
               </div>
             </div>
             <div className="workbench-dock__body">
-              {rightDockMode === "context" && desktopLayoutStyle !== "creation" ? (<Suspense fallback={null}>
+              {rightDockMode === "context" ? (<Suspense fallback={null}>
                   <ContextPanel tabId={activeTabId} context={state.context} usage={state.usage} sessionTokens={state.sessionTokens} sessionCost={state.sessionCost} sessionCurrency={state.sessionCurrency} sessionTurns={sessionTurns} turnTokens={state.turnTotalTokens} turnCost={state.turnCost} balance={state.balance} sessionGen={state.sessionGen} refreshKey={dockRefreshKey + state.contextPanelSeq} usageSeq={state.usageSeq}/>
                 </Suspense>) : (<Suspense fallback={null}>
                   <WorkspacePanel open={workspacePanelRenderable} tabId={activeTabId} cwd={state.meta?.cwd} workspaceScopeKey={workspaceScopeKey} workspaceMemoryKey={workspaceTreeMemoryKey} workspaceMemoryVisitId={workspaceTreeMemoryVisitId} maximized={workspacePanelMaximized} panelWidth={workspacePanelRenderWidth} onClose={() => setWorkspacePanel(false)} onToggleMaximized={() => {
                     closeTransientOverlays();
                     setWorkspacePanelMaximized((value) => !value);
-                }} onPreviewModeChange={handleWorkspacePreviewModeChange} onAddToChat={addWorkspaceTextToComposer} onAddCodeToChat={addWorkspaceCodeToComposer} onRequestPanelWidth={ensureWorkspacePanelWidth} onFileTreeRefresh={refreshComposerFileRefs} onSessionRevertCommitted={handleSessionRevertCommitted} onOpenInTerminal={openTerminalForPath} initialViewMode={rightDockMode === "changed" ? "changed" : "files"} completionSummary={state.completionSummary} showViewTabs={false} creationMode={sidebarCreation}/>
+                }} onPreviewModeChange={handleWorkspacePreviewModeChange} onAddToChat={addWorkspaceTextToComposer} onAddCodeToChat={addWorkspaceCodeToComposer} onRequestPanelWidth={ensureWorkspacePanelWidth} onFileTreeRefresh={refreshComposerFileRefs} onSessionRevertCommitted={handleSessionRevertCommitted} onOpenInTerminal={openTerminalForPath} initialViewMode={rightDockMode === "changed" ? "changed" : "files"} completionSummary={state.completionSummary} showViewTabs={false} creationMode={false}/>
                 </Suspense>)}
             </div>
           </aside>)}
@@ -3357,8 +3250,6 @@ export { NoticePreviewPanel as NoticePreviewPanel } from "./app_helpers";
 export { stripLegacyGoalBudgetFlags as stripLegacyGoalBudgetFlags } from "./app_helpers";
 export { hasLegacyGoalBudgetFlag as hasLegacyGoalBudgetFlag } from "./app_helpers";
 export { isThemeMode as isThemeMode } from "./app_helpers";
-export type { DesktopLayoutStyle as DesktopLayoutStyle } from "./app_helpers";
-export { normalizeDesktopLayoutStyle as normalizeDesktopLayoutStyle } from "./app_helpers";
 export { SHOW_CONTEXT_DOCK as SHOW_CONTEXT_DOCK } from "./app_helpers";
 export type { WorkspaceInsertTarget as WorkspaceInsertTarget } from "./app_helpers";
 export type { HistoryViewState as HistoryViewState } from "./app_helpers";

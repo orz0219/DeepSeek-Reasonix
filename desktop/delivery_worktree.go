@@ -43,11 +43,7 @@ func (a *App) CreateDeliveryWorktree(workspaceRoot string) (DeliveryWorktreeOpen
 	}
 
 	var tab TabMeta
-	if a.singleSurfaceLayoutEnabled() {
-		tab, err = a.ensureBlankSurface("project", created.WorkspaceRoot, boot.TokenModeDelivery)
-	} else {
-		tab, err = a.ensureBlankTab("project", created.WorkspaceRoot, boot.TokenModeDelivery)
-	}
+	tab, err = a.ensureBlankSurface("project", created.WorkspaceRoot, boot.TokenModeDelivery)
 	if err != nil {
 		return DeliveryWorktreeOpenResult{}, fmt.Errorf("isolated worktree was created at %s but Reasonix could not open it: %w", created.WorktreeRoot, err)
 	}

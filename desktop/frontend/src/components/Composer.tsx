@@ -3629,12 +3629,10 @@ export function Composer({ running, collaborationMode, toolApprovalMode, tokenMo
             {!heroMode && <span className="composer-meta__divider" aria-hidden="true"/>}
             <div className="composer-meta__control composer-meta__control--model">
               {/*
-          Creation-only: showContextWindowRing is wired to sidebarCreation
-          (desktopLayoutStyle === "creation") in App.tsx. The ring popover
-          is portaled to <body> without an .app--creation prefix, so its
-          styles look global but only ever apply in creation layout. If you
-          ever surface this ring in another layout, its font sizes already
-          scale via --font-scale (see .context-ring-popover in styles.css).
+          showContextWindowRing is left false by the desktop (the creation
+          layout that used it was removed). The ring popover is portaled to
+          <body>; if it is ever re-enabled, its font sizes already scale via
+          --font-scale (see .context-ring-popover in styles.css).
         */}
               {!heroMode && showContextWindowRing && (<ContextWindowRing enabled={showContextWindowRing} context={context} tabId={tabId} turnCost={turnCost} currency={currency} cacheHitTokens={cacheHitTokens} cacheMissTokens={cacheMissTokens} balance={balance}/>)}
               <ModelSwitcher label={modelLabel} tabId={tabId} onPick={onSwitchModel}/>

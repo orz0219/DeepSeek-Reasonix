@@ -418,7 +418,6 @@ export interface AppBindings extends SessionCatalogBindings, HistoryCatalogBindi
     ImportThemePack(sourcePath: string, replace: boolean): Promise<import("./themePack").ThemeImportResult>;
     ExportThemePack(id: string, destPath: string): Promise<string>;
     PickThemeBackground(): Promise<string>;
-    SetDesktopLayoutStyle(style: string): Promise<void>;
     SetDesktopZoomFactor(factor: number): Promise<void>;
     GetDesktopZoomFactor(): Promise<number>;
     RestartApplication(): Promise<void>;

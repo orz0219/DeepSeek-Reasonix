@@ -131,7 +131,7 @@ export function ThemeEditorInline({ state, busy, onChange, onCancel, onSave, }: 
         }
         return out;
     }, [state.tokens]);
-    const appLayoutClass = ["app--classic", "app--workbench", "app--creation"]
+    const appLayoutClass = ["app--workbench"]
         .find((className) => document.querySelector(`.${className}`)) || "";
     return createPortal(<div className="theme-gallery__editor-overlay">
       <div ref={editorRef} className={`theme-editor theme-gallery__editor${appLayoutClass ? ` ${appLayoutClass}` : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>

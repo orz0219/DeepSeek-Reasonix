@@ -78,7 +78,6 @@ export interface SettingsView {
     agent: AgentView;
     desktopLanguage: string; // "" | "en" | "zh"; empty = auto
     desktopCurrency?: string; // "" | "CNY" | "USD"; absent/empty = follow language
-    desktopLayoutStyle: string; // "classic" | "workbench" | "creation"
     desktopTheme: string; // "auto" | "dark" | "light"
     desktopThemeStyle: string;
     desktopTerminalTheme: string; // "auto" follows app | "dark" | "light"
@@ -98,7 +97,6 @@ export interface SettingsView {
 }
 export interface DesktopStartupSettingsView {
     desktopLanguage: string; // "" | "en" | "zh"; empty = auto
-    desktopLayoutStyle: string; // "classic" | "workbench"
     desktopTheme: string; // "auto" | "dark" | "light"
     desktopThemeStyle: string;
     desktopTerminalTheme: string; // "auto" follows app | "dark" | "light"

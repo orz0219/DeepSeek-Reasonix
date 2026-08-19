@@ -522,12 +522,6 @@ func (a *App) openFallbackRuntime(target fallbackRuntimeTarget) error {
 		return a.openTransientBlankRuntime(scope, root)
 	}
 	var err error
-	if a.singleSurfaceLayoutEnabled() {
-		_, err = a.ActivateTopic(scope, root, topicID, "")
-	} else if scope == "global" {
-		_, err = a.OpenGlobalTab(topicID)
-	} else {
-		_, err = a.OpenProjectTab(root, topicID)
-	}
+	_, err = a.ActivateTopic(scope, root, topicID, "")
 	return err
 }

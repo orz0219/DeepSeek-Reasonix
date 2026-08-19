@@ -303,21 +303,9 @@ func (a *App) SwitchWorkspace(dir string) (string, error) {
 		return "", err
 	}
 	var meta TabMeta
-	if a.singleSurfaceLayoutEnabled() {
-		meta, err = a.ActivateTopic("project", dir, topic.ID, "")
-	} else {
-		meta, err = a.OpenProjectTab(dir, topic.ID)
-	}
+	meta, err = a.ActivateTopic("project", dir, topic.ID, "")
 	if err != nil {
 		return "", err
 	}
 	return meta.WorkspaceRoot, nil
-}
-
-func (a *App) singleSurfaceLayoutEnabled() bool {
-	cfg, _, err := a.loadDesktopUserConfigForView()
-	if err != nil {
-		return true
-	}
-	return singleSurfaceLayoutStyle(cfg.DesktopLayoutStyle())
 }

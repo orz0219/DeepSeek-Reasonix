@@ -10,16 +10,15 @@ import (
 func desktopStartupSettingsFromConfig(cfg *config.Config) DesktopStartupSettingsView {
 	if cfg == nil {
 		return DesktopStartupSettingsView{
-			DesktopLayoutStyle: "workbench",
-			DesktopTheme:       "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
+			DesktopTheme: "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
 			DisplayMode: "standard", ReasoningDisplayMode: "open", StatusBarStyle: "text",
 			StatusBarItems:    config.DefaultDesktopStatusBarItems(),
 			ConversationWidth: "standard",
 		}
 	}
 	return DesktopStartupSettingsView{
-		DesktopLanguage:    cfg.DesktopLanguage(),
-		DesktopLayoutStyle: cfg.DesktopLayoutStyle(), DesktopTheme: cfg.DesktopTheme(),
+		DesktopLanguage:   cfg.DesktopLanguage(),
+		DesktopTheme:      cfg.DesktopTheme(),
 		DesktopThemeStyle: cfg.DesktopThemeStyle(), DesktopTerminalTheme: cfg.DesktopTerminalTheme(),
 		DisplayMode: cfg.DesktopDisplayMode(), ReasoningDisplayMode: cfg.DesktopReasoningDisplayMode(),
 		ReasoningDisplayModeExplicit: cfg.DesktopReasoningDisplayModeExplicit(), StatusBarStyle: cfg.DesktopStatusBarStyle(),
@@ -43,7 +42,7 @@ func (a *App) defaultSettingsView() SettingsView {
 			ReasoningLanguage: "auto",
 			CompactRatio:      defaults.Agent.CompactRatio, EffectiveCompactRatio: defaults.Agent.CompactRatio,
 		},
-		AutoPlan: "off", DesktopLayoutStyle: "workbench",
+		AutoPlan:     "off",
 		DesktopTheme: "auto", DesktopThemeStyle: "graphite", DesktopTerminalTheme: "auto",
 		CloseBehavior: "background", DisplayMode: "standard", ReasoningDisplayMode: "open",
 		StatusBarStyle: "text", StatusBarItems: config.DefaultDesktopStatusBarItems(),

@@ -364,7 +364,6 @@ export function normalizeSettingsView(view: SettingsView | null | undefined): Se
         bypass: Boolean(view.autoApproveTools ?? view.bypass),
         desktopLanguage: normalizeLangPref(view.desktopLanguage),
         desktopCurrency: normalizeDesktopCurrency(view.desktopCurrency),
-        desktopLayoutStyle: normalizeDesktopLayoutStyle(view.desktopLayoutStyle),
         desktopTheme: normalizeThemePreference(view.desktopTheme),
         desktopThemeStyle: normalizeThemeStyleForTheme(view.desktopThemeStyle, normalizeThemePreference(view.desktopTheme)),
         desktopTerminalTheme: normalizeTerminalThemePreference(view.desktopTerminalTheme),
@@ -386,17 +385,6 @@ export function normalizeCloseBehavior(mode: string | undefined): CloseBehavior 
 export type DisplayMode = "standard" | "compact";
 export function normalizeDisplayMode(mode: string | undefined): DisplayMode {
     return mode === "standard" || mode === "compact" ? mode : "standard";
-}
-type DesktopLayoutStyle = "classic" | "workbench" | "creation";
-export function normalizeDesktopLayoutStyle(style: string | undefined): DesktopLayoutStyle {
-    if (style === "classic")
-        return "classic";
-    if (style === "creation")
-        return "creation";
-    return "workbench";
-}
-export function desktopLayoutStyleLabel(style: DesktopLayoutStyle, t: ReturnType<typeof useT>): string {
-    return t(`settings.desktopLayoutStyle.${style}`);
 }
 type StatusBarStyle = "icon" | "text";
 export function normalizeStatusBarStyle(style: string | undefined): StatusBarStyle {

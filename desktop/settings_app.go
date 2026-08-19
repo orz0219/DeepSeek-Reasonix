@@ -156,7 +156,6 @@ type SettingsView struct {
 	Agent                        AgentView            `json:"agent"`
 	DesktopLanguage              string               `json:"desktopLanguage"`
 	DesktopCurrency              string               `json:"desktopCurrency"`
-	DesktopLayoutStyle           string               `json:"desktopLayoutStyle"`
 	DesktopTheme                 string               `json:"desktopTheme"`
 	DesktopThemeStyle            string               `json:"desktopThemeStyle"`
 	DesktopTerminalTheme         string               `json:"desktopTerminalTheme,omitempty"`
@@ -192,7 +191,6 @@ type SettingsView struct {
 // slow keychain/env resolution stays off the first-render path.
 type DesktopStartupSettingsView struct {
 	DesktopLanguage              string   `json:"desktopLanguage"`
-	DesktopLayoutStyle           string   `json:"desktopLayoutStyle"`
 	DesktopTheme                 string   `json:"desktopTheme"`
 	DesktopThemeStyle            string   `json:"desktopThemeStyle"`
 	DesktopTerminalTheme         string   `json:"desktopTerminalTheme,omitempty"`
@@ -564,9 +562,6 @@ type DesktopStartupSettingsView struct {
 
 // SetDesktopTerminalTheme updates only the integrated terminal colours. It is
 // applied live by the frontend and does not rebuild the active controller.
-
-// SetDesktopLayoutStyle updates only the desktop layout style. It does not
-// rebuild the active controller and must stay out of provider-visible requests.
 
 // SetExpandThinking sets whether reasoning text is expanded by default on
 // the desktop. It is desktop-only and does not rebuild the controller.

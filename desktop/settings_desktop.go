@@ -186,25 +186,6 @@ func (a *App) SetDesktopTerminalTheme(theme string) error {
 	return a.applyConfigOnly(func(c *config.Config) error { return c.SetDesktopTerminalTheme(theme) })
 }
 
-// SetDesktopLayoutStyle updates only the desktop layout style. It does not
-// rebuild the active controller and must stay out of provider-visible requests.
-func (a *App) SetDesktopLayoutStyle(style string) error {
-	normalized := ""
-	if err := a.applyConfigOnly(func(c *config.Config) error {
-		if err := c.SetDesktopLayoutStyle(style); err != nil {
-			return err
-		}
-		normalized = c.DesktopLayoutStyle()
-		return nil
-	}); err != nil {
-		return err
-	}
-	if singleSurfaceLayoutStyle(normalized) {
-		return a.applySingleSurfaceTabPolicy()
-	}
-	return nil
-}
-
 // SetExpandThinking sets whether reasoning text is expanded by default on
 // the desktop. It is desktop-only and does not rebuild the controller.
 func (a *App) SetExpandThinking(on bool) error {

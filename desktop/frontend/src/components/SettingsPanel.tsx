@@ -54,8 +54,6 @@ export { normalizeDesktopCurrency as normalizeDesktopCurrency } from "./settings
 export { normalizeCloseBehavior as normalizeCloseBehavior } from "./settings_normalize";
 export type { DisplayMode as DisplayMode } from "./settings_normalize";
 export { normalizeDisplayMode as normalizeDisplayMode } from "./settings_normalize";
-export { normalizeDesktopLayoutStyle as normalizeDesktopLayoutStyle } from "./settings_normalize";
-export { desktopLayoutStyleLabel as desktopLayoutStyleLabel } from "./settings_normalize";
 export { normalizeStatusBarStyle as normalizeStatusBarStyle } from "./settings_normalize";
 export { statusBarItemLabel as statusBarItemLabel } from "./settings_normalize";
 export { closeBehaviorLabel as closeBehaviorLabel } from "./settings_normalize";
@@ -347,7 +345,7 @@ export function SettingsPanel({ onClose, onChanged, initialTab, initialFocus, ag
         label: settingsTabLabel(id, t),
         meta: s ? settingsTabMeta(id, s, t) : "",
         searchTerms: id === "general" ? [
-            "settings.desktopLayoutStyle", "settings.language", "settings.currency", "settings.displayMode",
+            "settings.language", "settings.currency", "settings.displayMode",
             "settings.reasoningDisplay", "settings.processFold", "settings.closeBehavior",
             "settings.defaultToolApprovalMode", "settings.sound", "settings.statusBarStyle", "settings.statusBarItems",
         ].map((key) => t(key as DictKey)).join(" ") : "",

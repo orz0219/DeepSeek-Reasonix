@@ -307,7 +307,6 @@ export function makeMockApp(): AppBindings {
         agent: { temperature: 0.2, maxSteps: 0, plannerMaxSteps: 0, maxSubagentDepth: 2, maxSubagentConcurrency: 6, maxParallelWriters: 3, systemPrompt: "You are Reasonix, a coding agent.", reasoningLanguage: "auto", compactRatio: 0.8 },
         desktopLanguage: "",
         desktopCurrency: "",
-        desktopLayoutStyle: "workbench",
         desktopTheme: "auto",
         desktopThemeStyle: "graphite",
         desktopTerminalTheme: "auto",
@@ -2822,10 +2821,9 @@ export function makeMockApp(): AppBindings {
             return this.AcceptSkillSuggestion(suggestion);
         },
         async DesktopStartupSettings() {
-            const { desktopLanguage, desktopLayoutStyle, desktopTheme, desktopThemeStyle, desktopTerminalTheme, displayMode, reasoningDisplayMode, reasoningDisplayModeExplicit, statusBarStyle, statusBarItems, conversationWidth } = settings;
+            const { desktopLanguage, desktopTheme, desktopThemeStyle, desktopTerminalTheme, displayMode, reasoningDisplayMode, reasoningDisplayModeExplicit, statusBarStyle, statusBarItems, conversationWidth } = settings;
             return JSON.parse(JSON.stringify({
                 desktopLanguage,
-                desktopLayoutStyle,
                 desktopTheme,
                 desktopThemeStyle,
                 desktopTerminalTheme,
@@ -3216,9 +3214,6 @@ export function makeMockApp(): AppBindings {
         },
         async PickThemeBackground() {
             return "";
-        },
-        async SetDesktopLayoutStyle(style: string) {
-            settings.desktopLayoutStyle = style === "workbench" || style === "creation" ? style : "classic";
         },
         async SetDesktopZoomFactor(factor: number) {
             mockDesktopZoomFactor = Math.min(2.0, Math.max(0.5, Number.isFinite(factor) ? factor : 1.0));

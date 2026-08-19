@@ -98,14 +98,6 @@ export function hasLegacyGoalBudgetFlag(arg: string): boolean {
 export function isThemeMode(value: string): value is Theme {
     return value === "auto" || value === "light" || value === "dark";
 }
-export type DesktopLayoutStyle = "classic" | "workbench" | "creation";
-export function normalizeDesktopLayoutStyle(style: string | undefined): DesktopLayoutStyle {
-    if (style === "workbench")
-        return "workbench";
-    if (style === "creation")
-        return "creation";
-    return "classic";
-}
 export const SHOW_CONTEXT_DOCK = true;
 const DISMISSED_TODO_STORAGE_KEY = "todoPanel:dismissedKeys";
 const MAX_DISMISSED_TODO_KEYS = 160;

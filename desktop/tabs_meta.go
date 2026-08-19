@@ -189,13 +189,6 @@ func (a *App) registerProjectRoot(workspaceRoot string) {
 	a.syncTabWorkspaceRootSpellings()
 }
 
-// OpenProjectTab builds a controller scoped to workspaceRoot and opens the
-// session selected by the given topic. Topic selection resolves to a concrete
-// session path first; the visible tab is then attached to that session runtime.
-func (a *App) OpenProjectTab(workspaceRoot, topicID string) (TabMeta, error) {
-	return a.openProjectTab(workspaceRoot, topicID)
-}
-
 func (a *App) openProjectTab(workspaceRoot, topicID string) (TabMeta, error) {
 	if workspaceRoot == "" {
 		return TabMeta{}, fmt.Errorf("workspaceRoot is required")

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronUp, CircleDollarSign, Languages, ListChecks, Monitor, PanelBottom, Play, Power, ShieldCheck, SlidersHorizontal, Volume2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, CircleDollarSign, Languages, ListChecks, PanelBottom, Play, Power, ShieldCheck, SlidersHorizontal, Volume2 } from "lucide-react";
 import { app } from "../lib/bridge";
 import { normalizeLangPref, useI18n, useT, type DictKey, type LangPref } from "../lib/i18n";
 import { getDisplayMode, onDisplayModeChange, setDisplayMode as setLocalDisplayMode } from "../lib/displayMode";
@@ -14,7 +14,7 @@ import { SoundSelect } from "./SoundSelect";
 import { getSuccessPreference, setSuccessPreference, getAttentionPreference, setAttentionPreference, playSuccessChime, playAttentionChime, type SoundWavPref } from "../lib/sound";
 import { StatusBarItemsEditor } from "./StatusBarItemsEditor";
 import { SectionProps, SettingsSection, SettingsField, proxyModeLabel } from "./SettingsPanel";
-import { normalizeCloseBehavior, DisplayMode, normalizeDisplayMode, normalizeDesktopCurrency, normalizeDesktopLayoutStyle, normalizeStatusBarStyle, desktopLayoutStyleLabel, LANGUAGE_PREFS, DesktopCurrency, closeBehaviorLabel, TOOL_APPROVAL_MODES, statusBarItemLabel, normalizeNetworkView, PROXY_MODES, PROXY_TYPES } from "./settings_normalize";
+import { normalizeCloseBehavior, DisplayMode, normalizeDisplayMode, normalizeDesktopCurrency, normalizeStatusBarStyle, LANGUAGE_PREFS, DesktopCurrency, closeBehaviorLabel, TOOL_APPROVAL_MODES, statusBarItemLabel, normalizeNetworkView, PROXY_MODES, PROXY_TYPES } from "./settings_normalize";
 export function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & {
     agentRunning: boolean;
 }) {
@@ -28,7 +28,6 @@ export function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & 
     const defaultToolApprovalMode = normalizeToolApprovalMode(s.defaultToolApprovalMode);
     const languagePref = normalizeLangPref(s.desktopLanguage);
     const desktopCurrency = normalizeDesktopCurrency(s.desktopCurrency);
-    const desktopLayoutStyle = normalizeDesktopLayoutStyle(s.desktopLayoutStyle);
     const [genMusicPreset, setGenMusicPreset] = useState<GenerativePreset>(getGenerativePreset());
     const [soundPref, setSoundPref] = useState<SoundWavPref>(getSuccessPreference());
     const [attentionPref, setAttentionPref] = useState<SoundWavPref>(getAttentionPreference());
@@ -61,13 +60,6 @@ export function GeneralSection({ s, busy, apply, agentRunning }: SectionProps & 
     };
     return (<>
       <SettingsSection title={t("settings.general.sectionAppearance")} description={t("settings.general.sectionAppearanceHint")}>
-      <SettingsField label={t("settings.desktopLayoutStyle")} hint={t("settings.desktopLayoutStyleHint")} icon={<Monitor size={18}/>}>
-        <div className="set-seg">
-          {(["workbench", "classic", "creation"] as const).map((style) => (<button key={style} className={`set-seg__btn${desktopLayoutStyle === style ? " set-seg__btn--on" : ""}`} disabled={busy} onClick={() => void apply(() => app.SetDesktopLayoutStyle(style))}>
-              {desktopLayoutStyleLabel(style, t)}
-            </button>))}
-        </div>
-      </SettingsField>
       <SettingsField label={t("settings.language")} hint={t("settings.languageHint")} icon={<Languages size={18}/>}>
         <div className="set-seg">
           {LANGUAGE_PREFS.map((pref) => (<button key={pref || "auto"} className={`set-seg__btn${languagePref === pref ? " set-seg__btn--on" : ""}`} disabled={busy} onClick={() => setLanguage(pref)}>

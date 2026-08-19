@@ -113,12 +113,6 @@ func (a *App) openTopicTabWithActivation(scope, workspaceRoot, topicID, sessionP
 	return enrichTabMeta(meta), nil
 }
 
-// OpenGlobalTab opens a new global-scope tab (no project root). The global
-// workspace root is the reasonix user config directory.
-func (a *App) OpenGlobalTab(topicID string) (TabMeta, error) {
-	return a.openGlobalTab(topicID)
-}
-
 func (a *App) openGlobalTab(topicID string) (TabMeta, error) {
 	globalRoot := globalWorkspaceRoot()
 	if err := os.MkdirAll(globalRoot, 0o755); err != nil {
@@ -130,7 +124,7 @@ func (a *App) openGlobalTab(topicID string) (TabMeta, error) {
 }
 
 // OpenTopicSession opens a concrete saved session from the sidebar. Unlike
-// OpenProjectTab/OpenGlobalTab, it does not resolve the topic to the latest
+// openProjectTab/openGlobalTab, it does not resolve the topic to the latest
 // session first; sessionPath is the runtime identity being selected.
 func (a *App) OpenTopicSession(scope, workspaceRoot, topicID, sessionPath string) (TabMeta, error) {
 	return a.openTopicSession(scope, workspaceRoot, topicID, sessionPath)
@@ -190,7 +184,7 @@ func (a *App) ActivateTopic(scope, workspaceRoot, topicID, sessionPath string) (
 	return a.keepOnlyVisibleTab(meta.ID)
 }
 
-// EnsureBlankSurface mirrors EnsureBlankTab for no-tab-strip layouts: after
+// EnsureBlankSurface mirrors ensureBlankTab for no-tab-strip layouts: after
 // creating or reusing a blank session, it removes other visible tabs while
 // preserving running runtimes as detached background sessions.
 func (a *App) EnsureBlankSurface(scope, workspaceRoot string) (TabMeta, error) {
@@ -228,13 +222,9 @@ func tabInWorkspace(tab *WorkspaceTab, workspaceRoot string) bool {
 		sameProjectRoot(tab.WorkspaceRoot, workspaceRoot)
 }
 
-// EnsureBlankTab activates the existing blank tab for the target scope, or
+// ensureBlankTab activates the existing blank tab for the target scope, or
 // creates one if none exists. Reusing a blank tab keeps repeated "new session"
 // clicks from piling up empty conversations.
-func (a *App) EnsureBlankTab(scope, workspaceRoot string) (TabMeta, error) {
-	return a.ensureBlankTab(scope, workspaceRoot, "")
-}
-
 func (a *App) ensureBlankTab(scope, workspaceRoot, forcedTokenMode string) (TabMeta, error) {
 	scope = strings.TrimSpace(scope)
 	if scope != "project" {

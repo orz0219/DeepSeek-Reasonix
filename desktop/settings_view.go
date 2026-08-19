@@ -122,7 +122,6 @@ func (a *App) Settings() SettingsView {
 		},
 		DesktopLanguage:              cfg.DesktopLanguage(),
 		DesktopCurrency:              cfg.DesktopCurrency(),
-		DesktopLayoutStyle:           cfg.DesktopLayoutStyle(),
 		DesktopTheme:                 cfg.DesktopTheme(),
 		DesktopThemeStyle:            cfg.DesktopThemeStyle(),
 		DesktopTerminalTheme:         cfg.DesktopTerminalTheme(),

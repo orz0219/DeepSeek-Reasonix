@@ -411,8 +411,17 @@ func (a *App) restoreOrBuildTabs() {
 		}
 		a.setDesktopLocale(i18n.DetectLanguage(lang))
 	}
-	if cfgErr != nil || singleSurfaceLayoutStyle(startupCfg.DesktopLayoutStyle()) {
-		f = singleSurfaceTabsFile(f)
+	if len(f.Tabs) > 1 || (len(f.Tabs) == 1 && f.ActiveTab != f.Tabs[0].ID) {
+		chosen := f.Tabs[0]
+		if active := strings.TrimSpace(f.ActiveTab); active != "" {
+			for _, entry := range f.Tabs {
+				if entry.ID == active {
+					chosen = entry
+					break
+				}
+			}
+		}
+		f = desktopTabsFile{Tabs: []desktopTabEntry{chosen}, ActiveTab: chosen.ID}
 	}
 
 	if len(f.Tabs) > 0 {

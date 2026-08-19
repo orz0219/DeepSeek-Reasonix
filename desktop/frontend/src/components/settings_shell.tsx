@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { useT } from "../lib/i18n";
 import type { SettingsTab, SettingsView } from "../lib/types";
 import { Tooltip } from "./Tooltip";
-import { toRef, normalizeProxyMode, normalizeCloseBehavior, normalizeDesktopLayoutStyle, desktopLayoutStyleLabel, closeBehaviorLabel, permissionModeLabel, sandboxModeLabel } from "./settings_normalize";
+import { toRef, normalizeProxyMode, normalizeCloseBehavior, closeBehaviorLabel, permissionModeLabel, sandboxModeLabel } from "./settings_normalize";
 import { proxyModeLabel, modelProviderLabel } from "./settings_models";
 export function SettingsPageShell({ s: _s, tab, children }: {
     s: SettingsView | null;
@@ -136,7 +136,7 @@ export function settingsTabMeta(id: SettingsTab, s: SettingsView, t: ReturnType<
         case "models":
             return settingsModelMeta(s, t);
         case "general":
-            return `${desktopLayoutStyleLabel(normalizeDesktopLayoutStyle(s.desktopLayoutStyle), t)} · ${closeBehaviorLabel(normalizeCloseBehavior(s.closeBehavior), t)}`;
+            return `${closeBehaviorLabel(normalizeCloseBehavior(s.closeBehavior), t)}`;
         case "providers":
             return t("settings.providerCount", { n: s.providers.length });
         case "mcp":
