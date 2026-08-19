@@ -390,7 +390,7 @@ func (r *MCPCapabilityRuntime) connectedProxyToolsLocked() map[string][]plugin.C
 // install/connect churn does not change this schema.
 
 // ResolveCall implements tool.CallResolver so the agent can run permission,
-// hooks, and evidence against the real MCP target before execution.
+// recovery observation, and evidence against the real MCP target before execution.
 
 // Decline must not skip require. The mutation itself is delayed until the
 // agent has applied its post-resolution host boundary.
@@ -414,7 +414,7 @@ func (r *MCPCapabilityRuntime) connectedProxyToolsLocked() map[string][]plugin.C
 
 // For MCP entries, list tools without side effects: live tools when the
 // server is already connected, cached schema otherwise. Inspect runs
-// during call resolution — before permission and hook gates — so it must
+// during call resolution — before the permission gate — so it must
 // never start a subprocess or open a network connection.
 
 // serverTools refreshes the snapshot too: inspecting a
@@ -437,7 +437,7 @@ func (r *MCPCapabilityRuntime) connectedProxyToolsLocked() map[string][]plugin.C
 
 // Prefer already-exposed registry tool (auto-started MCP). The model name
 // MUST come from the plugin layer's canonical constructor: it appends a
-// collision hash for sanitised raw names, and permission/hook rules are
+// collision hash for sanitised raw names, and permission rules are
 // written against that executed name — a proxy-local normalization would
 // let them silently miss.
 
@@ -448,7 +448,7 @@ func (r *MCPCapabilityRuntime) connectedProxyToolsLocked() map[string][]plugin.C
 
 // Unconnected server: resolution must stay pure — no subprocess, no network.
 // Return a deferred target that connects in Execute, after the permission
-// gate and PreToolUse hooks have approved the real target name/arguments.
+// gate and execution have approved the real target name/arguments.
 
 // Cached server hints control ordinary approval. Strict read-only execution
 // additionally requires server authorization and live read-only metadata.
@@ -469,8 +469,8 @@ func (r *MCPCapabilityRuntime) connectedProxyToolsLocked() map[string][]plugin.C
 // findMCPTool matches a server's tool list by raw MCP name or by the
 // canonical namespaced model-visible name (plugin.ModelToolName).
 
-// onDemandMCPTool defers MCP server startup to Execute so permission and hook
-// gates always run before any subprocess or network side effect. Before the live
+// onDemandMCPTool defers MCP server startup to Execute so the permission gate
+// always runs before any subprocess or network side effect. Before the live
 // handshake it remains write-capable until the resolved MCP tool is classified.
 
 // destructive comes from the schema cache when available. A live promotion
@@ -534,10 +534,10 @@ func (r *MCPCapabilityRuntime) connectedProxyToolsLocked() map[string][]plugin.C
 // resolveServerConnect resolves action=call on an mcp-server id. A connected
 // server lists its tools immediately (side-effect free); an unconnected one
 // resolves to a deferred connect target that runs only after the permission
-// gate and PreToolUse hooks approve it. Stored project authorization is applied
+// gate and execution approve it. Stored project authorization is applied
 // at resolve time so unauthorized project MCP never reaches process startup.
 
-// A dedicated exact identity names the connect for permission and hook
+// A dedicated exact identity names the connect for permission
 // rules. It cannot collide with a real mcp__ tool, and rules do not need to
 // rely on unsupported tool-name glob matching.
 

@@ -377,7 +377,7 @@ type TelemetryConfig struct {
 // protections.
 type SecretsConfig struct {
 	// FilterSubprocessEnv strips credential-like environment variables
-	// (*_API_KEY, *TOKEN*, *SECRET*, ...) from tool subprocesses (bash, hooks,
+	// (*_API_KEY, *TOKEN*, *SECRET*, ...) from tool subprocesses (bash,
 	// LSP, MCP stdio). Default off: it breaks token-based workflows such as
 	// `gh`, HTTPS `git push`, and `npm publish`.
 	FilterSubprocessEnv bool `toml:"filter_subprocess_env"`

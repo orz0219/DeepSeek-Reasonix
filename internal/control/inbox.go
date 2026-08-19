@@ -642,7 +642,7 @@ func (c *Controller) receiptForAdmissionResult(id string, st *sessioninbox.Store
 func (c *Controller) onInboxTurnDone() {
 	c.inbox.mu.Lock()
 	// Keep these IDs published as live ownership while SnapshotActivity runs.
-	// Inbox recovery can therefore proceed without waiting on extension hooks,
+	// Inbox recovery can therefore proceed without waiting on extension interceptors,
 	// transcript I/O, or the session file lock and will preserve this turn.
 	ids := c.inbox.activeIDs()
 	st := c.inbox.store

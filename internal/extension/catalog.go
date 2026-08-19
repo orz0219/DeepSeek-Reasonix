@@ -14,7 +14,6 @@ const (
 	KindSkill       ContributionKind = "skill"
 	KindCommand     ContributionKind = "command"
 	KindPrompt      ContributionKind = "prompt"
-	KindHook        ContributionKind = "hook"
 	KindMCPServer   ContributionKind = "mcp_server"
 	KindProvider    ContributionKind = "provider"
 	KindTheme       ContributionKind = "theme"
@@ -27,7 +26,7 @@ const (
 // kinds so a misspelled manifest cannot silently drop a capability.
 func knownKind(k ContributionKind) bool {
 	switch k {
-	case KindTool, KindSkill, KindCommand, KindPrompt, KindHook, KindMCPServer,
+	case KindTool, KindSkill, KindCommand, KindPrompt, KindMCPServer,
 		KindProvider, KindTheme, KindUIAction, KindInterceptor, KindStrategy:
 		return true
 	default:
@@ -36,11 +35,11 @@ func knownKind(k ContributionKind) bool {
 }
 
 // additiveKind reports whether every contribution of this kind survives
-// resolution. Hooks and interceptors accumulate across sources by design —
+// resolution. Interceptors accumulate across sources by design —
 // shadowing them would let one package silently disable another package's
-// safety hook, which is the opposite of what hooks are for.
+// safety hook, which is the opposite of what interceptors are for.
 func additiveKind(k ContributionKind) bool {
-	return k == KindHook || k == KindInterceptor
+	return k == KindInterceptor
 }
 
 // Contribution is one capability offered to the kernel.
@@ -49,7 +48,7 @@ type Contribution struct {
 	Kind ContributionKind
 	// ID is the canonical identifier within the kind: the tool name, the
 	// command's full (package-qualified) name, the skill's slash-or-bare name,
-	// a hook's "event#n" sequence, the MCP server name, the provider ref
+	// the MCP server name, the provider ref
 	// "provider/model", "plugin:<plugin>:<theme>" for themes, and so on.
 	// Winner rules key on (Kind, ID).
 	ID string
@@ -191,8 +190,8 @@ func (e *ConflictError) Error() string {
 }
 
 // Conflicts reports every same-tier multi-source duplicate of a canonical ID
-// among shadowed (non-additive) kinds. Hooks and interceptors are additive
-// and never appear here. The result is deterministically ordered.
+// among shadowed (non-additive) kinds. Interceptors are additive and never
+// appear here. The result is deterministically ordered.
 func (c *Catalog) Conflicts() []ConflictError {
 	groups := map[ContributionKind]map[string][]Contribution{}
 	for _, ct := range c.contribs {

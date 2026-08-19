@@ -1,8 +1,6 @@
 package control
 
 import (
-	"context"
-
 	"reasonix/internal/agent"
 	"reasonix/internal/extension"
 	"reasonix/internal/extension/dispatch"
@@ -35,7 +33,7 @@ func (c *Controller) ReleaseResources() {
 }
 
 // Close stops plugin subprocesses and releases resources. A session that ever
-// started fires SessionEnd so a teardown hook runs.
+// started fires SessionEnd so a teardown event runs.
 func (c *Controller) Close() {
 	c.close(true, closeJobsWithGrace)
 }
@@ -71,7 +69,6 @@ func (c *Controller) close(fireSessionEnd bool, jobsMode closeJobsMode) {
 			cancel()
 		}
 		if fireSessionEnd && started {
-			c.hooks.SessionEnd(context.Background(), "other")
 			c.extensionSessionEvent(extension.PointSessionEnd, dispatch.PhaseEnd, c.SessionPath())
 		}
 		if c.jobs != nil {
@@ -251,7 +248,6 @@ func (c *Controller) AutoApproveTools() bool {
 func (c *Controller) Bypass() bool {
 	return c.AutoApproveTools()
 }
-
 
 const (
 	closeJobsWithGrace closeJobsMode = iota

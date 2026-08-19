@@ -50,7 +50,7 @@ func BuildRunFromPolicyAndInput(input string, policy taskpolicy.TaskPolicy, maxS
 	}
 	if len(policy.Constraints.AllowedChecks) > 0 {
 		spec.Constraints = append(spec.Constraints, run.Constraint{
-			Kind: run.ConstraintAllowedChecks,
+			Kind:  run.ConstraintAllowedChecks,
 			Value: joinChecks(policy.Constraints.AllowedChecks),
 		})
 	}

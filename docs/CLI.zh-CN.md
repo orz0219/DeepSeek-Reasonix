@@ -239,16 +239,11 @@ reasonix task show <task-id> --json [--dir SESSION_DIR | --project-root PATH] [-
 reasonix task monitor list --json [--dir PROJECT_DIR]
 reasonix task monitor status <task-id> --json [--dir PROJECT_DIR]
 reasonix task monitor events <task-id> --json|--jsonl [--dir PROJECT_DIR] [--after N] [--follow]
-reasonix hook list --json [--project-root PATH] [--home-dir PATH]
-reasonix hook status --json [--project-root PATH] [--home-dir PATH]
 ```
 
 对于 `session` 和 `task`，`--dir` 明确指定 session 存储目录，`--project-root`
 则解析指定项目的 session store；两者不能同时使用。都未指定时，Reasonix 选择当前
-项目的 session store。对于 `hook`，`--dir` 是 `--project-root` 的别名。
-`hook list` 的状态值为 `active` 或 `invalid`；`invalid` 表示配置的
-event 因事件名、命令/context 来源或工具事件 matcher 无效而无法执行。非工具事件
-会忽略 matcher。
+项目的 session store。
 
 机器 session ID 是带密钥的 opaque hash，不是 transcript 文件名。在同一个 Reasonix
 用户状态目录中，同一 session 的 ID 保持稳定；不同安装密钥会生成互不关联的 ID，无法再
@@ -392,12 +387,12 @@ SSH 下远端进程无法读取本机剪贴板，请使用终端粘贴快捷键�
 | `/goal` | 启动、查看或清除长周期 Goal。 |
 | `/docs [问题]` | 显示内置语料身份，或先本地检索，再让当前配置的 AI 根据版本匹配证据回答。 |
 | `/reasonix:docs [问题]` | 当已有自定义命令或兼容插件/Skill 别名占用 `/docs` 时优先使用的内置后备入口；若这个名称也已被占用，菜单会选择下一个空闲的 `reasonix:` 限定名，不覆盖原命令。 |
-| `/mcp`、`/skills`、`/hooks` | 查看和管理扩展。 |
+| `/mcp`、`/skills` | 查看和管理扩展。 |
 | `/remember <note>` | 把常驻 note 追加到项目指令文档；`# <note>` 是快捷方式。 |
 | `/memory [subcommand]` | 查看指令、记忆 provenance、召回、revision 与恢复。 |
 | `/rewind` | 把对话和/或代码恢复到更早的 turn。 |
 | `/tree`、`/branch`、`/switch` | 查看或切换会话分支。 |
-| `/reload` | 重载 agent 运行时（扩展、工具、skills、commands、hooks、providers），保留当前会话。回合运行中只排队一次；失败原子——重建失败时当前运行时不受影响。 |
+| `/reload` | 重载 agent 运行时（扩展、工具、skills、commands、providers），保留当前会话。回合运行中只排队一次；失败原子——重建失败时当前运行时不受影响。 |
 
 切换模型或 effort 会重建运行时，同时保留当前对话、会话级权限覆盖、附加目录
 访问权限和 session ownership。`/reload` 使用同一套失败原子重建语义。

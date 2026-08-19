@@ -116,22 +116,6 @@ import (
 // NormalizeMaxSubagentDepth applies the public config contract: values below 1
 // preserve the old single-delegation boundary.
 
-// ToolHooks fires user-configured shell hooks around each tool call. PreToolUse
-// runs before the call and may block it (block=true; message is the reason fed
-// back to the model); PostToolUse runs after and only surfaces output to the
-// user (it can't block). It is interface-shaped so the agent stays independent
-// of the hook package — a nil hooks field disables hook firing entirely.
-
-// PostLLMCall fires after each model turn completes (streaming finishes)
-// but before reasoning_content is stored. It returns the (possibly
-// translated) reasoning string — the original when no hook is configured.
-// HasPostLLMCall reports whether such a hook exists, so the agent keeps
-// streaming reasoning live when none is wired up.
-
-// SubagentStop fires when a `task` sub-agent finishes (foreground). PreCompact
-// fires just before a compaction pass and returns extra summary guidance (its
-// hooks' stdout) to fold into the summary prompt; "" when no hook contributes.
-
 // Agent drives a single task: a Provider, a tool Registry, and a Session wired
 // into the main loop.
 type Agent struct {
@@ -408,8 +392,6 @@ func (a *Agent) withTurnPreferences(input string) string {
 // Interactive frontends wire one in; headless runs leave it nil.
 func (a *Agent) SetAsker(as Asker) { a.svc.asker = as }
 
-
-
 // SetPreEditHook installs the pre-edit snapshot hook (see onPreEdit). The
 // controller wires it to its per-session checkpoint store; nil disables capture.
 // Prefer SetMutationObserver for v2 capture (before+after fingerprints).
@@ -439,7 +421,7 @@ func (a *Agent) MutationObserver() *checkpoint.MutationObserver {
 }
 
 // Session returns the agent's current conversation, useful for persistence
-// hooks that need to read the message log between turns. sessMu serialises this
+// observers that need to read the message log between turns. sessMu serialises this
 // pointer read against SetSession, so a frontend (serve's concurrent /history and
 // /new handlers) can't race the swap. The run loop touches a.session directly and
 // only swaps it via SetSession while idle, so its reads need no lock.

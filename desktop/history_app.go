@@ -280,7 +280,7 @@ func (a *App) HistoryCheckpointTurnsForTab(tabID string) []int {
 var pastedTextDisplayLabelPattern = regexp.MustCompile(`^\[(?:已粘贴文本|已貼上文字|Pasted text) #[0-9]+ · [0-9]+ (?:行|lines)\]$`)
 
 // historyReplayUserContent keeps only user-authored replay data. Provider-facing
-// capability, goal, hook, and resolved-reference context must not be resubmitted.
+// capability, goal, and resolved-reference context must not be resubmitted.
 func historyReplayUserContent(content string) string {
 	return control.StripReferencedContextPrefix(control.StripComposePrefixes(content))
 }

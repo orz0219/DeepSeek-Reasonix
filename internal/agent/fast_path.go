@@ -3,14 +3,14 @@ package agent
 import "reasonix/internal/tool"
 
 // executionPath classifies a tool call into fast or slow execution.
-// Fast path skips recovery gate, permission gate, checkpoint, hooks,
+// Fast path skips recovery gate, permission gate, checkpoint,
 // and other mutation-only checks for read-only tools.
 type executionPath int
 
 const (
 	pathUnknown executionPath = iota
 	pathFast                  // read-only, no special policies, no mutation overhead
-	pathSlow                  // mutation, proxy, policy, recovery, or hooks
+	pathSlow                  // mutation, proxy, policy, recovery
 )
 
 // classifyExecutionPath determines whether a tool call can take the fast
@@ -22,11 +22,10 @@ const (
 //   - delivery profile is off
 //   - mutation dependency barrier is off
 //
-// The aggressive strategy: recovery gate, permission gate, and hooks are
+// The aggressive strategy: recovery gate and permission gate are
 // NOT checked — read-only tools are safe to skip them because:
 //   - permission.Policy.Decide falls back to Allow for read-only tools
 //   - recoveryGate.BeforeMutation is only called when mutates==true
-//   - hooks.PreToolUse is typically a no-op for read-only tools
 func (a *Agent) classifyExecutionPath(plan *toolCallPlan) executionPath {
 	if plan == nil || plan.tool == nil {
 		return pathSlow

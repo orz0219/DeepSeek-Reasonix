@@ -12,23 +12,8 @@ import (
 	"reasonix/internal/tool"
 )
 
-type toolMutationHookReporter interface {
-	ToolMutationHooksEnabled() bool
-}
-
-func toolHooksMayMutateWorkspace(hooks ToolHooks) bool {
-	if hooks == nil {
-		return false
-	}
-	if reporter, ok := hooks.(toolMutationHookReporter); ok {
-		return reporter.ToolMutationHooksEnabled()
-	}
-
-	return true
-}
-
 // finishToolExecution performs the concrete Execute, records evidence, runs
-// post hooks and recovery observation, and truncates the model-facing result.
+// recovery observation, and truncates the model-facing result.
 func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) toolOutcome {
 	plan.executed = true
 	cctx := plan.cctx
@@ -38,7 +23,7 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 	t := plan.tool
 	readOnly := plan.readOnly
 	permName := plan.permName
-	permArgs := plan.permArgs
+	_ = plan.permArgs
 	evidenceName := plan.evidenceName
 	evidenceArgs := plan.evidenceArgs
 	mutates := plan.mutates
@@ -92,20 +77,13 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 	if msg, refused := tool.BlockedMessage(err); refused {
 		return a.blockedToolOutcome(plan, msg)
 	}
-	// Fast Path: skip hooks, after-mutation observation, and recovery
+	// Fast Path: skip after-mutation observation and recovery
 	// observation for read-only tools. Only record minimal receipt.
 	if plan.executionPath == pathFast {
 		a.recordMinimalReceipt(plan, result, err)
 	} else {
 		a.recordToolReceipts(plan, result, execution, err)
 		a.noteCapabilityInvocation(call.Name, json.RawMessage(call.Arguments), err)
-		if a.svc.hooks != nil {
-			if err != nil {
-				a.svc.hooks.PostToolUseFailure(ctx, permName, permArgs, result, err)
-			} else {
-				a.svc.hooks.PostToolUse(ctx, permName, permArgs, result)
-			}
-		}
 		if plan.trace != nil {
 			plan.trace.evidenceDone = time.Now()
 			plan.trace.recoveryObserveStart = time.Now()
@@ -145,9 +123,6 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 	}
 	a.recordRepeatSuccess(call, t)
 
-	if a.svc.hooks != nil && call.Name == "task" && !isBackgroundTaskCall(call.Arguments) {
-		a.svc.hooks.SubagentStop(ctx, result)
-	}
 	body, truncMsg := truncateToolOutputFor(result, call.Name, call.ID)
 	out := toolOutcome{
 		output: body, images: images, truncated: truncMsg != "", truncMsg: truncMsg,

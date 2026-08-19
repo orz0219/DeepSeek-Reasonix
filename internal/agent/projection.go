@@ -103,7 +103,7 @@ type CompactionOutcome int
 const (
 	// CompactionInstalled means a new (or replacement) projection was saved.
 	CompactionInstalled CompactionOutcome = iota
-	// CompactionNoop means no fold region / economics skip / empty fold after hooks.
+	// CompactionNoop means no fold region / economics skip / empty fold after compaction.
 	CompactionNoop
 )
 

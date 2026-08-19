@@ -91,7 +91,7 @@ func (a *Agent) applyStormBreaker(calls []provider.ToolCall, outcomes []toolOutc
 		return intervention{}
 	}
 
-	const blockedAdvice = "Change approach: do not keep retrying a blocked tool by changing the tool, command, or arguments. Respect the permission, plan-mode, hook, or loop-guard blocker; use an already-allowed tool, ask the user for the specific approval or choice if appropriate, or explain the blocker in your final answer."
+	const blockedAdvice = "Change approach: do not keep retrying a blocked tool by changing the tool, command, or arguments. Respect the permission, plan mode, or loop-guard blocker; use an already-allowed tool, ask the user for the specific approval or choice if appropriate, or explain the blocker in your final answer."
 	var guard, detail string
 	if stormHit {
 		subject := fmt.Sprintf("%q", calls[0].Name)
@@ -121,7 +121,7 @@ func (a *Agent) applyStormBreaker(calls []provider.ToolCall, outcomes []toolOutc
 			short, a.turn.stormCount)
 	} else {
 		guard = fmt.Sprintf(
-			"[loop guard] every tool call in the last %d turns has been blocked by the host (permission, plan mode, hook, or loop guard). Switching tools, reordering calls, or rewording arguments will not help while the blockers stand. %s",
+			"[loop guard] every tool call in the last %d turns has been blocked by the host (permission, plan mode, or loop guard). Switching tools, reordering calls, or rewording arguments will not help while the blockers stand. %s",
 			a.turn.blockedTurnStreak, blockedAdvice)
 		detail = fmt.Sprintf(
 			"loop guard: every tool call blocked %d turns in a row — nudging the model to change approach",

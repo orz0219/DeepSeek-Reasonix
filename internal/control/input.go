@@ -2,7 +2,6 @@ package control
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"unicode"
 
@@ -29,12 +28,6 @@ const legacyPlanModeMarker = "[Plan mode — read-only. Explore the codebase fir
 const (
 	activeGoalOpen  = "<active-goal>"
 	activeGoalClose = "</active-goal>"
-	hookContextTag  = "hook-context"
-)
-
-const (
-	maxHookContextChars      = 10000
-	maxTotalHookContextChars = 20000
 )
 
 const (
@@ -132,15 +125,14 @@ func IsSyntheticUserMessage(content string) bool {
 // returning the message to actually send to the model. The frontend keeps
 // showing the raw text as the user bubble.
 func (c *Controller) Compose(text string) string {
-	return c.compose(text, text, true)
+	return c.compose(text, text)
 }
 
-func (c *Controller) compose(text, source string, includeHookContext bool) string {
+func (c *Controller) compose(text, source string) string {
 	goal, goalStatus := c.goals.snapshot()
 	return c.composeWithGoal(
 		text,
 		source,
-		includeHookContext,
 		goal,
 		goalStatus,
 	)
@@ -148,7 +140,6 @@ func (c *Controller) compose(text, source string, includeHookContext bool) strin
 
 func (c *Controller) composeWithGoal(
 	text, source string,
-	includeHookContext bool,
 	goal, goalStatus string,
 ) string {
 	c.mu.Lock()
@@ -175,77 +166,7 @@ func (c *Controller) composeWithGoal(
 			text = "<background-jobs>\n" + note + "\n</background-jobs>\n\n" + text
 		}
 	}
-	if includeHookContext {
-		if block := c.drainHookContextBlock(); block != "" {
-			text = block + "\n\n" + text
-		}
-	}
 	return text
-}
-
-
-func (c *Controller) enqueueHookContexts(contexts []string) {
-	if len(contexts) == 0 {
-		return
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for _, context := range contexts {
-		context = strings.TrimSpace(context)
-		if context == "" {
-			continue
-		}
-		c.hookContexts = append(c.hookContexts, context)
-	}
-}
-
-func (c *Controller) drainHookContextBlock() string {
-	c.mu.Lock()
-	contexts := c.hookContexts
-	c.hookContexts = nil
-	c.mu.Unlock()
-	if len(contexts) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString(`<hook-context event="SessionStart">`)
-	b.WriteString("\n")
-	total := 0
-	for i, context := range contexts {
-		text, truncated := clipHookContext(context, maxHookContextChars)
-		remaining := maxTotalHookContextChars - total
-		if remaining <= 0 {
-			fmt.Fprintf(&b, "[truncated: omitted %d additional hook context item(s)]\n", len(contexts)-i)
-			break
-		}
-		text, totalTruncated := clipHookContext(text, remaining)
-		total += len([]rune(text))
-		if i > 0 {
-			b.WriteString("\n---\n")
-		}
-		b.WriteString(escapeHookContext(text))
-		b.WriteString("\n")
-		if truncated || totalTruncated {
-			b.WriteString("[truncated]\n")
-		}
-	}
-	b.WriteString(`</hook-context>`)
-	return b.String()
-}
-
-func clipHookContext(s string, max int) (string, bool) {
-	r := []rune(s)
-	if len(r) <= max {
-		return s, false
-	}
-	if max < 0 {
-		max = 0
-	}
-	return string(r[:max]), true
-}
-
-func escapeHookContext(s string) string {
-	return strings.ReplaceAll(s, "</"+hookContextTag+">", "<\\/"+hookContextTag+">")
 }
 
 func (c *Controller) ComposeSynthetic(text string) string {

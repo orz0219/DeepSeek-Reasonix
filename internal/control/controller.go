@@ -31,7 +31,6 @@ import (
 	"reasonix/internal/extension/uihub"
 	"reasonix/internal/goaleval"
 	"reasonix/internal/guardian"
-	"reasonix/internal/hook"
 	"reasonix/internal/jobs"
 	"reasonix/internal/permission"
 	"reasonix/internal/plugin"
@@ -108,10 +107,6 @@ type Controller struct {
 	skillProfile                   skill.ProfileResolver
 	disableImplicitSkillInvocation bool
 	slashSkillSeq                  atomic.Uint64
-	hooks                          *hook.Runner // session hook runner; nil-safe (no hooks configured)
-	// hookContexts carries one-shot lifecycle hook context into the next real
-	// user turn without changing the cache-stable system prompt.
-	hookContexts []string
 	// memory owns the loaded memory snapshot, the pending turn-tail notes queue,
 	// and write serialization behind its own locks, off c.mu — so a memory-panel
 	// save never stalls an approval or status poll. See memory.go.
@@ -124,7 +119,7 @@ type Controller struct {
 	testCacheColdAfter time.Duration
 
 	shell                             sandbox.Shell                    // interpreter for user-invoked "!" commands; zero = auto
-	startedOnce                       bool                             // guards the one-shot SessionStart hook on first turn
+	startedOnce                       bool                             // guards one-shot session-start logic on first turn
 	closeOnce                         sync.Once                        // makes close idempotent under racing teardown paths
 	onRemember                        func(rule string) RememberResult // set via Options; invoked when user picks "always allow"
 	onRememberPlanModeReadOnlyCommand func(prefix string) PlanModeReadOnlyCommandTrustResult
@@ -233,7 +228,7 @@ type Controller struct {
 	// approval owns the approval/ask prompt bookkeeping and the runtime approval
 	// posture (ask/auto/yolo, session grants, the just-approved-plan window)
 	// behind its own locks, off c.mu. The Controller keeps the I/O orchestration
-	// (requestApproval/Ask emit events + fire hooks + rebuild the executor gate).
+	// (requestApproval/Ask emit events + rebuild the executor gate).
 	// See approval.go.
 	approval approvalManager
 
@@ -285,7 +280,7 @@ type Controller struct {
 	// Not reentrant — never call snapshot (or anything that snapshots, such as
 	// recoverInterruptedTurn or maybeColdResumePrune) while holding it.
 	snapshotMu sync.Mutex
-	// turn counts model turns this session, passed to hooks in their payload.
+	// turn counts model turns this session, passed to interceptors in their payload.
 	turn int
 
 	displayRecorder func(content, display string)

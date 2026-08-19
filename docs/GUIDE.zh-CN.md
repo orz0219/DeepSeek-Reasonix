@@ -20,7 +20,6 @@
 - [思考语言](./REASONING_LANGUAGE.zh-CN.md)
 - [任务合约与暂停策略](./TASK_CONTRACT.zh-CN.md)
 - [自定义 OpenAI-compatible provider](#自定义-openai-compatible-provider)
-- [桌面端 Hooks](./DESKTOP_HOOKS.zh-CN.md)
 - [快捷键](#快捷键)
 - [权限与沙盒](#权限与沙盒)
 - [能力诊断](#能力诊断)
@@ -41,9 +40,6 @@ Reasonix 全局 `<Reasonix home>/.env`。项目 `.env`、home `.env`、继承的
 [配置路径](./CONFIG_PATHS.zh-CN.md)。
 
 桌面端和 CLI 端的可见思考语言设置，见 [思考语言](./REASONING_LANGUAGE.zh-CN.md)。
-桌面端 Hooks 的 JSON 配置、事件 key 和 payload 字段，见 [桌面端 Hooks](./DESKTOP_HOOKS.zh-CN.md)。
-`SessionStart` hook 可通过 stdout 或 `hookSpecificOutput.additionalContext` 把插件/工作流 bootstrap 内容一次性注入下一轮真实用户输入上下文，而不是写入稳定 system prompt。
-插件包可通过 `hooks/session-start-codex` 或插件根目录 `CLAUDE.md` 提供该启动上下文；Claude 风格 `.claude/settings.json` command hooks 也会按同名事件映射到 Reasonix hooks。
 
 ```toml
 default_model = "deepseek-flash"   # 执行器；设 [agent].planner_model 可加规划器
@@ -634,7 +630,7 @@ compaction 摘要数，以及可用时的桌面端 token/cache telemetry。结�
 
 ## 能力诊断
 
-当 skill、斜杠命令、Hook、插件包、MCP 或 `AGENTS.md` 缺失、被覆盖或启动失败时，用统一只读诊断。完整参数、JSON schema 与 issue code 见
+当 skill、斜杠命令、插件包、MCP 或 `AGENTS.md` 缺失、被覆盖或启动失败时，用统一只读诊断。完整参数、JSON schema 与 issue code 见
 **[能力诊断](./CAPABILITY_DIAGNOSTICS.zh-CN.md)**。
 
 ```bash
@@ -742,7 +738,7 @@ headers = { Authorization = "Bearer ${STRIPE_KEY}" }
 
 启用的 MCP 服务器会在会话开始后于后台自动连接，因此工具上线期间聊天仍可正常使用。
 用 `/mcp` 或桌面端 MCP 面板可刷新状态、重连服务器、查看失败原因，或在当前会话内禁用某个服务器。
-若要跨 skills / hooks / 插件包 / MCP 做只读健康检查（不改配置），见
+若要跨 skills / 插件包 / MCP 做只读健康检查（不改配置），见
 [能力诊断](./CAPABILITY_DIAGNOSTICS.zh-CN.md)
 （`reasonix doctor capabilities` 或 **设置 → 诊断**）。
 
@@ -770,7 +766,7 @@ RPC 调用。两者都可按服务器覆盖。
 
 ## 斜杠命令
 
-交互式 `reasonix` 会话里，内置命令（`/compact`、`/context`、`/new`、`/clear`、`/rewind`、`/tree`、`/branch`、`/switch`、`/todo`、`/model`、`/work-mode`、`/mcp`、`/skills`、`/hooks`、`/memory`、`/goal`、`/output-style`、`/sandbox`、`/language`、`/reasoning-language`、`/help`）在本地执行——`/help` 可列出全部。
+交互式 `reasonix` 会话里，内置命令（`/compact`、`/context`、`/new`、`/clear`、`/rewind`、`/tree`、`/branch`、`/switch`、`/todo`、`/model`、`/work-mode`、`/mcp`、`/skills`、`/memory`、`/goal`、`/output-style`、`/sandbox`、`/language`、`/reasoning-language`、`/help`）在本地执行——`/help` 可列出全部。
 内置 **Skill**（如 `/init`、`/explore`、`/test`、`/reasonix-guide`）也会出现在斜杠菜单，
 并可通过 `run_skill` 调用（正文按需加载；只有索引行进入缓存稳定前缀）。配置或能力排障时
 用 `/reasonix-guide`，它会引导运行 `reasonix doctor capabilities`（见
@@ -1053,7 +1049,7 @@ Delivery 证据/租约门禁约束，而不是 Planner 的 Executor handoff。�
 `authorized && readOnlyHint && !destructiveHint`。Profile `allowed-tools` 中的 MCP 名称
 会转换为代理上的 capability ID 白名单；子 Agent 从不继承动态 `mcp__*` schema。
 
-在严格只读子会话内：`use_capability` 在 Commit/permission/hook/执行前会对解析出的
+在严格只读子会话内：`use_capability` 在 Commit/permission/执行前会对解析出的
 真实目标再次校验；未连接且符合条件的 MCP reader 可从当前 schema cache 按需启动，
 initialize/tools-list 后会在 `tools/call` 前核对缓存与 live 的 `readOnlyHint`/
 `destructiveHint`；reader 变 writer 或升级为 destructive 时零执行，普通重试会重新经过当前

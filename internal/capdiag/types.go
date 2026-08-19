@@ -1,5 +1,5 @@
 // Package capdiag collects read-only capability diagnostics for Skills,
-// Commands, Hooks, plugin packages, MCP servers, and instruction docs.
+// Commands, plugin packages, MCP servers, and instruction docs.
 // CLI and desktop share Collect; only CLI --live starts MCP processes.
 package capdiag
 
@@ -38,7 +38,6 @@ type Report struct {
 	Instructions  InstructionsReport  `json:"instructions"`
 	Skills        AssetReport         `json:"skills"`
 	Commands      AssetReport         `json:"commands"`
-	Hooks         HookReport          `json:"hooks"`
 	Plugins       PluginPackageReport `json:"plugins"`
 	MCP           MCPReport           `json:"mcp"`
 	Issues        []Issue             `json:"issues"`
@@ -53,7 +52,6 @@ type Summary struct {
 	Instructions int `json:"instructions"`
 	Skills       int `json:"skills"`
 	Commands     int `json:"commands"`
-	Hooks        int `json:"hooks"`
 	Plugins      int `json:"plugins"`
 	MCPServers   int `json:"mcp_servers"`
 }
@@ -113,38 +111,6 @@ type AssetEntry struct {
 	RunAs       string `json:"run_as,omitempty"`
 }
 
-// HookReport covers hook configuration.
-type HookReport struct {
-	// TrustedProject is retained in schema v1 for compatibility. Project hooks
-	// are enabled by default, so this is true whenever a project root is present.
-	TrustedProject bool         `json:"trusted_project"`
-	ProjectDefines bool         `json:"project_defines_hooks"`
-	Sources        []HookSource `json:"sources"`
-	Entries        []HookEntry  `json:"entries"`
-}
-
-// HookSource is one settings/manifest source.
-type HookSource struct {
-	Scope      string `json:"scope"`
-	Path       string `json:"path"`
-	Status     string `json:"status"`
-	HookCount  int    `json:"hook_count"`
-	ParseError string `json:"parse_error,omitempty"`
-}
-
-// HookEntry is one configured hook.
-type HookEntry struct {
-	Event       string `json:"event"`
-	Match       string `json:"match,omitempty"`
-	Command     string `json:"command,omitempty"`
-	ContextFile string `json:"context_file,omitempty"`
-	Description string `json:"description,omitempty"`
-	TimeoutMS   int    `json:"timeout_ms,omitempty"`
-	Scope       string `json:"scope"`
-	Source      string `json:"source"`
-	Blocking    bool   `json:"blocking"`
-}
-
 // PluginPackageReport covers installed plugin packages.
 type PluginPackageReport struct {
 	StatePath string              `json:"state_path,omitempty"`
@@ -160,7 +126,6 @@ type PluginPackageInfo struct {
 	ManifestKind string `json:"manifest_kind,omitempty"`
 	Skills       int    `json:"skills"`
 	Commands     int    `json:"commands"`
-	Hooks        int    `json:"hooks"`
 	MCPServers   int    `json:"mcp_servers"`
 	// Prompts, Themes, and Runtime are native Manifest v2 fields. They stay
 	// omitempty so older diagnostic consumers see no shape change for legacy

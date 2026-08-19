@@ -23,7 +23,7 @@ import (
 
 // NewSession snapshots the current conversation, rotates to a fresh file, and
 // resets the executor to a clean session carrying the same system prompt. It
-// ends the old session and starts the new one for lifecycle hooks.
+// ends the old session and starts the new one for lifecycle events.
 func (c *Controller) NewSession() error {
 	if c.executor == nil {
 		return nil
@@ -40,11 +40,9 @@ func (c *Controller) NewSession() error {
 		return err
 	}
 
-
 	if err := c.extensionSessionPhase(context.Background(), extension.PointSessionRotate, dispatch.PhaseRotate, oldPath); err != nil {
 		return err
 	}
-	c.hooks.SessionEnd(context.Background(), "clear")
 	c.extensionSessionEvent(extension.PointSessionEnd, dispatch.PhaseEnd, oldPath)
 
 	c.snapshotMu.Lock()
@@ -75,8 +73,6 @@ func (c *Controller) NewSession() error {
 	c.startedOnce = true
 	c.mu.Unlock()
 	// Worker manages its own state; no reset needed.
-	c.hooks.SetSessionID(c.parentSessionID())
-	c.enqueueHookContexts(c.hooks.SessionStart(context.Background(), "clear"))
 	c.extensionSessionEvent(extension.PointSessionStart, dispatch.PhaseStart, c.SessionPath())
 	return nil
 }
@@ -122,7 +118,6 @@ func (c *Controller) ClearSession() error {
 		}
 		destroy.Finish()
 	}
-	c.hooks.SessionEnd(context.Background(), "clear")
 	c.extensionSessionEvent(extension.PointSessionEnd, dispatch.PhaseEnd, oldPath)
 	if c.sessionDir != "" {
 		c.mu.Lock()
@@ -148,8 +143,6 @@ func (c *Controller) ClearSession() error {
 	c.mu.Lock()
 	c.startedOnce = true
 	c.mu.Unlock()
-	c.hooks.SetSessionID(c.parentSessionID())
-	c.enqueueHookContexts(c.hooks.SessionStart(context.Background(), "clear"))
 	c.extensionSessionEvent(extension.PointSessionStart, dispatch.PhaseStart, c.SessionPath())
 	if destroy.Async {
 		go func() {

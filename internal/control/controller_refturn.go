@@ -141,16 +141,9 @@ func (c *Controller) runReady(ctx context.Context, input string) (err error) {
 	if c.guardianSess != nil {
 		c.guardianSess.ResetTurn()
 	}
-	if c.hooks.Enabled() {
-		c.mu.Lock()
-		c.turn++
-		turn := c.turn
-		c.mu.Unlock()
-		if block, _ := c.hooks.PromptSubmit(ctx, input, turn); block {
-			return nil
-		}
-		defer func() { c.hooks.StopResult(context.Background(), lastAssistantText(c.History()), turn, err) }()
-	}
+	c.mu.Lock()
+	c.turn++
+	c.mu.Unlock()
 	marker = c.markInFlightTurn(startMessages, true)
 	ctx = c.withPlannerTurnMetadata(ctx, rawInput, false, startMessages)
 	err = c.runner.Run(ctx, c.withCapabilityRoute(ctx, input, rawInput))

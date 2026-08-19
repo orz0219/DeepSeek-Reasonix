@@ -254,7 +254,7 @@ Reasonix advertises two more extension points in
 
 - `sessionReloadExtensions` — the vendor method
   `_reasonix.io/session/reloadExtensions`. Calling it reloads the session's
-  agent runtime (extensions, tools, skills, commands, hooks, providers) with
+  agent runtime (extensions, tools, skills, commands, providers) with
   the same fail-atomic semantics as the CLI `/reload` command: while a turn
   or rebuild is active exactly one reload is queued (`{"queued": true}`) and
   runs when the session goes idle; otherwise the runtime is rebuilt and

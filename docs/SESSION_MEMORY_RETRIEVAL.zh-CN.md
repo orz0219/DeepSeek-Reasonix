@@ -181,7 +181,7 @@ omitted 数量和 suppressed 原因。
 - 敏感或超长内容；
 - 所有 `forget` 操作。
 
-Auto 和 Yolo 不会绕过这些确认。Guardian 和 permission hook 不能替用户批准。顶层
+Auto 和 Yolo 不会绕过这些确认。Guardian 和 permission 规则不能替用户批准。顶层
 headless controller 只能使用上述同一个一次性低风险创建路径；子智能体以及不拥有该作用域
 controller 的 headless surface 会 fail closed，其他记忆变更仍必须有交互式确认界面。
 

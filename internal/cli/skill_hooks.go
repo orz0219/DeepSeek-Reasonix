@@ -290,29 +290,6 @@ func (m *chatTUI) skillStore() *skill.Store {
 	return skill.New(skill.Options{ProjectRoot: cwd, CustomPaths: custom, PluginPaths: pluginPaths, PluginAgentPaths: pluginAgentPaths, ExcludedPaths: excluded, MaxDepth: maxDepth})
 }
 
-func (m *chatTUI) runHooksSubcommand(input string) {
-	args := tokenizeArgs(input)
-	sub := ""
-	if len(args) > 1 {
-		sub = strings.ToLower(args[1])
-	}
-	cwd, _ := os.Getwd()
-	switch sub {
-	case "", "list", "ls":
-		m.hooksList(cwd)
-	case "trust":
-		// Backward-compatible response for old clients and saved commands.
-		m.notice("project hooks are enabled automatically; no trust action is required")
-	default:
-		m.notice("unknown /hooks subcommand " + args[1] + " — try: /hooks or /hooks list")
-	}
-}
-
-func (m *chatTUI) hooksList(cwd string) {
-	active := m.ctrl.HookRunner().Hooks()
-	m.commitLine(renderHooks(m.width, active))
-}
-
 func containsArg(args []string, flag string) bool {
 	return slices.Contains(args, flag)
 }

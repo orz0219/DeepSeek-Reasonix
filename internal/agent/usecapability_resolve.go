@@ -22,7 +22,7 @@ func (b *runtimeBoundMCPTool) Execute(ctx context.Context, args json.RawMessage)
 }
 
 // ResolveCall implements tool.CallResolver so the agent can run permission,
-// hooks, and evidence against the real MCP target before execution.
+// recovery observation, and evidence against the real MCP target before execution.
 func (t *UseCapabilityTool) ResolveCall(ctx context.Context, args json.RawMessage) (tool.ResolvedCall, error) {
 	var p struct {
 		Action       string          `json:"action"`
@@ -400,8 +400,8 @@ func findMCPTool(tools []tool.Tool, raw, modelName string) tool.Tool {
 	return nil
 }
 
-// onDemandMCPTool defers MCP server startup to Execute so permission and hook
-// gates always run before any subprocess or network side effect. Before the live
+// onDemandMCPTool defers MCP server startup to Execute so the permission gate
+// always runs before any subprocess or network side effect. Before the live
 // handshake it remains write-capable until the resolved MCP tool is classified.
 type onDemandMCPTool struct {
 	proxy     *UseCapabilityTool

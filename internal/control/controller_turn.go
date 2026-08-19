@@ -144,7 +144,7 @@ func (c *Controller) runTurn(ctx context.Context, input string) error {
 
 // RunTurn executes one foreground turn synchronously through the same lifecycle
 // used by interactive frontends: transient memory/background-job
-// composition, checkpoints, hooks, and plan approval. It is for transports that
+// composition, checkpoints, and plan approval. It is for transports that
 // need a blocking request/response boundary, such as ACP session/prompt.
 func (c *Controller) RunTurn(ctx context.Context, input string) error {
 	return c.runSynchronousTurn(ctx, nil, func(runCtx context.Context) error {

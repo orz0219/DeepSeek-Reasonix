@@ -132,7 +132,7 @@ func (bash) SnipHint() tool.SnipHint {
 }
 
 // Execute is the compatibility wrapper: all structured metadata is produced by
-// ExecuteDetailed and discarded here so plugin/hook callers keep the old shape.
+// ExecuteDetailed and discarded here so plugin callers keep the old shape.
 func (b bash) Execute(ctx context.Context, args json.RawMessage) (string, error) {
 	res, err := b.ExecuteDetailed(ctx, args)
 	return res.Output, err

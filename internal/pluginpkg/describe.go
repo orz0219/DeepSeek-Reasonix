@@ -82,14 +82,14 @@ func InstalledShowText(reasonixHome, name string) (string, error) {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "plugin %s [%s]\n", p.Name, state)
-	fmt.Fprintf(&b, "version: %s\nkind: %s\nroot: %s\nsource: %s\ncapabilities: %d skills, %d commands, %d prompts, %d hooks, %d MCP servers, %d themes\n", version, p.ManifestKind, filepath.Clean(root), p.Source, summary.Skills, summary.Commands, summary.Prompts, summary.Hooks, summary.MCPServers, summary.Themes)
+	fmt.Fprintf(&b, "version: %s\nkind: %s\nroot: %s\nsource: %s\ncapabilities: %d skills, %d commands, %d prompts, %d MCP servers, %d themes\n", version, p.ManifestKind, filepath.Clean(root), p.Source, summary.Skills, summary.Commands, summary.Prompts, summary.MCPServers, summary.Themes)
 	if summary.Runtime {
 		b.WriteString(RuntimeTrustText(pkg.Manifest.Runtime))
 	}
 	if p.Enabled {
 		b.WriteString("usage: enabled plugins load into new sessions; use /skills, invoke /<plugin>:<skill> or /<plugin>:<command>, or ask naturally.\n")
 	} else {
-		b.WriteString("usage: enable this plugin before its skills, commands, hooks, or MCP servers participate in sessions.\n")
+		b.WriteString("usage: enable this plugin before its skills, commands, or MCP servers participate in sessions.\n")
 	}
 	appendInventoryText(&b, p.Name, pkg.Inventory())
 	for _, warning := range warnings {
@@ -127,9 +127,6 @@ func pluginCapabilityText(reasonixHome string, p InstalledPlugin) string {
 	}
 	if summary.Prompts > 0 {
 		parts = append(parts, fmt.Sprintf("%d prompts", summary.Prompts))
-	}
-	if summary.Hooks > 0 {
-		parts = append(parts, fmt.Sprintf("%d hooks", summary.Hooks))
 	}
 	if summary.MCPServers > 0 {
 		parts = append(parts, fmt.Sprintf("%d MCP", summary.MCPServers))
@@ -229,25 +226,6 @@ func appendInventoryText(b *strings.Builder, pluginName string, inv Inventory) {
 			fmt.Fprintf(b, "  %s - %s\n", theme.Name, theme.Path)
 		}
 	}
-	if len(inv.Hooks) > 0 {
-		b.WriteString("hooks:\n")
-		for _, hook := range inv.Hooks {
-			target := hook.Command
-			if target == "" {
-				target = hook.ContextFile
-			}
-			match := hook.Match
-			if match == "" {
-				match = "*"
-			}
-			desc := oneLine(hook.Description)
-			if desc != "" {
-				fmt.Fprintf(b, "  %s match=%s - %s - %s\n", hook.Event, match, target, desc)
-			} else {
-				fmt.Fprintf(b, "  %s match=%s - %s\n", hook.Event, match, target)
-			}
-		}
-	}
 	if len(inv.MCPServers) > 0 {
 		b.WriteString("mcpServers:\n")
 		for _, server := range inv.MCPServers {
@@ -258,7 +236,7 @@ func appendInventoryText(b *strings.Builder, pluginName string, inv Inventory) {
 			fmt.Fprintf(b, "  %s [%s] - %s\n", server.Name, server.Transport, target)
 		}
 	}
-	if len(inv.Skills) == 0 && len(inv.Commands) == 0 && len(inv.Prompts) == 0 && len(inv.Themes) == 0 && len(inv.Hooks) == 0 && len(inv.MCPServers) == 0 {
+	if len(inv.Skills) == 0 && len(inv.Commands) == 0 && len(inv.Prompts) == 0 && len(inv.Themes) == 0 && len(inv.MCPServers) == 0 {
 		b.WriteString("capabilities: no detailed inventory available\n")
 	}
 }

@@ -103,7 +103,6 @@ type action struct {
 	Compatibility       string                         `json:"compatibility,omitempty"`
 	MappedCapabilities  []string                       `json:"mappedCapabilities,omitempty"`
 	SkippedCapabilities []pluginpkg.CompatibilityIssue `json:"skippedCapabilities,omitempty"`
-	HookCount           int                            `json:"hookCount,omitempty"`
 	ManifestKind        string                         `json:"manifestKind,omitempty"`
 	Version             string                         `json:"version,omitempty"`
 	PromptCount         int                            `json:"promptCount,omitempty"`

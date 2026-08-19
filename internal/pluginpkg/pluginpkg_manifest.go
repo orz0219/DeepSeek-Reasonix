@@ -38,34 +38,6 @@ func validateManifest(root string, m *Manifest) error {
 			return err
 		}
 	}
-	for event, hooks := range m.Hooks {
-		if strings.TrimSpace(event) == "" {
-			return fmt.Errorf("hook event is required")
-		}
-		for _, h := range hooks {
-			if h.Command == "" && h.ContextFile == "" {
-				return fmt.Errorf("hook command or contextFile is required")
-			}
-			if !h.ArgsSet && !validHookShell(h.Shell) {
-				return fmt.Errorf("hook shell %q is not supported (use auto, bash, powershell, pwsh, or cmd)", h.Shell)
-			}
-			if h.Command != "" && !h.ShellCommand && !filepath.IsAbs(h.Command) {
-				if err := validateRelativePath(h.Command); err != nil {
-					return err
-				}
-			}
-			if h.ContextFile != "" {
-				if err := validateRelativePath(h.ContextFile); err != nil {
-					return err
-				}
-			}
-			if h.Cwd != "" && !filepath.IsAbs(h.Cwd) {
-				if err := validateRelativePath(h.Cwd); err != nil {
-					return err
-				}
-			}
-		}
-	}
 	for name := range m.MCPServers {
 		if !IsValidName(name) {
 			return fmt.Errorf("invalid MCP server name %q", name)
@@ -75,15 +47,6 @@ func validateManifest(root string, m *Manifest) error {
 		return err
 	}
 	return nil
-}
-
-func validHookShell(shell string) bool {
-	switch strings.ToLower(strings.TrimSpace(shell)) {
-	case "", "auto", "bash", "powershell", "pwsh", "cmd":
-		return true
-	default:
-		return false
-	}
 }
 
 func validateRelativePath(p string) error {
@@ -151,12 +114,9 @@ func (p Package) PromptRoots() []string {
 	return out
 }
 
-func (p Package) CapabilityCounts() (skills, commands, hooks, mcp int) {
+func (p Package) CapabilityCounts() (skills, commands, mcp int) {
 	skills = len(p.skillRefs())
 	commands = len(p.commandRefs())
-	for _, hs := range p.Manifest.Hooks {
-		hooks += len(hs)
-	}
 	mcp = len(p.Manifest.MCPServers)
 	return
 }
@@ -169,15 +129,11 @@ func (p Package) PromptCount() int { return len(p.promptRefs()) }
 // ThemeCount counts the theme files resolved from Manifest.Themes.
 func (p Package) ThemeCount() int { return len(p.themeRefs()) }
 
-// CapabilitySummary is the full per-package capability count set. The
-// four-value CapabilityCounts predates native runtime manifests and keeps its
-// signature for existing callers (the desktop module among them); newer fields
-// live here.
+// CapabilitySummary is the full per-package capability count set.
 type CapabilitySummary struct {
 	Skills     int
 	Agents     int
 	Commands   int
-	Hooks      int
 	MCPServers int
 	Prompts    int
 	Themes     int
@@ -187,12 +143,11 @@ type CapabilitySummary struct {
 // CapabilitySummary counts everything the package contributes, including
 // native Manifest v2 prompts, themes, and runtime.
 func (p Package) CapabilitySummary() CapabilitySummary {
-	skills, commands, hooks, mcp := p.CapabilityCounts()
+	skills, commands, mcp := p.CapabilityCounts()
 	return CapabilitySummary{
 		Skills:     skills,
 		Agents:     p.AgentCount(),
 		Commands:   commands,
-		Hooks:      hooks,
 		MCPServers: mcp,
 		Prompts:    len(p.promptRefs()),
 		Themes:     len(p.themeRefs()),

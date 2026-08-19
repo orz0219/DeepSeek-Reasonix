@@ -337,9 +337,9 @@ func firstNonEmpty(a, b string) string {
 
 func migrateSupportData(legacyDir, newDir string) []string {
 	var warnings []string
-	// settings.json carries the global hooks; leaving it out silently emptied
+	// settings.json carries global settings; leaving it out silently emptied
 	// them for anyone whose home moved (#4652).
-	items := []string{"sessions", "projects", "skills", "archive", "hooks.json", "settings.json"}
+	items := []string{"sessions", "projects", "skills", "archive", "settings.json"}
 	for _, item := range items {
 		src := filepath.Join(legacyDir, item)
 		fi, err := os.Stat(src)

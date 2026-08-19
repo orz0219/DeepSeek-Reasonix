@@ -6,13 +6,13 @@ import (
 )
 
 // ResolvedCall is the real target behind a proxy tool such as use_capability.
-// Permission, hooks, read-only classification, and evidence use TargetName and
+// Permission, read-only classification, and evidence use TargetName and
 // Target; the provider transcript keeps the original proxy tool-call name.
 type ResolvedCall struct {
 	// DisplayName is the proxy tool name shown in provider tool-call protocol
 	// matching (e.g. "use_capability").
 	DisplayName string
-	// TargetName is the real tool name for permission/hooks/evidence
+	// TargetName is the real tool name for permission/evidence
 	// (e.g. "mcp__github__search_issues").
 	TargetName string
 	// Args are the arguments to pass to Target.Execute.
@@ -47,7 +47,7 @@ type ResolvedCall struct {
 }
 
 // CallResolver is implemented by proxy tools that map a model-visible call onto
-// a real MCP (or other) target before permission, hooks, and evidence run.
+// a real MCP (or other) target before permission and evidence run.
 type CallResolver interface {
 	ResolveCall(ctx context.Context, args json.RawMessage) (ResolvedCall, error)
 }

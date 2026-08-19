@@ -61,7 +61,7 @@ read/diff 证据。
 
 `use_capability` 的解析阶段无副作用：`action=list` 返回已配置 MCP 服务器的排序列表且不启动服务器；
 对未连接服务器的 `action=call` 只生成惰性目标；Plan 只会对真实目标重新检查显式阶段 opt-out，服务器进程只在
-权限门禁与 PreToolUse Hook 放行之后才启动。按需启动的
+权限门禁放行之后才启动。按需启动的
 子进程随会话存活（不会随单次调用结束而退出）；`action=inspect` 对已连接服务器列出实时工具，未连接
 时只读取缓存 schema，绝不启动进程。无 schema 缓存的服务器首次发现走 `mcp-server:` id 的
 `action=call`：解析为受门禁保护的连接目标（权限名为独立的

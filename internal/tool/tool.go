@@ -37,7 +37,7 @@ type Tool interface {
 // ContextualTool is an execution-time availability contract for tools whose
 // ownership depends on the active workflow context. Provider schemas remain
 // static for cache stability; the host must still consult this contract before
-// permissions, hooks, leases, or Execute so stale transcripts fail closed.
+// permissions, leases, or Execute so stale transcripts fail closed.
 type ContextualTool interface {
 	ProviderVisible(context.Context) bool
 }

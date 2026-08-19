@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"reasonix/internal/command"
-	"reasonix/internal/hook"
 	"reasonix/internal/plugin"
 	"reasonix/internal/pluginpkg"
 	"reasonix/internal/provider"
@@ -17,8 +16,8 @@ import (
 // The adapters wrap existing discovery in the Contributor interface. They do
 // not reimplement any winner rules: each source package keeps resolving its
 // own intra-source clashes exactly as today (skill tier priority, command
-// later-root-wins, hook accumulation), and the kernel resolves only what
-// crosses contributor boundaries.
+// later-root-wins), and the kernel resolves only what crosses contributor
+// boundaries.
 
 // BuiltinToolsContributor contributes the compile-time built-in tools as
 // KindTool at the builtin tier. The built-in set is process-global, so the
@@ -152,58 +151,6 @@ func CommandsContributor(roots ...command.Root) Contributor {
 	}
 }
 
-// HookContribution maps one resolved hook to its additive kernel
-// contribution. seq is the hook's per-event index in load order, so the
-// "event#n" ID matches the order hooks fire today (project, then plugin,
-// then global within an event).
-func HookContribution(h hook.ResolvedHook, seq int) Contribution {
-	return Contribution{
-		Kind: KindHook,
-		ID:   fmt.Sprintf("%s#%d", h.Event, seq),
-		Source: ContributionSource{
-			Scope:  hookScope(h.Scope),
-			Origin: h.Source,
-			Path:   h.Source,
-		},
-		Payload: h,
-	}
-}
-
-// HooksContributor contributes every resolved hook as additive KindHook
-// entries. IDs are "event#n" with n counted per event in load order, matching
-// the order the hooks fire today (project, then plugin, then global within an
-// event). Hooks never shadow, so all of them survive resolution.
-func HooksContributor(opts hook.LoadOptions) Contributor {
-	return ContributorFunc{
-		ContributorName: "hooks",
-		Fn: func(context.Context) ([]Contribution, error) {
-			hooks := hook.Load(opts)
-			out := make([]Contribution, 0, len(hooks))
-			perEvent := map[hook.Event]int{}
-			for _, h := range hooks {
-				n := perEvent[h.Event]
-				perEvent[h.Event]++
-				out = append(out, HookContribution(h, n))
-			}
-			return out, nil
-		},
-	}
-}
-
-// hookScope maps the settings-file scope of a hook. Plugin hooks carry their
-// package's tier; the plugin identity itself stays in the payload because
-// hook.ResolvedHook does not expose it separately.
-func hookScope(s hook.Scope) Scope {
-	switch s {
-	case hook.ScopeProject:
-		return ScopeProject
-	case hook.ScopePlugin:
-		return ScopePlugin
-	default:
-		return ScopeGlobal
-	}
-}
-
 // MCPServerContribution maps one MCP server spec to its kernel contribution,
 // keyed by server name — the same identity that namespaces the server's tools
 // as mcp__<server>__<tool>.
@@ -265,8 +212,7 @@ func mcpScope(spec plugin.Spec) (Scope, string) {
 // namespacing the catalog documents for themes — so prompts from different
 // packages can never collide. This adapter lives in extension rather than
 // pluginpkg for the same reason it may import pluginpkg at all: pluginpkg
-// cannot import extension (extension -> hook -> pluginpkg would become an
-// import cycle), while extension importing pluginpkg is acyclic.
+// cannot import extension, while extension importing pluginpkg is acyclic.
 func PromptContribution(pluginID string, ref pluginpkg.PromptRef) Contribution {
 	return Contribution{
 		Kind: KindPrompt,

@@ -19,7 +19,6 @@ import (
 	"reasonix/internal/extension/dispatch"
 	"reasonix/internal/goaleval"
 	"reasonix/internal/guardian"
-	"reasonix/internal/hook"
 	"reasonix/internal/jobs"
 	"reasonix/internal/nilutil"
 	"reasonix/internal/permission"
@@ -86,7 +85,6 @@ type Options struct {
 	SkillRunner         skill.SubagentRunner
 	ReadOnlySkillRunner skill.SubagentRunner
 	SkillProfile        skill.ProfileResolver
-	Hooks               *hook.Runner
 	Cleanup             func()
 	// BalanceURL/BalanceKey wire the active provider's optional wallet-balance
 	// endpoint and bearer key; empty when the provider declares no balance_url.
@@ -204,9 +202,6 @@ func New(opts Options) *Controller {
 	if runtimeProfile == "" {
 		runtimeProfile = capability.ProfileBalanced
 	}
-	if opts.Hooks != nil {
-		opts.Hooks.SetSessionID(agent.BranchID(opts.SessionPath))
-	}
 	c := &Controller{
 		taskBudget:                        opts.TaskBudget,
 		goalTokenBudget:                   opts.GoalTokenBudget,
@@ -231,7 +226,6 @@ func New(opts Options) *Controller {
 		skillRunner:                       opts.SkillRunner,
 		readOnlySkillRunner:               opts.ReadOnlySkillRunner,
 		skillProfile:                      opts.SkillProfile,
-		hooks:                             opts.Hooks,
 		cleanup:                           opts.Cleanup,
 		responseLanguage:                  config.NormalizeLanguage(opts.ResponseLanguage),
 		reasoningLanguage:                 config.NormalizeReasoningLanguage(opts.ReasoningLanguage),

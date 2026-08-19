@@ -235,7 +235,7 @@ func hasLeadingInjectedBlock(content, target string) bool {
 }
 
 // hasOpenTag reports whether s opens with tag, with or without attributes
-// (hook-context and capability-route carry them).
+// (capability-route carries them).
 func hasOpenTag(s, tag string) bool {
 	return strings.HasPrefix(s, "<"+tag+">") || strings.HasPrefix(s, "<"+tag+" ")
 }

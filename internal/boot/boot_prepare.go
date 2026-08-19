@@ -59,7 +59,7 @@ func prepareBuild(ctx context.Context, opts Options) (*bootContext, error) {
 	}
 	deepSeekProtocolMigErr = deepSeekProtocolMigrationNoticeError(handleConfigLoadWarnings(opts, cfg), deepSeekProtocolMigErr)
 	// Arm the credential-protection layers from the user-global [secrets]
-	// section before any tool, hook, or plugin subprocess can spawn. Package
+	// section before any tool or plugin subprocess can spawn. Package
 	// globals are correct here because [secrets] is user-global (project
 	// reasonix.toml cannot override it), so concurrent workspaces agree.
 	secrets.SetFilterSubprocessEnv(cfg.Secrets.FilterSubprocessEnv)

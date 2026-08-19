@@ -444,7 +444,7 @@ func (a *App) RefreshSkills() error {
 }
 
 // ReloadCommands rescans command directories and hot-swaps without restarting
-// the controller — no MCP disconnect, no hook rerun.
+// the controller — no MCP disconnect, no extension rerun.
 func (a *App) ReloadCommands() error {
 	if a.ctx == nil {
 		return nil

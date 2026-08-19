@@ -253,7 +253,6 @@ var ChineseTraditional = Messages{
 	CmdRemember:         "儲存一條記憶",
 	CmdForget:           "刪除一條已存記憶",
 	CmdMcp:              "MCP 伺服器",
-	CmdHooks:            "管理 hooks",
 	CmdPlugins:          "管理插件包",
 	CmdPasteImage:       "貼上剪貼簿圖片",
 	CmdOutputStyle:      "列出輸出風格",
@@ -285,7 +284,6 @@ var ChineseTraditional = Messages{
 	ArgMcpAdd:           "連線一個伺服器",
 	ArgMcpRemove:        "斷開一個伺服器",
 	ArgMcpConnected:     "已連線",
-	ArgHooksList:        "列出生效的 hooks",
 	ArgModelCurrent:     "當前",
 	ArgEffortAuto:       "使用模型預設值",
 	ArgEffortLow:        "較輕推理",
@@ -303,8 +301,6 @@ var ChineseTraditional = Messages{
 	ListMemoryNone:      "暫無記憶 — 用 “/remember <內容>” 新增，或執行 /init 生成 AGENTS.md",
 	ListSkillsHeaderFmt: "skills（%d 個）",
 	ListSkillsNone:      "暫無 skill — 呼叫內建的（如 /init），或用 install_skill 建立一個",
-	ListHooksHeaderFmt:  "hooks（生效 %d 個）",
-	ListHooksNone:       "無生效 hooks — 在 .reasonix/settings.json（專案）或 <Reasonix home>/settings.json（全域）設定",
 	ListMcpHeader:       "MCP 伺服器",
 	ListMcpNone:         "未連線 MCP 伺服器 — 在 reasonix.toml（[[plugins]]）或專案 .mcp.json 中新增",
 
@@ -506,7 +502,6 @@ var ChineseTraditional = Messages{
   reasonix session list --json [--dir PATH]             為機器客戶列出脫敏會話
   reasonix session show|status <machine-session-id> --json [--dir PATH]  查詢單一脫敏會話
   reasonix session recovery [<machine-session-id>] --json [--dir PATH]  查詢脫敏復原狀態
-  reasonix hook list|status --json [--dir PATH]         檢視脫敏 Hook 狀態
   reasonix task list|show|status|events|stop|cancel|monitor|tmux --json [--dir PATH]
                                                          檢視或控制脫敏 Task
   reasonix upgrade [--check] [--force]                   更新到最新正式版（別名：reasonix update）

@@ -18,7 +18,7 @@ import (
 // approval posture, behind its own locks and off the controller's c.mu. It is a
 // strict leaf: its methods only touch its own state and never call back into the
 // Controller. The Controller keeps the I/O orchestration (emitting events,
-// firing hooks, rebuilding the executor gate) that needs its other collaborators
+// firing, rebuilding the executor gate) that needs its other collaborators
 // — approval, unlike the goal FSM, blocks on user input and has side effects, so
 // only the bookkeeping is extracted, not the orchestration.
 type approvalManager struct {
@@ -120,7 +120,7 @@ func BuildHeadlessApprovalGate(policy permission.Policy, mode string) *freshHuma
 // non-interactive gate that every headless-only sub-agent surface shares —
 // `task`/`read_only_task`, writer-capable skill sub-agents, and the planner
 // runner. Those surfaces capture their gate once at construction with no
-// rebuild hook of their own, unlike the parent executor's gate (rebuilt in
+// rebuild of their own, unlike the parent executor's gate (rebuilt in
 // place via Agent.SetGate on every SetToolApprovalMode/
 // ApplyHeadlessApprovalMode call). Every consumer holds this same pointer and
 // reads through Check, so a runtime approval-mode switch (interactive
@@ -615,13 +615,4 @@ func approvalNotificationText(tool, subject string) string {
 		return fmt.Sprintf(i18n.M.ApprovalNeededFmt, tool)
 	}
 	return fmt.Sprintf(i18n.M.ApprovalNeededWithSubjectFmt, tool, subject)
-}
-
-func permissionRequestHookPayload(tool, subject string, args json.RawMessage) (string, json.RawMessage, bool) {
-	switch tool {
-	case planApprovalTool:
-		return "", nil, false
-	default:
-		return subject, args, true
-	}
 }

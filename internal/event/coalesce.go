@@ -188,7 +188,6 @@ func (c *coalescer) RecordOutcomeProgress(sample evidence.OutcomeSample) {
 	RecordOutcomeProgress(c.inner, sample)
 }
 
-
 func (c *coalescer) RecordDelegationAdmission(a DelegationAdmissionAudit) {
 	c.mu.Lock()
 	c.enqueueFlushLocked()

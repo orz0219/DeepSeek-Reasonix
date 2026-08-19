@@ -281,7 +281,7 @@ func LegacyUserConfigPaths() []string {
 // by a fresh per-write human approval: the current config.toml, compatibility
 // TOML locations, and the legacy v0.x ~/.reasonix/config.json. Individual
 // files, never directories — the Reasonix home also holds credentials (.env),
-// global hooks (settings.json), skills, and session stores, and none of those
+// settings, skills, and session stores, and none of those
 // may ride along on a config repair.
 func ReasonixManagedConfigPaths() []string {
 	var out []string
@@ -512,9 +512,7 @@ func MemoryUserDir() string {
 // commands), in canonical-first order. .reasonix is ours; .agents / .agent /
 // .claude let users drop in assets authored for other agent tools without moving
 // files. Shared so skills (internal/skill) and commands (CommandDirs) discover
-// the same set. Note: hooks are NOT scanned across these — a .claude/settings.json
-// uses a different hook schema that can't be parsed as ours, so hooks stay in
-// .reasonix/settings.json (see internal/hook).
+// the same set.
 var ConventionDirs = []string{".reasonix", ".agents", ".agent", ".claude"}
 
 // conventionSubdirsAsc joins sub under each ConventionDir of base, in ascending

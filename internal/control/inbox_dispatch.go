@@ -73,7 +73,7 @@ func (c *Controller) dispatchInboxOnce() inboxDispatchResult {
 		return inboxDispatchIdle
 	}
 	// Controllers without persistence cannot own a durable inbox. Rotation and
-	// turn-completion hooks are shared with those controllers, so treat the
+	// turn-completion handling is shared with those controllers, so treat the
 	// missing path as an empty queue instead of retrying a permanent condition.
 	if c.SessionPath() == "" {
 		return inboxDispatchIdle
@@ -96,7 +96,7 @@ func (c *Controller) dispatchInboxOnce() inboxDispatchResult {
 	}
 	if beforeSubmit != nil {
 		if err := beforeSubmit(meta.ID); err != nil {
-			slog.Warn("controller: inbox dispatch hook", "err", err, "id", meta.ID)
+			slog.Warn("controller: inbox dispatch", "err", err, "id", meta.ID)
 			return inboxDispatchRetry
 		}
 	}

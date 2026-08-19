@@ -1,6 +1,6 @@
 # Reasonix Plugin Packages
 
-Reasonix plugin packages bundle skills, hooks, MCP servers, prompts, themes,
+Reasonix plugin packages bundle skills, MCP servers, prompts, themes,
 and code extensions behind one installable unit.
 
 ## CLI Mode
@@ -86,7 +86,6 @@ reasonix plugin show superpowers
 - **skills** include suggested `/<plugin>:<skill>` invocations and descriptions.
 - **commands** include `/<plugin>:<command>` invocations, argument hints, and
   descriptions.
-- **hooks** list lifecycle events, matchers, and commands or context files.
 - **mcpServers** list server names, transports, and launch targets.
 
 Check that the manifest and skill roots are readable:
@@ -95,7 +94,7 @@ Check that the manifest and skill roots are readable:
 reasonix plugin doctor superpowers
 ```
 
-For a workspace-wide capability report (skills, hooks, MCP merge, package roots), see
+For a workspace-wide capability report (skills, MCP merge, package roots), see
 [Capability diagnostics](./CAPABILITY_DIAGNOSTICS.md):
 
 ```bash
@@ -128,12 +127,10 @@ Reasonix loads its capabilities into normal interactive sessions:
 
 - Run `/plugins` inside an interactive session to list installed plugin
   packages. Run `/plugins show <name>` to inspect a plugin's exported skills,
-  hooks, MCP servers, and usage hints without leaving the chat.
+  MCP servers, and usage hints without leaving the chat.
 - **Skills** appear in `/skills`. Invoke a plugin skill with
   `/<plugin>:<skill> [args]`, or ask
   naturally and let the agent choose a matching skill by description.
-- **Hooks** run automatically at their configured lifecycle events, such as
-  `SessionStart`, `UserPromptSubmit`, `PreToolUse`, or `PostToolUse`.
 - **MCP servers** join the normal MCP/tool flow. Ask for the task you want done;
   Reasonix can call the plugin's tools when they are relevant.
 
@@ -178,13 +175,13 @@ Preview is the safest first step for a new Git source or local plugin directory.
 ### Manage Installed Plugins
 
 The installed-plugin list shows each plugin package and its exported skills,
-hooks, and MCP servers. Use **Refresh plugins** after editing plugin files or
+and MCP servers. Use **Refresh plugins** after editing plugin files or
 changing config outside the app.
 
 Expand a plugin row to manage it:
 
 - Enable or disable the plugin.
-- Read **How to use** for the plugin's exported skills, hooks, and MCP servers.
+- Read **How to use** for the plugin's exported skills, and MCP servers.
 - **Update** pulls or refreshes an installed plugin when an update source is
   available.
 - **Doctor** checks the plugin manifest and reports warnings or diagnostics.
@@ -202,9 +199,8 @@ The desktop settings page uses the same runtime model as the CLI:
   session.
 - Plugin commands are shown and invoked with package-qualified names such as
   `/superpowers:plan`.
-- Hooks and MCP servers are listed for transparency. They do not need a manual
-  "run" button: enabled hooks trigger automatically, and MCP tools are available
-  through ordinary tool use.
+- MCP servers are listed for transparency and are available through ordinary
+  tool use.
 - If a currently open session does not reflect a plugin change, refresh the
   plugin list and open a new session.
 
@@ -216,47 +212,7 @@ Reasonix plugins can declare `reasonix-plugin.json` at the plugin root:
 {
   "name": "example",
   "version": "1.0.0",
-  "description": "Example plugin",
-  "skills": "skills",
-  "hooks": {
-    "SessionStart": [
-      {
-        "command": "hooks/session-start",
-        "args": [],
-        "description": "Load startup context"
-      },
-      {
-        "command": "printf 'ready' && ./hooks/audit",
-        "shell": "bash",
-        "description": "Run a compound shell script"
-      }
-    ]
-  },
-  "mcpServers": {
-    "helper": {
-      "command": "bin/helper"
-    }
-  }
-}
-```
 
-Relative paths are resolved inside the plugin root. Reasonix does not run
-third-party install scripts during plugin installation.
-
-Plugin hook execution is explicit:
-
-- When `args` is present, including `"args": []`, the hook uses **exec form**.
-  `command` is the executable and every argument is passed literally, without
-  shell parsing or interpolation.
-- When `args` is absent and `shell` is present, the hook uses **shell form**.
-  The complete `command` is handed unchanged to `bash`, `powershell`/`pwsh`,
-  `cmd` (Windows only), or `auto`. On Windows, `auto` prefers Git Bash and
-  falls back to PowerShell.
-- Existing native hooks that declare neither field keep the historical
-  Reasonix shell-command behavior. `shellCommand: true` remains supported as
-  the legacy spelling of shell form.
-
-## Manifest v2 (Extensions)
 
 Native Reasonix extensions use the exact v2 `apiVersion`:
 
@@ -280,7 +236,6 @@ Native Reasonix extensions use the exact v2 `apiVersion`:
     "agents": ["agents"],
     "commands": ["commands"],
     "prompts": ["prompts"],
-    "hooks": {},
     "mcpServers": {},
     "themes": ["themes/*.reasonix-theme"]
   },
@@ -306,15 +261,15 @@ Parsing rules:
   `contributes`/`runtime` — is an error naming the field path, so typos fail
   loudly instead of silently disabling a capability.
 - v2 resource discovery is explicit. Reasonix loads only the skills, agents,
-  commands, prompts, hooks, MCP servers, themes, and runtime declared by the
+  commands, prompts, MCP servers, themes, and runtime declared by the
   native manifest. Host-specific sidecars such as a root `CLAUDE.md`,
-  `hooks/hooks.json`, `.claude/settings.json`, or `.mcp.json` are not imported
+  `.claude/settings.json`, or `.mcp.json` are not imported
   implicitly.
 - Minor aliases (`reasonix.io/plugin/v2.0`, `v2.1`, …) and unknown major
   versions are rejected.
 - `requires` and `provides` declare dependency constraints and the capability
   ceiling enforced against the Sidecar handshake.
-- v2 may mix the supported top-level resource fields (`skills`, `hooks`,
+- v2 may mix the supported top-level resource fields (`skills`,
   `mcpServers`, …)
   with `contributes`: identical paths are deduplicated; the same key with two
   different definitions is a manifest error naming the key.
@@ -378,12 +333,7 @@ reports `full`, `partial`, or `none` compatibility, lists mapped capabilities,
 and identifies every skipped entry. A non-native package with no mapped
 capabilities is blocked instead of being recorded as an unusable installation.
 `full` means every declared capability in the manifest parsed and mapped to a
-Reasonix construct; it does not by itself guarantee every runtime decision an
-imported hook can make is honored. `PreToolUse`/`PermissionRequest` "deny" and
-`PermissionRequest` "allow" are implemented, but a hook's `updatedInput` or
-`PreToolUse`'s `ask`/`defer` decisions are chosen by the script's stdout at
-call time, not by anything in the manifest, so they can't be flagged during
-install; see the hook bullet below for what's implemented.
+Reasonix construct.
 GitHub-hosted multi-plugin marketplaces with a
 `.claude-plugin/marketplace.json` can be installed from the repository root
 when their plugin entries use relative string sources such as
@@ -422,104 +372,11 @@ declarations and do not apply these fallbacks:
   Reasonix tool names, including wildcard MCP names such as `mcp__*__search`.
   Agents use `/<plugin>:agent:<name>`, so an upstream agent and skill may share
   the same name without shadowing one another.
-- `hooks/session-start-codex` to the Reasonix `SessionStart` hook when present.
-- For Codex compatibility packages, a plugin-root `CLAUDE.md` file to a built-in
-  `SessionStart` context hook. The file is read directly by Reasonix, without
-  spawning a shell command. Claude plugin manifests ignore this file, matching
-  Claude Code's plugin contract.
-- `.claude/settings.json` and `hooks/hooks.json` command hooks to Reasonix hook
-  events when the event names match. `matcher`, `args`, `shell`, `async`,
-  `env`, and timeout are preserved. Claude's execution contract is retained:
-  an `args` field (even an empty array) selects exec form and preserves every
-  argument literally; omitting `args` selects shell form and passes the raw
-  command to the declared Bash or PowerShell interpreter. `matcher` and the
-  `tool_name` a hook script sees are
-  translated between Reasonix's own tool names and Claude's (`bash` ↔
-  `Bash`, `write_file` ↔ `Write`, ...), so a matcher like `"Bash"` fires
-  correctly; every Reasonix subagent-spawning tool (`task`, `read_only_task`,
-  `parallel_tasks`, and the dedicated `explore`/`research`/`review`/
-  `security_review` wrappers) maps to Claude's single `Agent` tool, and a
-  matcher can still use the legacy `Task` name. Every mapped `Agent` payload
-  includes Claude's required `prompt` and `description`; Reasonix supplies a
-  stable operation label when its tool call omitted the optional description.
-  `tool_input` keys that
-  Reasonix names differently from Claude are renamed too — `path` becomes
-  `file_path` for `Read`/`Write`/`Edit`/`MultiEdit` and `notebook_path` for
-  `NotebookEdit`, `name`/`arguments` become `skill`/`args` for `Skill`,
-  `job_id` becomes `task_id` for the current `TaskOutput`/`TaskStop`, the
-  dedicated subagent wrappers' `task` becomes `Agent`'s `prompt`, and
-  `parallel_tasks` synthesizes `Agent`'s `prompt` from its sub-task prompts
-  (keeping `tasks` alongside) — so a guard reading `.tool_input.file_path`
-  or `.tool_input.prompt` sees the target instead of failing open on an
-  empty value. Legacy `BashOutput`/`KillShell` matchers still fire while the
-  emitted names and fields use current Claude vocabulary. `bash_output`
-  supplies `TaskOutput`'s required non-blocking fields; `wait` also maps to
-  `TaskOutput`, including `task_id` when it waits for exactly one job, and
-  omits `TaskOutput`'s optional `timeout` for an unbounded wait rather than
-  claiming a `0`ms budget.
-  `AskUserQuestion` supplies omitted `multiSelect:false` and empty option
-  descriptions, while `TodoWrite` derives an omitted `activeForm` from the
-  task content. `NotebookEdit` also supplies `new_source` from Reasonix's
-  accepted aliases, or an empty string for delete/empty-cell operations.
-  Relative `file_path`/`notebook_path` values are resolved
-  absolute against the payload `cwd`, matching Claude's file-tool contract,
-  so prefix-matching guards inspect the path the tool actually accesses. A
-  `Bash` `tool_response` is delivered in Claude's `{stdout, stderr,
-  interrupted}` shape (Reasonix combines both streams into `stdout`; the
-  failure error text becomes `stderr`), which the official security-guidance
-  plugin's commit/push checks read; other tools' responses pass through as
-  the raw result. Imported hooks receive Claude-compatible snake_case stdin
-  payloads, including `hook_event_name`. Before process launch, the host
-  expands `${CLAUDE_PLUGIN_ROOT}` and `${REASONIX_PLUGIN_ROOT}` (plus their
-  unbraced `$NAME` and Windows `%NAME%` spellings), so plugin-relative paths
-  do not depend on the target shell's environment-variable syntax. On Windows,
-  shell-form hooks without an explicit shell use the same Git Bash-first,
-  PowerShell-fallback selection as Reasonix's shell tool; when a hook points to
-  a POSIX-shebang script file, the host also converts Windows paths to a Bash-
-  compatible form. Explicit Bash hooks
-  and legacy bare `sh -c`/`bash -c` hooks are routed through a discovered Git
-  for Windows Bash even when it is not on `cmd.exe`'s `PATH`; an explicit
-  interpreter path remains untouched. If no usable Bash is installed, the hook
-  reports a clear prerequisite error instead of the localized `sh is not
-  recognized` output. A non-standard or portable Bash configured with
-  `[tools.shell] prefer = "bash"` and `path = ".../bash.exe"` is reused by
-  explicit Bash hooks. `reasonix plugin doctor <name>` and
-  `reasonix doctor capabilities` report a missing required shell before the
-  first hook invocation. Captured legacy-code-page output is normalized to
-  UTF-8 before it reaches the UI. A `PreToolUse` or
-  `UserPromptSubmit` hook can still deny via exit code 2 or its JSON deny
-  shape on exit 0 (`hookSpecificOutput.permissionDecision` for `PreToolUse`,
-  top-level `decision:"block"` for `UserPromptSubmit`); an imported
-  `PermissionRequest` hook additionally answers the permission dialog itself
-  (deny or auto-allow, rather than only notifying) via exit code 2 or
-  `hookSpecificOutput.decision.behavior`, matching Claude's own contract.
-  `updatedInput` is not yet applied to the tool call, and a hook's `if`
-  condition or `asyncRewake` field is not evaluated. A package reports partial
-  compatibility with a structured warning when it declares either field, a
-  `Stop`/`SubagentStop` hook (which cannot block the turn in Reasonix), or a
-  matcher that covers one of three inputs Reasonix cannot losslessly express:
-  `WebFetch.prompt`, `NotebookEdit.cell_id` for a Reasonix `cell_number` call,
-  or `TaskOutput.task_id` when Reasonix `wait` covers multiple/all jobs. Each
-  structural gap is reported once per hooks file, so a wildcard-matcher
-  plugin sees one warning per gap instead of one per hook.
 - A plugin-root `.mcp.json` to installed MCP entries. Claude `local` maps to
   stdio, non-ASCII display names receive stable internal IDs, and duplicate
   declarations are deduplicated. Imported servers default to
   `auto_start=false`; users connect them on demand so startup does not change
   the provider-visible tool schema.
-
-Unsupported Claude hook item types are skipped with a warning. Reasonix does not
-run third-party install scripts.
-
-Plugin hooks receive these environment variables:
-
-- `REASONIX_PLUGIN_ROOT`
-- `REASONIX_PLUGIN_NAME`
-- `REASONIX_PLUGIN_VERSION`
-- `REASONIX_HOME`
-- `REASONIX_WORKSPACE_ROOT`
-- `CLAUDE_PROJECT_DIR`
-- `CLAUDE_PLUGIN_ROOT`
 
 ## Desktop Backend Methods
 

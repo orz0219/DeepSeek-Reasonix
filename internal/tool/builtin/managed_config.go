@@ -15,7 +15,7 @@ import (
 // human approval (see tool.ConfigWriteApprover). The zero value matches
 // nothing, preserving plain workspace confinement. Entries are individual
 // files, never directories: the Reasonix home also holds credentials (.env),
-// global hooks (settings.json), skills, and session stores, which must not
+// global config (settings.json), skills, and session stores, which must not
 // become writable through this escape hatch.
 type ManagedConfigPaths struct {
 	paths []string

@@ -44,8 +44,6 @@ func (a *Agent) streamWithFrozen(ctx context.Context, turn int, sink event.Sink,
 		return streamedTurn{usage: provider.UsageWithRequestAttemptCount(ctx, nil), err: err}
 	}
 
-	transformReasoning := a.svc.hooks != nil && a.svc.hooks.HasPostLLMCall()
-
 	var text, reasoning strings.Builder
 	var signature string                    // provider-issued proof for the reasoning (Anthropic thinking)
 	var reasoningID, reasoningStatus string // Responses reasoning item id/status (meta chunk)
@@ -69,12 +67,6 @@ func (a *Agent) streamWithFrozen(ctx context.Context, turn int, sink event.Sink,
 	finishReasoning := func() (stored, display string) {
 		original := reasoning.String()
 		display = original
-		if transformReasoning && original != "" {
-			display = a.svc.hooks.PostLLMCall(ctx, original, turn)
-			if display != "" {
-				sink.Emit(event.Event{Kind: event.Reasoning, Text: display})
-			}
-		}
 		stored = display
 		providerBound := signature != "" || reasoningID != "" || reasoningStatus != ""
 		if providerBound || provider.RequiresReasoningRoundTrip(a.svc.prov) || (len(calls) > 0 && provider.RequiresToolCallReasoning(a.svc.prov)) {
@@ -145,7 +137,7 @@ func (a *Agent) streamWithFrozen(ctx context.Context, turn int, sink event.Sink,
 			if chunk.ReasoningStatus != "" {
 				reasoningStatus = chunk.ReasoningStatus
 			}
-			if chunk.Text != "" && !transformReasoning {
+			if chunk.Text != "" {
 				sink.Emit(event.Event{Kind: event.Reasoning, Text: chunk.Text})
 			}
 			if a.reasoningByteLimit > 0 && reasoning.Len() > a.reasoningByteLimit {

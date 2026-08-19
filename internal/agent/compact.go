@@ -547,7 +547,7 @@ func charsOfMessages(msgs []provider.Message) int {
 }
 
 // summarize asks the executor's own provider (no tools) to distill the region
-// into a briefing. instructions is optional /compact focus + PreCompact text.
+// into a briefing. instructions is optional /compact focus text.
 // Named returns so defer can attach RequestCount and still return usage.
 func (a *Agent) summarize(ctx context.Context, region []provider.Message, instructions string) (summary string, usage *provider.Usage, err error) {
 	ctx, cancel := context.WithTimeout(ctx, summaryTimeout)

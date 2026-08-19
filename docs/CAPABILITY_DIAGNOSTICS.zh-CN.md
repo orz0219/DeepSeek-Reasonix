@@ -7,7 +7,7 @@
 <a href="./PLUGIN_PACKAGES.zh-CN.md">插件包</a>
 
 Reasonix 提供 CLI 与桌面端 **设置 → 诊断** 共用的只读能力诊断模型，覆盖 Skills、
-Commands、Hooks、插件包、MCP 服务器，以及指令文件（`AGENTS.md` /
+Commands、插件包、MCP 服务器，以及指令文件（`AGENTS.md` /
 `REASONIX.md` / `CLAUDE.md`）。
 
 **写入策略**
@@ -21,7 +21,7 @@ Commands、Hooks、插件包、MCP 服务器，以及指令文件（`AGENTS.md` 
 
 | 目标 | 命令 / 入口 |
 | --- | --- |
-| 检查当前工作区的 skills / hooks / MCP / 插件 | `reasonix doctor capabilities` |
+| 检查当前工作区的 skills / MCP / 插件 | `reasonix doctor capabilities` |
 | 机器可读报告（CI / 报障） | `reasonix doctor capabilities --json` |
 | 指定项目根目录 | `reasonix doctor capabilities --root /path/to/project` |
 | 真实探测 MCP 启动（会启动第三方服务器） | `reasonix doctor capabilities --live --timeout 5s` |
@@ -56,16 +56,7 @@ reasonix doctor capabilities --json | jq '.skills.entries, .commands.entries, .i
 
 然后到 **设置 → 技能**，或直接改 `.reasonix/skills` / `.reasonix/commands` 下的文件。
 
-### 2. 「项目 Hooks 不触发」
-
-```bash
-reasonix doctor capabilities | sed -n '/Hooks/,/Plugins/p'
-```
-
-项目 Hooks 会从 `.reasonix/settings.json` 自动加载。若没有触发，请确认当前工作区，
-保存后重启 Reasonix。`match` 是**锚定**正则：`file` **不会**匹配 `read_file`。
-
-### 3. 「配置了 MCP 但模型看不到工具」
+### 2. 「配置了 MCP 但模型看不到工具」
 
 1. 先做静态检查（无副作用）：
 
@@ -169,15 +160,15 @@ schema **不会**混入新字段。
 | 刷新 | 按当前「会话运行状态」开关重新收集 |
 | 复制脱敏 JSON | 可安全粘贴的报告（路径已脱敏） |
 | 包含当前会话运行状态 | 仅合并活动标签 Host 的 connected / failed / deferred / disabled |
-| 前往设置（Issue 上） | 当 `settings_tab` 有值时跳到 MCP / Skills / Plugins / Hooks |
+| 前往设置（Issue 上） | 当 `settings_tab` 有值时跳到 MCP / Skills / Plugins |
 
-页面不提供自动编辑、执行 hooks、自动启用或自动重连。打开诊断页**不会**
+页面不提供自动编辑、自动启用或自动重连。打开诊断页**不会**
 rebuild controller，也不会 snapshot 会话。
 
 ## JSON schema（version 1）
 
 顶层字段：`schema_version`、`root`、`live`、`summary`、
-`instructions` / `skills` / `commands` / `hooks` / `plugins` / `mcp`、`issues`。
+`instructions` / `skills` / `commands` / `plugins` / `mcp`、`issues`。
 
 插件包条目对 Manifest v2 是增量扩展：声明了代码型 Runtime 的插件还会
 报告 `prompts` 与 `themes` 计数和 `runtime` 标记（见
@@ -191,7 +182,6 @@ Issue 含稳定 `code`、`severity`、`subsystem`、`source`、`message`、`reme
 
 - `skill.shadowed`、`skill.missing_description`、`skill.disabled`
 - `command.shadowed`、`command.read_failed`
-- `hook.invalid_matcher`、`hook.missing_command`、`hook.malformed_settings`
 - `plugin.missing_root`、`plugin.invalid_manifest`、`plugin.compatibility`
 - `mcp.invalid_transport`、`mcp.command_not_found`、`mcp.missing_command`、`mcp.missing_url`
 - `mcp.start_failed`、`mcp.no_tools`、`mcp.runtime_unavailable`

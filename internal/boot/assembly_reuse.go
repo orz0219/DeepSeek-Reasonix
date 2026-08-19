@@ -3,7 +3,6 @@ package boot
 import (
 	"reasonix/internal/command"
 	"reasonix/internal/extension"
-	"reasonix/internal/hook"
 	"reasonix/internal/skill"
 	"reasonix/internal/tool"
 )
@@ -15,7 +14,6 @@ type ReusedAssembly struct {
 	SystemPrompt            string
 	Skills                  []skill.Skill
 	Commands                []command.Command
-	Hooks                   []hook.ResolvedHook
 	Registry                *tool.Registry
 	ImplicitSkillInvocation bool
 }

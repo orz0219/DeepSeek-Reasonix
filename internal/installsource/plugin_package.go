@@ -338,9 +338,9 @@ func (t *installSourceTool) pluginPackageAction(req request, pkg pluginpkg.Packa
 	if t.reasonixHome != "" {
 		root = pluginpkg.InstallRoot(t.reasonixHome, name)
 	}
-	skills, commands, hooks, mcp := pkg.CapabilityCounts()
+	skills, commands, mcp := pkg.CapabilityCounts()
 	agents := pkg.Inventory().Agents
-	if pkg.ManifestKind != "reasonix" && skills+commands+hooks+mcp+len(agents) == 0 {
+	if pkg.ManifestKind != "reasonix" && skills+commands+mcp+len(agents) == 0 {
 		return action{}, newErr(ErrNoCompatibleCapabilities, "plugin %q has no Reasonix-compatible capabilities; skipped: %v", name, pkg.Compatibility.Skipped)
 	}
 	agentNames := make([]string, 0, len(agents))
@@ -363,7 +363,6 @@ func (t *installSourceTool) pluginPackageAction(req request, pkg pluginpkg.Packa
 		Commands:            pkg.Manifest.Commands,
 		CommandCount:        commands,
 		ManifestKind:        pkg.ManifestKind,
-		HookCount:           hooks,
 		ToolCount:           mcp,
 		Compatibility:       pkg.Compatibility.Status,
 		MappedCapabilities:  append([]string(nil), pkg.Compatibility.Mapped...),
@@ -373,14 +372,10 @@ func (t *installSourceTool) pluginPackageAction(req request, pkg pluginpkg.Packa
 		ThemeCount:          pkg.ThemeCount(),
 		Runtime:             runtimePlanInfo(pkg.Manifest.Runtime),
 		RiskLevel:           RiskMedium,
-		RiskReasons:         []string{"installs a plugin package that can add skills, commands, hooks, and MCP servers"},
+		RiskReasons:         []string{"installs a plugin package that can add skills, commands, and MCP servers"},
 	}
 	if a.Mode == "link" {
 		a.RiskReasons = append(a.RiskReasons, "links a plugin package from a mutable local directory")
-	}
-	if hooks > 0 {
-		a.RiskLevel = RiskHigh
-		a.RiskReasons = append(a.RiskReasons, "registers shell hooks that execute during Reasonix sessions")
 	}
 	if mcp > 0 {
 		a.RiskLevel = RiskHigh
@@ -448,8 +443,8 @@ func (t *installSourceTool) applyInstallPluginPackage(ctx context.Context, req r
 		return newErr(ErrInvalidManifest, "%v", err)
 	}
 	if pkg.ManifestKind != "reasonix" {
-		skills, commands, hooks, mcp := pkg.CapabilityCounts()
-		if skills+commands+hooks+mcp+pkg.AgentCount() == 0 {
+		skills, commands, mcp := pkg.CapabilityCounts()
+		if skills+commands+mcp+pkg.AgentCount() == 0 {
 			return newErr(ErrInvalidManifest, "plugin %q no longer has any Reasonix-compatible capabilities", act.Name)
 		}
 	}
@@ -488,7 +483,7 @@ func (t *installSourceTool) applyInstallPluginPackage(ctx context.Context, req r
 	act.Target = target
 	act.ManifestKind = pkg.ManifestKind
 	act.Version = pkg.Manifest.Version
-	act.SkillCount, act.CommandCount, act.HookCount, act.ToolCount = pkg.CapabilityCounts()
+	act.SkillCount, act.CommandCount, act.ToolCount = pkg.CapabilityCounts()
 	act.AgentCount = pkg.AgentCount()
 	act.PromptCount, act.ThemeCount = pkg.PromptCount(), pkg.ThemeCount()
 	act.Runtime = runtimePlanInfo(pkg.Manifest.Runtime)
@@ -580,13 +575,13 @@ func verifyCopiedCapabilities(src pluginpkg.Package, target string) error {
 	if err != nil {
 		return newErr(ErrInvalidManifest, "installed plugin tree failed to re-parse: %v", err)
 	}
-	ss, sc, sh, sm := src.CapabilityCounts()
-	is, ic, ih, im := installed.CapabilityCounts()
+	ss, sc, sm := src.CapabilityCounts()
+	is, ic, im := installed.CapabilityCounts()
 	sa, ia := src.AgentCount(), installed.AgentCount()
-	if ss != is || sc != ic || sh != ih || sm != im || sa != ia {
+	if ss != is || sc != ic || sm != im || sa != ia {
 		return newErr(ErrInvalidManifest,
-			"installed copy resolves to %d skills / %d agents / %d commands / %d hooks / %d MCP servers but the approved plan counted %d/%d/%d/%d/%d — the package likely uses symlinks copy mode cannot materialize safely; retry with mode=link or fix the package layout",
-			is, ia, ic, ih, im, ss, sa, sc, sh, sm)
+			"installed copy resolves to %d skills / %d agents / %d commands / %d MCP servers but the approved plan counted %d/%d/%d/%d — the package likely uses symlinks copy mode cannot materialize safely; retry with mode=link or fix the package layout",
+			is, ia, ic, im, ss, sa, sc, sm)
 	}
 	return nil
 }

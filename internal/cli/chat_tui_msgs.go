@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"reasonix/internal/config"
 	"reasonix/internal/control"
 	"reasonix/internal/event"
-	"reasonix/internal/hook"
 	"reasonix/internal/plugin"
 	"reasonix/internal/skill"
 )
@@ -96,12 +96,12 @@ func runStatuslineCmd(cmd, stdinPayload string) string {
 }
 
 func runStatuslineCmdWithTimeout(cmd, stdinPayload string, timeout time.Duration) string {
-	res := hook.DefaultSpawner(context.Background(), hook.SpawnInput{
-		Command: cmd,
-		Stdin:   stdinPayload + "\n",
-		Timeout: timeout,
-	})
-	out := strings.TrimSpace(res.Stdout)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	c := exec.CommandContext(ctx, "sh", "-c", cmd)
+	c.Stdin = strings.NewReader(stdinPayload + "\n")
+	raw, _ := c.Output()
+	out := strings.TrimSpace(string(raw))
 	if i := strings.IndexByte(out, '\n'); i >= 0 {
 		out = strings.TrimSpace(out[:i])
 	}
@@ -119,7 +119,7 @@ func (m chatTUI) refreshGitStatus() tea.Cmd {
 // the new controller is ready in ctrl; label/commands/skills/host mirror the
 // fields that runModelSubcommand used to set synchronously. oldCtrl is the
 // previous controller that must be closed after the switch — its cleanup
-// (SessionEnd hooks, plugin subprocess kill) is deferred to a tea.Cmd so it
+// (SessionEnd lifecycle event, plugin subprocess kill) is deferred to a tea.Cmd so it
 // runs after the render completes, avoiding corruption of the terminal's raw
 // mode that would occur if Close() were called from the build goroutine.
 type modelSwitchMsg struct {

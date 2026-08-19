@@ -80,7 +80,7 @@ func closeServerProxies(proxies map[string]*serverProxy) {
 	}
 }
 
-// CancelInFlightMCP is a best-effort drain hook: closes active proxied
+// CancelInFlightMCP is a best-effort drain: closes active proxied
 // backends for every server so generation drain can abort mid-call work.
 // Ordinary tool calls do not yet track per-call context cancel on Host;
 // ReplaceServerBackend still closes the previous client.

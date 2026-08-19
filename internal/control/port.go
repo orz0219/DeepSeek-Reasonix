@@ -10,7 +10,6 @@ import (
 	"reasonix/internal/config"
 	"reasonix/internal/event"
 	"reasonix/internal/evidence"
-	"reasonix/internal/hook"
 	"reasonix/internal/jobs"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
@@ -145,9 +144,8 @@ type SessionHistory interface {
 	SummarizeUpTo(ctx context.Context, turn int) error
 }
 
-
 // Capabilities covers the session's pluggable surface — MCP servers, skills,
-// slash commands, hooks — and resolving prompt/command/skill inputs.
+// slash commands — and resolving prompt/command/skill inputs.
 type Capabilities interface {
 	Host() *plugin.Host
 	Commands() []command.Command
@@ -161,7 +159,6 @@ type Capabilities interface {
 	CreateSkill(name string, scope skill.Scope, content string) (string, error)
 	UpdateSkill(name string, scope skill.Scope, content string) error
 	DeleteSkill(name string, scope skill.Scope) error
-	HookRunner() *hook.Runner
 	CustomCommand(input string) (sent string, found bool)
 	MCPPrompt(ctx context.Context, input string) (sent string, found bool, err error)
 	RunSkill(input string) (sent string, found bool)

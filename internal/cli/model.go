@@ -85,7 +85,7 @@ func (m *chatTUI) runModelSubcommand(input string) {
 			return modelSwitchMsg{ref: ref, err: err}
 		}
 		// Do NOT close the old controller here. Controller.Close() runs
-		// SessionEnd hooks (arbitrary shell commands) and kills plugin
+		// the SessionEnd lifecycle event and kills plugin
 		// subprocesses — operations that corrupt bubbletea's terminal raw
 		// mode when executed from a goroutine. Instead, pass the old
 		// controller back in the message so the Update handler can defer

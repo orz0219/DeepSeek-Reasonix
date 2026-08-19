@@ -14,7 +14,7 @@ agent. It is the Reasonix analog of Claude Code's CLAUDE.md.
 - Layering (enforced): utility packages import nothing under `reasonix/`; only
   the frontends `cli`, `serve`, `acp`, `boot` and the hosts
   `cmd/`, `desktop/` may import `control`; nothing below a frontend may import
-  one. The declared sets live in `tools/repolint/layers.go`.
+  one.
 - Subagent delegation keeps five concepts apart: a profile says how a worker
   thinks, `TaskSpec` what this call wants, `CapabilityGrant` what it may touch,
   `ContextRequest` what it starts from, `SchedulerPolicy` when it runs. Put a
@@ -46,14 +46,8 @@ an invariant the type system cannot express, or an external-protocol quirk.
   conversation history, section banners, commented-out code, `@param` lists.
 - `TODO(#nnn):` and `HACK(#nnn):` need the issue anchor. `FIXME` is banned.
 - One responsibility per file; 800 lines is the ceiling. A TypeScript file
-  dominated by a single exported function (one component/hook/factory, per
-  repolint's single-component exemption) is one responsibility and may exceed
-  it up to 5000 lines.
-
-`go run ./tools/repolint` enforces all of it against a ratchet baseline: recorded
-debt is tolerated, anything new fails CI. Never widen the baseline to land a
-change — fix the code. `-update` exists for carrying debt through a rename or an
-extraction, and that diff must be justified in the PR.
+  dominated by a single exported function (one component/hook/factory) is one
+  responsibility and may exceed it up to 5000 lines.
 
 ## Memory
 
@@ -80,11 +74,11 @@ Run these **before every commit** to catch the fastest CI failures locally:
 ```bash
 gofmt -w .                          # catches gofmt (saves ~13s CI)
 go vet ./...                        # catches vet warnings (saves ~52s CI/lint)
-make lint                           # golangci-lint at CI's pin + repolint
+make lint                           # golangci-lint at CI's pin
 go test ./internal/tool/builtin/ ./internal/boot/  # catches tool/boot test breaks
 ```
 
-`make lint` runs both gates CI runs, at the version in `.golangci-version`;
+`make lint` runs golangci-lint at the version in `.golangci-version`;
 `make lint-install` installs it. Do not skip it: a `modernize` finding never
 shows up in `go vet`, and the CI round trip that catches it instead costs ten
 minutes.

@@ -224,26 +224,3 @@ func NormalizeMaxSubagentDepth(depth int) int {
 	}
 	return depth
 }
-
-// ToolHooks fires user-configured shell hooks around each tool call. PreToolUse
-// runs before the call and may block it (block=true; message is the reason fed
-// back to the model); PostToolUse runs after and only surfaces output to the
-// user (it can't block). It is interface-shaped so the agent stays independent
-// of the hook package — a nil hooks field disables hook firing entirely.
-type ToolHooks interface {
-	PreToolUse(ctx context.Context, name string, args json.RawMessage) (block bool, message string)
-	PostToolUse(ctx context.Context, name string, args json.RawMessage, result string)
-	PostToolUseFailure(ctx context.Context, name string, args json.RawMessage, result string, err error)
-	// PostLLMCall fires after each model turn completes (streaming finishes)
-	// but before reasoning_content is stored. It returns the (possibly
-	// translated) reasoning string — the original when no hook is configured.
-	// HasPostLLMCall reports whether such a hook exists, so the agent keeps
-	// streaming reasoning live when none is wired up.
-	PostLLMCall(ctx context.Context, reasoning string, turn int) string
-	HasPostLLMCall() bool
-	// SubagentStop fires when a `task` sub-agent finishes (foreground). PreCompact
-	// fires just before a compaction pass and returns extra summary guidance (its
-	// hooks' stdout) to fold into the summary prompt; "" when no hook contributes.
-	SubagentStop(ctx context.Context, last string)
-	PreCompact(ctx context.Context, trigger string) string
-}

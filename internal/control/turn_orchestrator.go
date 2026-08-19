@@ -118,7 +118,7 @@ func (o *turnOrchestrator) runSubagentSkillTurns(ctx context.Context, skills []s
 	ctx = agent.WithResponseLanguagePreference(ctx, c.responseLanguage)
 	ctx = agent.WithReasoningLanguagePreference(ctx, c.reasoningLanguage)
 
-	input := c.compose(task, raw, true)
+	input := c.compose(task, raw)
 	startMessages := c.messageCount()
 	var marker agent.InFlightTurnMeta
 	defer func() { c.finishInFlightTurn(startMessages, marker) }()
@@ -126,21 +126,14 @@ func (o *turnOrchestrator) runSubagentSkillTurns(ctx context.Context, skills []s
 	// The checkpoint prompt labels the turn in the rewind picker (and is
 	// prefilled into the composer after a conversation rewind), so it must be
 	// the user's own text — never the composed provider input with its
-	// transient <response-language>/<reasoning-language>/memory/hook blocks.
+	// transient <response-language>/<reasoning-language>/memory blocks.
 	c.beginCheckpoint(ctx, firstNonEmpty(raw, task))
 	if c.guardianSess != nil {
 		c.guardianSess.ResetTurn()
 	}
-	if c.hooks.Enabled() {
-		c.mu.Lock()
-		c.turn++
-		turn := c.turn
-		c.mu.Unlock()
-		if block, _ := c.hooks.PromptSubmit(ctx, input, turn); block {
-			return nil
-		}
-		defer func() { c.hooks.StopResult(context.Background(), lastAssistantText(c.History()), turn, err) }()
-	}
+	c.mu.Lock()
+	c.turn++
+	c.mu.Unlock()
 
 	marker = c.markInFlightTurn(startMessages, true)
 	c.sink.Emit(event.Event{Kind: event.TurnStarted})
@@ -200,17 +193,16 @@ func (o *turnOrchestrator) runOrchestratedTurn(ctx context.Context, turn orchest
 		input = c.composeWithGoal(
 			turn.input,
 			turn.raw,
-			false,
 			continuation.goal,
 			GoalStatusRunning,
 		)
 	} else {
-		input = c.compose(turn.input, turn.raw, !turn.synthetic)
+		input = c.compose(turn.input, turn.raw)
 	}
 	// input.receive: the composed text crosses the extension chain before it
-	// enters the session (checkpoint, hooks, and the model all see the final
+	// enters the session (checkpoint and the model all see the final
 	// text). A block ruling aborts the turn with the redacted reason surfaced,
-	// mirroring the PromptSubmit hook's abort path; a required-class extension
+	// mirroring the PromptSubmit extension event's abort path; a required-class extension
 	// failure fails the turn.
 	input, blocked, interceptErr := c.interceptInputReceive(ctx, input)
 	if interceptErr != nil {
@@ -240,19 +232,10 @@ func (o *turnOrchestrator) runOrchestratedTurn(ctx context.Context, turn orchest
 	if c.guardianSess != nil {
 		c.guardianSess.ResetTurn()
 	}
-	// UserPromptSubmit / Stop hooks bracket the whole turn (incl. the plan
-	// research + approved-execution sub-turns below): a gating UserPromptSubmit
-	// aborts before any model call; Stop fires once when the turn returns.
-	if c.hooks.Enabled() {
-		c.mu.Lock()
-		c.turn++
-		turn := c.turn
-		c.mu.Unlock()
-		if block, _ := c.hooks.PromptSubmit(ctx, input, turn); block {
-			return nil // the hook's notify callback already surfaced the reason
-		}
-		defer func() { c.hooks.StopResult(context.Background(), lastAssistantText(c.History()), turn, err) }()
-	}
+	// Track the turn counter for session telemetry.
+	c.mu.Lock()
+	c.turn++
+	c.mu.Unlock()
 	marker = c.markInFlightTurn(startMessages, !turn.synthetic && !IsSyntheticUserMessage(turn.raw))
 	if continuation != nil {
 		ctx = agent.WithDeliveryExecutionScope(ctx, agent.DeliveryExecutionScope{

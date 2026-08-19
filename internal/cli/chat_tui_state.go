@@ -340,7 +340,7 @@ type chatTUI struct {
 	// don't travel through carry/resumePath (see Controller.RestoreSessionAuthorizations).
 	buildController func(spec controllerBuildSpec, carry []provider.Message, resumePath string, oldCtrl control.SessionAPI) (*control.Controller, error)
 	// rebuildRuntime builds the /reload replacement through boot.Rebuild:
-	// same model/profile/effort, but tools, skills, commands, hooks, MCP
+	// same model/profile/effort, but tools, skills, commands, MCP
 	// servers, and providers are discovered fresh and the session state
 	// migrates inside the boot layer. Set by chatREPL (it must NOT touch
 	// this model — the swap happens on the running copy); nil disables
@@ -389,7 +389,7 @@ type chatTUI struct {
 	// and work-mode changes all share the same atomic swap path.
 	pendingModelSwitch tea.Cmd
 	// oldControllers accumulates controllers retired by runtime switches.
-	// They cannot be closed during the switch (Close runs SessionEnd hooks
+	// They cannot be closed during the switch (Close runs the SessionEnd lifecycle event
 	// and kills plugin subprocesses, both of which corrupt the terminal's
 	// raw mode). Instead they are closed at process exit when the terminal
 	// is already being restored.

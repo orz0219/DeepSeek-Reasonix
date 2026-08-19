@@ -53,7 +53,7 @@ Auto still respects:
   sensitive, or oversized `remember` calls, and every `forget`. A new bounded,
   non-sensitive project/reference fact can be classified as create-only and
   saved without a prompt.
-- Human approval for nested or indirect Bash execution, even inside an approved-plan execution window. Guardian and allowing hooks cannot replace it; parameter/arithmetic expansions, assignments, redirects, and globs remain on Auto's fast path.
+- Human approval for nested or indirect Bash execution, even inside an approved-plan execution window. Guardian and allowing rules cannot replace it; parameter/arithmetic expansions, assignments, redirects, and globs remain on Auto's fast path.
 - MCP destructive calls when the effective policy is `auto`, `prompt`, or `writes`.
 - Ask questions (never auto-answered).
 

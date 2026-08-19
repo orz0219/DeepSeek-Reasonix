@@ -335,9 +335,6 @@ func (c *Controller) emitRecoveryPrompt(ctx context.Context, taskID string, pend
 	c.approval.promptEmitMu.Unlock()
 	c.approval.promptMu.Unlock()
 
-	if c.hooks != nil {
-		go c.hooks.Notification(ctx, "Auto Guard: confirm the next action", "permission_prompt")
-	}
 	return id, nil
 }
 

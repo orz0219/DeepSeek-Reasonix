@@ -86,7 +86,6 @@ func (s *syncSink) RecordOutcomeProgress(sample evidence.OutcomeSample) {
 	}
 }
 
-
 func (s *syncSink) RecordDelegationAdmission(a DelegationAdmissionAudit) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -27,7 +27,6 @@ import (
 	"reasonix/internal/extension"
 	"reasonix/internal/extension/sidecar"
 	"reasonix/internal/extension/uihub"
-	"reasonix/internal/hook"
 	"reasonix/internal/instruction"
 	"reasonix/internal/jobs"
 	"reasonix/internal/lsp"
@@ -93,9 +92,9 @@ type Options struct {
 	// background output cannot corrupt the TUI's terminal raw mode.
 	Stderr io.Writer
 	// WorkspaceRoot is the project root directory for config, skills, memory,
-	// commands, hooks, and tool confinement. When empty, the current working
+	// commands, and tool confinement. When empty, the current working
 	// directory is used (CLI default). Desktop tabs pass their project root here
-	// so each tab loads its own config/skills/hooks without changing the process
+	// so each tab loads its own config/skills without changing the process
 	// cwd — enabling concurrent multi-project sessions.
 	WorkspaceRoot string
 	// StatsSource labels this frontend's usage records (desktop/cli/serve).
@@ -240,8 +239,6 @@ type bootContext struct {
 	maxSubagentDepth        int
 	policy                  permission.Policy
 	headlessGate            *control.SharedHeadlessGate
-	resolvedHooks           []hook.ResolvedHook
-	hookRunner              *hook.Runner
 	resolveSubagentProvider func(modelRef, effort string) (provider.Provider, *provider.Pricing, int, error)
 	subagentIdentity        func(modelRef, effort string) (string, string)
 	subagentScheduler       *agent.SubagentScheduler

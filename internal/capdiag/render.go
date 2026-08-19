@@ -14,9 +14,9 @@ func RenderText(r Report) string {
 
 	fmt.Fprintf(&b, "Summary\n")
 	fmt.Fprintf(&b, "  errors=%d warnings=%d infos=%d\n", r.Summary.Errors, r.Summary.Warnings, r.Summary.Infos)
-	fmt.Fprintf(&b, "  instructions=%d skills=%d commands=%d hooks=%d plugins=%d mcp=%d\n\n",
+	fmt.Fprintf(&b, "  instructions=%d skills=%d commands=%d plugins=%d mcp=%d\n\n",
 		r.Summary.Instructions, r.Summary.Skills, r.Summary.Commands,
-		r.Summary.Hooks, r.Summary.Plugins, r.Summary.MCPServers)
+		r.Summary.Plugins, r.Summary.MCPServers)
 
 	fmt.Fprintf(&b, "Issues (%d)\n", len(r.Issues))
 	if len(r.Issues) == 0 {
@@ -54,20 +54,10 @@ func RenderText(r Report) string {
 	writeAsset(&b, "Skills", r.Skills)
 	writeAsset(&b, "Commands", r.Commands)
 
-	fmt.Fprintf(&b, "Hooks (project_defines=%v entries=%d)\n",
-		r.Hooks.ProjectDefines, len(r.Hooks.Entries))
-	for _, s := range r.Hooks.Sources {
-		fmt.Fprintf(&b, "  source [%s] %s status=%s hooks=%d\n", s.Scope, s.Path, s.Status, s.HookCount)
-	}
-	for _, e := range r.Hooks.Entries {
-		fmt.Fprintf(&b, "  - %s scope=%s match=%q blocking=%v\n", e.Event, e.Scope, e.Match, e.Blocking)
-	}
-	b.WriteByte('\n')
-
 	fmt.Fprintf(&b, "Plugins (%d)\n", len(r.Plugins.Packages))
 	for _, p := range r.Plugins.Packages {
-		fmt.Fprintf(&b, "  - %s enabled=%v status=%s skills=%d commands=%d prompts=%d hooks=%d mcp=%d themes=%d\n",
-			p.Name, p.Enabled, p.Status, p.Skills, p.Commands, p.Prompts, p.Hooks, p.MCPServers, p.Themes)
+		fmt.Fprintf(&b, "  - %s enabled=%v status=%s skills=%d commands=%d prompts=%d mcp=%d themes=%d\n",
+			p.Name, p.Enabled, p.Status, p.Skills, p.Commands, p.Prompts, p.MCPServers, p.Themes)
 		if p.Runtime {
 			b.WriteString("    runtime: FULL TRUST (declares a runtime process)\n")
 		}

@@ -210,7 +210,7 @@ Everything else still requires explicit confirmation:
 - sensitive or oversized content;
 - every `forget` operation.
 
-Auto and Yolo do not bypass those confirmations. Guardian and permission hooks
+Auto and Yolo do not bypass those confirmations. Guardian and permission rules
 cannot approve them for the user. A top-level headless controller may use only
 the same one-shot low-risk create path above. Sub-agents and headless surfaces
 without the owning scoped controller fail closed; all other memory mutations

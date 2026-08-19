@@ -9,7 +9,6 @@ import (
 
 	"reasonix/internal/command"
 	"reasonix/internal/config"
-	"reasonix/internal/hook"
 	"reasonix/internal/installsource"
 	"reasonix/internal/pluginpkg"
 )
@@ -24,7 +23,6 @@ type PluginView struct {
 	Enabled             bool                           `json:"enabled"`
 	Skills              int                            `json:"skills"`
 	Commands            int                            `json:"commands"`
-	Hooks               int                            `json:"hooks"`
 	MCPServers          int                            `json:"mcpServers"`
 	Agents              int                            `json:"agents,omitempty"`
 	Compatibility       string                         `json:"compatibility,omitempty"`
@@ -33,7 +31,6 @@ type PluginView struct {
 	SkillDetails        []PluginSkillView              `json:"skillDetails,omitempty"`
 	AgentDetails        []PluginAgentView              `json:"agentDetails,omitempty"`
 	CommandDetails      []PluginCommandView            `json:"commandDetails,omitempty"`
-	HookDetails         []PluginHookView               `json:"hookDetails,omitempty"`
 	MCPServerDetails    []PluginMCPServerView          `json:"mcpServerDetails,omitempty"`
 	Warnings            []string                       `json:"warnings,omitempty"`
 	Error               string                         `json:"error,omitempty"`
@@ -71,14 +68,6 @@ type PluginCommandView struct {
 	Invocation       string `json:"invocation,omitempty"`
 	Shadowed         bool   `json:"shadowed,omitempty"`
 	ShadowedByPlugin string `json:"shadowedByPlugin,omitempty"`
-}
-
-type PluginHookView struct {
-	Event       string `json:"event"`
-	Match       string `json:"match,omitempty"`
-	Command     string `json:"command,omitempty"`
-	ContextFile string `json:"contextFile,omitempty"`
-	Description string `json:"description,omitempty"`
 }
 
 type PluginMCPServerView struct {
@@ -146,7 +135,7 @@ func decoratePluginCommandConflicts(view *PluginView, commands []command.Command
 }
 
 func applyPluginPackageDetails(view *PluginView, pkg pluginpkg.Package, warnings []string) {
-	view.Skills, view.Commands, view.Hooks, view.MCPServers = pkg.CapabilityCounts()
+	view.Skills, view.Commands, view.MCPServers = pkg.CapabilityCounts()
 	view.Agents = pkg.AgentCount()
 	view.Compatibility = pkg.Compatibility.Status
 	view.MappedCapabilities = append([]string(nil), pkg.Compatibility.Mapped...)
@@ -179,16 +168,6 @@ func applyPluginPackageDetails(view *PluginView, pkg pluginpkg.Package, warnings
 			Name: agent.Name, Description: agent.Description, Path: agent.Path,
 			Invocation: "/" + view.Name + ":agent:" + agent.Name, Model: agent.Model,
 			AllowedTools: append([]string(nil), agent.AllowedTools...),
-		})
-	}
-	view.HookDetails = make([]PluginHookView, 0, len(inv.Hooks))
-	for _, hook := range inv.Hooks {
-		view.HookDetails = append(view.HookDetails, PluginHookView{
-			Event:       hook.Event,
-			Match:       hook.Match,
-			Command:     hook.Command,
-			ContextFile: hook.ContextFile,
-			Description: hook.Description,
 		})
 	}
 	view.MCPServerDetails = make([]PluginMCPServerView, 0, len(inv.MCPServers))
@@ -318,21 +297,9 @@ func (a *App) PluginDoctor(name string) PluginView {
 			p.Error = err.Error()
 			return p
 		}
-		pkg, _, err := pluginpkg.ParseDir(p.Root)
-		if err != nil {
+		if _, _, err := pluginpkg.ParseDir(p.Root); err != nil {
 			p.Error = err.Error()
 			return p
-		}
-		cfg, _ := config.LoadForRootReadOnly(a.activeWorkspaceRoot())
-		runtimeOptions := hook.RuntimeOptions{}
-		if cfg != nil {
-			runtimeOptions = hook.RuntimeOptionsForShell(cfg.Tools.Shell.Prefer, cfg.Tools.Shell.Path)
-		}
-		for _, issue := range hook.CheckPackageRuntime(pkg, runtimeOptions) {
-			p.Warnings = append(p.Warnings, fmt.Sprintf(
-				"%s hook is unavailable: %v; install Git for Windows or configure a usable Bash path",
-				issue.Event, issue.Err,
-			))
 		}
 		return p
 	}

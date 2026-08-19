@@ -45,7 +45,7 @@ type ArgData struct {
 // (everything after the command word). It returns the suggestions filtered by
 // the token being typed and the byte offset where that token begins, so a caller
 // replaces just that token. Only structured commands participate (/mcp /model
-// /skills /plugins /hooks /effort /goal /reasoning-language
+// /skills /plugins /effort /goal /reasoning-language
 // /theme /language /currency /memory);
 // others yield nil. Single source of truth for CLI + desktop.
 func SlashArgItems(line string, d ArgData) ([]SlashItem, int) {
@@ -68,8 +68,6 @@ func SlashArgItems(line string, d ArgData) ([]SlashItem, int) {
 		raw = skillArgItems(prior, d)
 	case "/plugin", "/plugins":
 		raw = pluginArgItems(prior, d)
-	case "/hooks":
-		raw = hooksArgItems(prior)
 	case "/effort":
 		raw = effortArgItems(prior, d)
 	case "/goal":
@@ -348,15 +346,6 @@ func pluginArgItems(prior []string, d ArgData) []SlashItem {
 	return nil
 }
 
-func hooksArgItems(prior []string) []SlashItem {
-	if len(prior) <= 1 {
-		return []SlashItem{
-			{Label: "list", Insert: "list", Hint: i18n.M.ArgHooksList},
-		}
-	}
-	return nil
-}
-
 // filterSlash keeps items whose label starts with the typed token (case-
 // insensitive) and drops no-op suggestions — ones whose insert wouldn't change
 // the line because the token is already fully typed (e.g. "/skills list" offering
@@ -459,20 +448,6 @@ func (c *Controller) managementNotice(trimmed string) bool {
 				}
 			}
 			c.notice("commands reloaded (" + strconv.Itoa(visible) + " available)")
-		}
-	case "/hooks":
-		sub := ""
-		if len(fields) >= 2 {
-			sub = strings.ToLower(fields[1])
-		}
-		switch sub {
-		case "", "list", "ls":
-			c.notice(c.hookListText())
-		case "trust":
-			// Backward-compatible response for old clients and saved commands.
-			c.notice("project hooks are enabled automatically; no trust action is required")
-		default:
-			c.notice("unknown /hooks subcommand " + fields[1] + " — try: /hooks or /hooks list")
 		}
 	case "/mcp":
 		if len(fields) >= 3 && fields[1] == "connect" {
@@ -584,23 +559,6 @@ func (c *Controller) skillListText() string {
 			tag = " 🧬"
 		}
 		fmt.Fprintf(&b, "  /%s%s — %s\n", s.Name, tag, s.Description)
-	}
-	return strings.TrimRight(b.String(), "\n")
-}
-
-func (c *Controller) hookListText() string {
-	hooks := c.hooks.Hooks()
-	if len(hooks) == 0 {
-		return i18n.M.ListHooksNone
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, i18n.M.ListHooksHeaderFmt+"\n", len(hooks))
-	for _, h := range hooks {
-		match := h.Match
-		if match == "" {
-			match = "*"
-		}
-		fmt.Fprintf(&b, "  %s [%s] %s — %s\n", h.Event, h.Scope, match, h.Command)
 	}
 	return strings.TrimRight(b.String(), "\n")
 }

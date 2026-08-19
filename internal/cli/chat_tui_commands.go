@@ -126,9 +126,6 @@ func (m *chatTUI) runSlashCommand(input string) tea.Cmd {
 		if m.pendingModelSwitch != nil {
 			return m.pendingModelSwitch
 		}
-	case "/hooks":
-		m.echoLocalCommand(input)
-		m.runHooksSubcommand(input)
 	case "/reload-cmd":
 		m.echoLocalCommand(input)
 		if m.ctrl == nil {

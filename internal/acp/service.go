@@ -430,7 +430,7 @@ const (
 // Compatibility for older controller stubs / pathless sessions.
 
 // sessionReloadExtensions rebuilds a session's agent runtime in place —
-// tools, skills, commands, hooks, MCP servers, and providers are re-discovered
+// tools, skills, commands, MCP servers, and providers are re-discovered
 // — while the session (transcript, approval grants, goal and recovery state)
 // carries over via boot.Rebuild. It follows the same contract as a config
 // switch: a turn or rebuild in flight coalesces exactly one queued reload,
@@ -470,7 +470,7 @@ const (
 
 // Release the outgoing controller only after the swap published the
 // replacement. ReleaseResources (not Close): the session logically
-// continues, so SessionEnd hooks must not fire — mirrors the config
+// continues, so the SessionEnd lifecycle event must not fire — mirrors the config
 // switch.
 
 // Clients see refreshed plugin commands without waiting for the next turn.
@@ -583,7 +583,7 @@ const (
 // Re-apply all three independent session axes. A controller rebuild must not
 // turn Plan into tool approval, drop a running Goal, or reset Ask/Auto/Yolo.
 
-// InheritLifecycleFrom wires two concrete controllers' turn/hook state; it's a
+// InheritLifecycleFrom wires two concrete controllers' turn state; it's a
 // construction concern, not part of the driving port. cur is always the
 // *control.Controller the factory built for this session, so this is safe.
 

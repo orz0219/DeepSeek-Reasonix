@@ -20,7 +20,6 @@
 - [Reasoning language](./REASONING_LANGUAGE.md)
 - [Task contracts and pause policy](./TASK_CONTRACT.md)
 - [Custom OpenAI-compatible providers](#custom-openai-compatible-providers)
-- [Desktop hooks](#desktop-hooks)
 - [Keyboard shortcuts](#keyboard-shortcuts)
 - [Permissions & sandbox](#permissions--sandbox)
 - [Capability diagnostics](#capability-diagnostics)
@@ -516,27 +515,6 @@ extra_body  = { enable_thinking = true }
 fields such as `model`, `messages`, `tools`, `stream`, and `thinking` under its
 own control.
 
-## Desktop hooks
-
-Desktop hooks run local commands at lifecycle events such as `SessionStart`,
-`UserPromptSubmit`, `PreToolUse`, and `PreCompact`. A successful `SessionStart`
-hook may write plain text to stdout, or return JSON with
-`hookSpecificOutput.additionalContext`; Reasonix injects that text once into the
-next real user turn as `<hook-context event="SessionStart">...</hook-context>`.
-This is intended for plugin or workflow bootstrap context, including
-Superpowers-style startup instructions, without baking that workflow into
-Reasonix's system prompt.
-
-Plugin packages can provide this startup context through
-`hooks/session-start-codex` or a plugin-root `CLAUDE.md`. Claude-style
-`.claude/settings.json` command hooks are also mapped to matching Reasonix hook
-events.
-
-The injected hook context is dynamic current-turn context. It does not change
-the stable system prompt, memory prefix, or tool schema, though dynamic content
-can still reduce cache reuse for that turn. The detailed desktop hook schema and
-loading model are documented in [the Chinese desktop hooks guide](./DESKTOP_HOOKS.zh-CN.md).
-
 ## Keyboard shortcuts
 
 Shortcuts are documented by client because users usually look for the keys that
@@ -801,7 +779,7 @@ channel.
 
 ## Capability diagnostics
 
-Use this when a skill, slash command, hook, plugin package, MCP server, or
+Use this when a skill, slash command, plugin package, MCP server, or
 `AGENTS.md` is missing, shadowed, disabled, or fails to start. Full flag
 reference, JSON schema, and issue codes:
 **[Capability diagnostics](./CAPABILITY_DIAGNOSTICS.md)**.
@@ -941,7 +919,7 @@ Enabled MCP servers start connecting automatically in the background after a
 session begins, so chat stays usable while tools come online. Use `/mcp` or the
 desktop MCP panel to refresh status, reconnect a server, inspect failures, or
 disable a server for the current session. For a read-only config/runtime health
-report across skills, hooks, packages, and MCP (without changing settings), see
+report across skills, packages, and MCP (without changing settings), see
 [Capability diagnostics](./CAPABILITY_DIAGNOSTICS.md)
 (`reasonix doctor capabilities` or **Settings → Diagnostics**).
 
@@ -974,7 +952,7 @@ convenient.
 ## Slash commands
 
 In an interactive `reasonix` session, built-in commands (`/compact`, `/context`, `/new`, `/clear`, `/rewind`,
-`/tree`, `/branch`, `/switch`, `/todo`, `/model`, `/work-mode`, `/mcp`, `/skills`, `/hooks`,
+`/tree`, `/branch`, `/switch`, `/todo`, `/model`, `/work-mode`, `/mcp`, `/skills`,
 `/memory`, `/goal`, `/output-style`, `/sandbox`, `/language`,
 `/reasoning-language`, `/help`) run
 locally — `/help` lists them all. Built-in **skills** such as `/init`,
@@ -1368,7 +1346,7 @@ MCP names convert to capability-id allowlists on the proxy; children never
 inherit dynamic `mcp__*` schemas.
 
 Inside a strict child, `use_capability` re-checks the resolved target before
-commit/permission/hooks/execution. An unconnected eligible MCP reader may start
+commit/permission/execution. An unconnected eligible MCP reader may start
 on demand from the current schema cache. Before `tools/call`, cached
 `readOnlyHint`/`destructiveHint` facts are checked against the live
 initialize/tools-list result; a reader-to-writer change or destructive promotion

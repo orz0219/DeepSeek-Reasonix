@@ -75,7 +75,7 @@ remains single-model without an independent Planner.
 configured MCP servers without starting them; `action=call` on a
 not-yet-connected server resolves to a deferred target, Plan re-checks only an
 explicit phase opt-out on the real target, and the server process starts only
-after the permission gate and PreToolUse hooks approve the call. On-demand children
+after the permission gate approves the call. On-demand children
 share the session lifetime (they outlive the starting call and exit with the
 session); `action=inspect` lists live tools for connected servers and cached
 schemas otherwise, never starting a process. First discovery of a server with

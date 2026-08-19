@@ -90,10 +90,9 @@ type v2Root struct {
 	Contributes json.RawMessage `json:"contributes"`
 	Runtime     json.RawMessage `json:"runtime"`
 	// Resource path fields (same shapes as earlier native manifests).
-	Skills     json.RawMessage              `json:"skills"`
-	Commands   json.RawMessage              `json:"commands"`
-	Hooks      map[string][]json.RawMessage `json:"hooks"`
-	MCPServers map[string]json.RawMessage   `json:"mcpServers"`
+	Skills     json.RawMessage            `json:"skills"`
+	Commands   json.RawMessage            `json:"commands"`
+	MCPServers map[string]json.RawMessage `json:"mcpServers"`
 }
 
 func parseNativeV2(b []byte, root, apiVersion string) (Package, []string, error) {
@@ -139,23 +138,11 @@ func parseNativeV2(b []byte, root, apiVersion string) (Package, []string, error)
 	if err != nil {
 		return Package{}, nil, err
 	}
-	legacyHooks, err := parseV1HookMap(raw.Hooks, "hooks")
-	if err != nil {
-		return Package{}, nil, err
-	}
-	contribHooks, err := parseV1HookMap(contrib.Hooks, "contributes.hooks")
-	if err != nil {
-		return Package{}, nil, err
-	}
 	legacyMCP, err := parseV1MCPServerMap(raw.MCPServers, "mcpServers")
 	if err != nil {
 		return Package{}, nil, err
 	}
 	contribMCP, err := parseV1MCPServerMap(contrib.MCPServers, "contributes.mcpServers")
-	if err != nil {
-		return Package{}, nil, err
-	}
-	hooks, err := mergeV1Hooks(legacyHooks, contribHooks)
 	if err != nil {
 		return Package{}, nil, err
 	}
@@ -188,7 +175,6 @@ func parseNativeV2(b []byte, root, apiVersion string) (Package, []string, error)
 		Agents:      contribAgents,
 		Prompts:     contribPrompts,
 		Themes:      contribThemes,
-		Hooks:       hooks,
 		MCPServers:  mcpServers,
 		Runtime:     runtime,
 		Requires:    requires,
@@ -323,9 +309,6 @@ func MigrateManifestToV2(pkg Package) ([]byte, error) {
 	}
 	if len(pkg.Manifest.Themes) > 0 {
 		contrib["themes"] = pkg.Manifest.Themes
-	}
-	if len(pkg.Manifest.Hooks) > 0 {
-		contrib["hooks"] = pkg.Manifest.Hooks
 	}
 	if len(pkg.Manifest.MCPServers) > 0 {
 		contrib["mcpServers"] = pkg.Manifest.MCPServers

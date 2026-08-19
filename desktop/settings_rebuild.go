@@ -247,7 +247,7 @@ func (a *App) buildSettingReplacementController(tab *WorkspaceTab, snap tabRunti
 const runtimeReloadSettingLabel = "runtime reload"
 
 // ReloadRuntime rebuilds the tab's agent runtime in place — tools, skills,
-// commands, hooks, providers, and MCP servers are re-discovered from the
+// commands, providers, and MCP servers are re-discovered from the
 // current config — while the session carries over (transcript, approval
 // grants, goal/recovery state, shared plugin Host) via boot.Rebuild. Active
 // work or a held lease queues exactly one reload on the deferred-rebuild

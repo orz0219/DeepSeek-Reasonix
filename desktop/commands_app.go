@@ -24,7 +24,6 @@ func (a *App) Commands() []CommandInfo {
 		{Name: "goal", Description: i18n.M.CmdGoal, Kind: "builtin", Group: "actions"},
 		{Name: "remember", Description: i18n.M.CmdRemember, Kind: "builtin", Group: "management"},
 		{Name: "mcp", Description: i18n.M.CmdMcp, Kind: "builtin", Group: "integrations"},
-		{Name: "hooks", Description: i18n.M.CmdHooks, Kind: "builtin", Group: "management"},
 		{Name: "plugins", Description: i18n.M.CmdPlugins, Kind: "builtin", Group: "integrations"},
 		{Name: "theme", Description: i18n.M.CmdTheme, Kind: "builtin", Group: "management"},
 		{Name: "skill", Description: i18n.M.CmdSkill, Kind: "builtin", Group: "skills"},
@@ -118,7 +117,7 @@ type SlashArgsResult struct {
 }
 
 // SlashArgs completes the arguments of a management slash command (/mcp, /model,
-// /skill, /hooks) for the composer — the same logic the chat TUI uses. Empty
+// /skill) for the composer — the same logic the chat TUI uses. Empty
 // Items means the input has no structured arguments to complete.
 func (a *App) SlashArgs(input string) SlashArgsResult {
 	a.mu.RLock()

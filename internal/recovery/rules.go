@@ -406,7 +406,7 @@ func commandFieldsHighRisk(fields []string) bool {
 // worktree can discard the user's uncommitted contents.
 
 // Repository-local git config is not version-controlled workspace config and
-// can redirect hooks, credentials, or future pushes. Read-only config probes
+// can redirect tool output, credentials, or future pushes. Read-only config probes
 // are the only fast path.
 
 // gh api switches its default from GET to POST when fields/input are supplied.

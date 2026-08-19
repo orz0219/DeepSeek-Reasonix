@@ -319,8 +319,7 @@ jobs:
         timeout-minutes: 20
         run: ../scripts/desktop-build.sh windows/amd64 v0.0.0-ci canary
 
-  # repolint scans desktop/ and sdk/ too, so this job also runs for diffs the
-  # `code` filter would otherwise skip.
+  # The `code` filter alone would skip diffs that lint only on desktop/ or sdk/.
   lint:
     needs: changes
     if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.code != 'false' || needs.changes.outputs.desktop != 'false' || needs.changes.outputs.sdk != 'false')
@@ -332,9 +331,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-
-      - name: repo standards
-        run: go run ./tools/repolint
 
       - name: wails version pin
         run: |

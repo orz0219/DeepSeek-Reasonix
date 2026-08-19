@@ -193,7 +193,7 @@ func (t *installSourceTool) Execute(ctx context.Context, raw json.RawMessage) (s
 				OK: false, Status: "blocked", Op: req.Op, Applied: false,
 				Source: req.Source, Kind: "plugin", Scope: req.Scope, Mode: req.Mode,
 				Warnings: warnings, Error: err.Error(),
-				Next: "Choose a plugin that exports a supported skill, command, agent, hook, or MCP server.",
+				Next: "Choose a plugin that exports a supported skill, command, agent, or MCP server.",
 			}), nil
 		}
 		return "", err
@@ -466,7 +466,7 @@ func (t *installSourceTool) uninstallActionsForScope(name, scope string) []actio
 					Version:      p.Version,
 					RiskLevel:    RiskMedium,
 					RiskReasons: []string{
-						"removes a plugin package and disables its skills, hooks, and MCP servers",
+						"removes a plugin package and disables its skills and MCP servers",
 					},
 				})
 				break

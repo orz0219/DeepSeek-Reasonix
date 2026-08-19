@@ -24,7 +24,7 @@ import (
 )
 
 // buildAssemble finishes the build: the executor, the optional two-model
-// coordinator, guardian/recovery/goal hooks, the capability router, and the
+// coordinator, guardian/recovery/goal, the capability router, and the
 // frozen extension kernel snapshot. It returns the final BuildResult.
 func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildResult, error) {
 	sink := bc.sink
@@ -70,8 +70,6 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 	policy := bc.policy
 	maxSteps := bc.maxSteps
 	maxSubagentDepth := bc.maxSubagentDepth
-	resolvedHooks := bc.resolvedHooks
-	hookRunner := bc.hookRunner
 	extWarn := bc.extWarn
 	taskTool := bc.taskTool
 	capRuntime := bc.capRuntime
@@ -170,7 +168,6 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		Pricing:     entry.Price,
 		ModelRef:    modelRef,
 		Gate:        headlessGate,
-		Hooks:       hookRunner,
 		Jobs:        jm,
 		// Parent write reservation at the executor entry covers all writers
 		// (including late Economy/MCP adds) without wrapping tool schemas.
@@ -281,7 +278,6 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		SkillRunner:                    skillRunner,
 		ReadOnlySkillRunner:            readOnlySkillRunner,
 		SkillProfile:                   skillProfile,
-		Hooks:                          hookRunner,
 		// Indirection: the cleanup variable gains the extension runtime set at
 		// the end of build (snapshot assembly runs after control.New), and the
 		// controller must observe the final chain at Close time.
@@ -469,7 +465,6 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		registry:     reg,
 		skills:       skills,
 		commands:     cmds,
-		hooks:        resolvedHooks,
 		mcpSpecs:     mcpSpecs,
 		providers:    baseResolver.Catalog(),
 	}, generation, extensionBoot{
@@ -539,11 +534,8 @@ func buildAssemble(ctx context.Context, bc *bootContext, opts Options) (*BuildRe
 		SystemPrompt:            sysPrompt,
 		Skills:                  skills,
 		Commands:                cmds,
-		Hooks:                   resolvedHooks,
 		Registry:                reg,
 		ImplicitSkillInvocation: implicitSkillInvocation,
 	}
 	return finalizeBuildResult(&BuildResult{Controller: ctrl, Snapshot: snap, Runtime: runtimeSet, Owner: owner, Extensions: extensionMgr, Dispatcher: extensionDispatcher, ExtensionUI: extUIHub, ProviderResolver: providerResolver, BaseProviderResolver: baseResolver, Assembly: assembly}, !opts.deferPublish), nil
 }
-
-

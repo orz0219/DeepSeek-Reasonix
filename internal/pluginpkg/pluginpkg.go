@@ -1,8 +1,8 @@
 // Package pluginpkg handles installed Reasonix plugin packages.
 //
-// Plugin packages are higher-level bundles that can contribute skills, hooks,
-// and MCP servers. They are intentionally parsed into package-local structs so
-// config/hook/desktop callers can adapt them without creating import cycles.
+// Plugin packages are higher-level bundles that can contribute skills and MCP
+// servers. They are intentionally parsed into package-local structs so
+// config/desktop callers can adapt them without creating import cycles.
 package pluginpkg
 
 import (
@@ -101,14 +101,6 @@ type ThemeRef struct {
 	Path string
 }
 
-type HookRef struct {
-	Event       string
-	Match       string
-	Command     string
-	ContextFile string
-	Description string
-}
-
 type MCPServerRef struct {
 	Name        string
 	DisplayName string
@@ -136,7 +128,6 @@ type Manifest struct {
 	// (rendered with $ARGUMENTS/$1..$N on /<name>). Declared explicitly in a
 	// manifest or adopted from a Claude plugin's conventional commands/ dir.
 	Commands   []string
-	Hooks      map[string][]Hook
 	MCPServers map[string]MCPServer
 	// Prompts are directories of flat <name>.md prompt templates. The two are
 	// separate semantic sets: commands become slash commands, prompts become
@@ -150,70 +141,6 @@ type Manifest struct {
 	Runtime  *RuntimeSpec
 	Requires []CapabilityRef // v2 dependency graph
 	Provides []CapabilityRef
-}
-
-type Hook struct {
-	Match         string            `json:"match,omitempty"`
-	Command       string            `json:"command,omitempty"`
-	Args          []string          `json:"args,omitempty"`
-	ArgsSet       bool              `json:"-"`
-	ContextFile   string            `json:"contextFile,omitempty"`
-	ShellCommand  bool              `json:"shellCommand,omitempty"`
-	Shell         string            `json:"shell,omitempty"`
-	Async         bool              `json:"async,omitempty"`
-	PayloadFormat string            `json:"payloadFormat,omitempty"`
-	Description   string            `json:"description,omitempty"`
-	Timeout       int               `json:"timeout,omitempty"`
-	Cwd           string            `json:"cwd,omitempty"`
-	Env           map[string]string `json:"env,omitempty"`
-}
-
-// UnmarshalJSON preserves whether args was present, including an explicit
-// empty array. Hook execution uses field presence — not argument count — to
-// distinguish exec form from shell form.
-func (h *Hook) UnmarshalJSON(data []byte) error {
-	type hookJSON Hook
-	var decoded hookJSON
-	if err := json.Unmarshal(data, &decoded); err != nil {
-		return err
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return err
-	}
-	*h = Hook(decoded)
-	for name := range fields {
-		if strings.EqualFold(name, "args") {
-			h.ArgsSet = true
-			break
-		}
-	}
-	return nil
-}
-
-// MarshalJSON keeps an explicit empty args array visible. Without this custom
-// form, omitempty would erase args:[] and silently change exec form into shell
-// form after a JSON round trip.
-func (h Hook) MarshalJSON() ([]byte, error) {
-	type hookJSON Hook
-	data, err := json.Marshal(hookJSON(h))
-	if err != nil || !h.ArgsSet {
-		return data, err
-	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return nil, err
-	}
-	args := h.Args
-	if args == nil {
-		args = []string{}
-	}
-	rawArgs, err := json.Marshal(args)
-	if err != nil {
-		return nil, err
-	}
-	fields["args"] = rawArgs
-	return json.Marshal(fields)
 }
 
 type MCPServer struct {
@@ -410,7 +337,6 @@ func parseNativeLegacy(b []byte, root string) (Package, []string, error) {
 		Repository  string               `json:"repository"`
 		Skills      json.RawMessage      `json:"skills"`
 		Commands    json.RawMessage      `json:"commands"`
-		Hooks       map[string][]Hook    `json:"hooks"`
 		MCPServers  map[string]MCPServer `json:"mcpServers"`
 	}
 	if err := json.Unmarshal(b, &raw); err != nil {
@@ -432,7 +358,6 @@ func parseNativeLegacy(b []byte, root string) (Package, []string, error) {
 		Repository:  strings.TrimSpace(raw.Repository),
 		Skills:      skills,
 		Commands:    commands,
-		Hooks:       normalizeHooks(raw.Hooks),
 		MCPServers:  raw.MCPServers,
 	}
 	if err := validateManifest(root, &manifest); err != nil {
@@ -448,14 +373,14 @@ func parseNativeLegacy(b []byte, root string) (Package, []string, error) {
 }
 
 func parseCodex(path, root string) (Package, []string, error) {
-	return parseCodexLike(path, root, "codex", true)
+	return parseCodexLike(path, root, "codex")
 }
 
 func parseClaudePlugin(path, root string) (Package, []string, error) {
-	return parseCodexLike(path, root, "claude", false)
+	return parseCodexLike(path, root, "claude")
 }
 
-func parseCodexLike(path, root, kind string, includeCodexSessionStartHook bool) (Package, []string, error) {
+func parseCodexLike(path, root, kind string) (Package, []string, error) {
 	var raw struct {
 		Name        string          `json:"name"`
 		Version     string          `json:"version"`
@@ -485,18 +410,6 @@ func parseCodexLike(path, root, kind string, includeCodexSessionStartHook bool) 
 		Skills:      skills,
 		Commands:    commands,
 	}
-	hookPath := filepath.Join(root, "hooks", "session-start-codex")
-	if includeCodexSessionStartHook {
-		if info, err := os.Stat(hookPath); err == nil && info.Mode().IsRegular() {
-			manifest.Hooks = map[string][]Hook{
-				"SessionStart": {{
-					Command:     hookPath,
-					Cwd:         root,
-					Description: "Codex-compatible session start hook from " + manifest.Name,
-				}},
-			}
-		}
-	}
 	var warnings []string
 	var issues []CompatibilityIssue
 	if kind == "claude" {
@@ -506,8 +419,7 @@ func parseCodexLike(path, root, kind string, includeCodexSessionStartHook bool) 
 	var compatIssues []CompatibilityIssue
 	if kind == "claude" {
 		// Claude Code does not treat a plugin-root CLAUDE.md as project
-		// context. Keep its supported hook and MCP conventions without
-		// synthesizing an extra SessionStart context hook.
+		// context.
 		compatWarnings, compatIssues = appendClaudeCompatibility(root, &manifest)
 	} else {
 		compatWarnings, compatIssues = applyClaudeCompatibility(root, &manifest)
@@ -624,13 +536,6 @@ func ManifestPaths() []string {
 	return []string{NativeManifest, CodexManifest, ClaudeManifest}
 }
 
-func claudeTimeoutMillis(seconds int) int {
-	if seconds <= 0 {
-		return 0
-	}
-	return seconds * 1000
-}
-
 func cloneHookEnv(in map[string]string) map[string]string {
 	if len(in) == 0 {
 		return nil
@@ -701,30 +606,6 @@ func cleanPathList(paths []string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
-}
-
-func normalizeHooks(in map[string][]Hook) map[string][]Hook {
-	if len(in) == 0 {
-		return nil
-	}
-	out := map[string][]Hook{}
-	for event, hooks := range in {
-		event = strings.TrimSpace(event)
-		for _, h := range hooks {
-			h.Command = strings.TrimSpace(h.Command)
-			h.ContextFile = strings.TrimSpace(h.ContextFile)
-			h.Cwd = strings.TrimSpace(h.Cwd)
-			h.Shell = strings.ToLower(strings.TrimSpace(h.Shell))
-			if h.Shell != "" && !h.ArgsSet {
-				h.ShellCommand = true
-			}
-			if h.Command == "" && h.ContextFile == "" {
-				continue
-			}
-			out[event] = append(out[event], h)
-		}
-	}
-	return out
 }
 
 // cleanPortableRelativePath applies the same manifest path contract on every

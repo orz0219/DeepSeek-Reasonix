@@ -98,10 +98,6 @@ type Options struct {
 	StrictAlternatingRoles bool   // merge adjacent user turns for strict providers at request time
 	ContextEditing         string // deprecated; native provider editing was removed
 
-	// Hooks fires PreToolUse / PostToolUse shell hooks around tool calls. nil
-	// disables hook firing.
-	Hooks ToolHooks
-
 	// MissingReasoningWarnStateDir, when non-empty, points at the shared
 	// directory where missing tool-call thinking recovery retries are gated by
 	// opaque provider-configuration fingerprint (#7059). The field name is kept
@@ -232,10 +228,6 @@ func New(prov provider.Provider, tools *tool.Registry, session *Session, opts Op
 	if nilutil.IsNil(configWriteApprover) {
 		configWriteApprover = nil
 	}
-	hooks := opts.Hooks
-	if nilutil.IsNil(hooks) {
-		hooks = nil
-	}
 	maxStepsKey := opts.MaxStepsKey
 	if strings.TrimSpace(maxStepsKey) == "" {
 		maxStepsKey = "max_steps"
@@ -253,7 +245,7 @@ func New(prov provider.Provider, tools *tool.Registry, session *Session, opts Op
 	}
 	a := &Agent{
 		svc: newAgentServices(prov, tools, sink, gate, planModeReadOnlyTrust,
-			sandboxEscapeApprover, configWriteApprover, hooks, opts),
+			sandboxEscapeApprover, configWriteApprover, opts),
 		agentConfig: agentConfig{
 			maxSteps:           opts.MaxSteps,
 			maxStepsKey:        maxStepsKey,

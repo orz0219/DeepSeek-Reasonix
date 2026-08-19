@@ -7,7 +7,7 @@
 <a href="./PLUGIN_PACKAGES.md">Plugin packages</a>
 
 Reasonix ships a read-only capability diagnostics model shared by the CLI and
-desktop **Settings → Diagnostics**. It reports Skills, Commands, Hooks, plugin
+desktop **Settings → Diagnostics**. It reports Skills, Commands, plugin
 packages, MCP servers, and instruction docs (`AGENTS.md` / `REASONIX.md` /
 `CLAUDE.md`).
 
@@ -22,7 +22,7 @@ packages, MCP servers, and instruction docs (`AGENTS.md` / `REASONIX.md` /
 
 | Goal | What to run |
 | --- | --- |
-| Check this workspace’s skills / hooks / MCP / plugins | `reasonix doctor capabilities` |
+| Check this workspace’s skills / MCP / plugins | `reasonix doctor capabilities` |
 | Machine-readable report (CI / support) | `reasonix doctor capabilities --json` |
 | Another project root | `reasonix doctor capabilities --root /path/to/project` |
 | Probe MCP startup for real (starts third-party servers) | `reasonix doctor capabilities --live --timeout 5s` |
@@ -58,17 +58,7 @@ Look for:
 Then open **Settings → Skills** (or fix the file under `.reasonix/skills` /
 `.reasonix/commands`).
 
-### 2. “Project hooks never fire”
-
-```bash
-reasonix doctor capabilities | sed -n '/Hooks/,/Plugins/p'
-```
-
-Project hooks load automatically from `.reasonix/settings.json`. If they do not
-fire, confirm the active workspace and restart Reasonix after saving. Matchers
-are **anchored** regexes: `file` does not match `read_file`.
-
-### 3. “MCP tools don’t show up”
+### 2. “MCP tools don’t show up”
 
 1. Static first (no side effects):
 
@@ -177,9 +167,9 @@ Open **Settings → Diagnostics**:
 | Refresh | Re-runs collection with the current runtime toggle |
 | Copy redacted JSON | Clipboard paste-safe report (paths already redacted) |
 | Include current session runtime | Merge connected / failed / deferred / disabled from the **active tab Host** only |
-| Open settings (on an issue) | Jumps to MCP / Skills / Plugins / Hooks when `settings_tab` is set |
+| Open settings (on an issue) | Jumps to MCP / Skills / Plugins when `settings_tab` is set |
 
-The page never edits config, executes hooks, auto-enables packages, or
+The page never edits config, auto-enables packages, or
 reconnects MCP. Opening Diagnostics does not rebuild the controller or snapshot
 the session.
 
@@ -191,7 +181,7 @@ Top-level fields:
 - `root` (display path)
 - `live` (bool)
 - `summary` — error/warning/info counts and resource counts
-- `instructions`, `skills`, `commands`, `hooks`, `plugins`, `mcp`
+- `instructions`, `skills`, `commands`, `plugins`, `mcp`
 - `issues[]` — ordered list of findings
 
 Plugin package entries are additive for Manifest v2: each package also
@@ -219,7 +209,6 @@ Stable codes include:
 
 - `skill.shadowed`, `skill.missing_description`, `skill.disabled`
 - `command.shadowed`, `command.read_failed`
-- `hook.invalid_matcher`, `hook.missing_command`, `hook.malformed_settings`
 - `plugin.missing_root`, `plugin.invalid_manifest`, `plugin.compatibility`
 - `mcp.invalid_transport`, `mcp.command_not_found`, `mcp.missing_command`, `mcp.missing_url`
 - `mcp.start_failed`, `mcp.no_tools`, `mcp.runtime_unavailable`
@@ -231,7 +220,7 @@ Array and issue order is deterministic for scripting and tests.
 | Severity | Meaning | CLI exit |
 | --- | --- | --- |
 | `error` | Broken config or failed live start | `1` |
-| `warning` | Actionable but non-fatal (e.g. a missing hook command) | `0` |
+| `warning` | Actionable but non-fatal (e.g. a missing command) | `0` |
 | `info` | Shadowing, disabled assets, runtime unavailable | `0` |
 
 ## Path and secret safety

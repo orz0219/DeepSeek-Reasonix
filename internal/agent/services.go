@@ -47,8 +47,6 @@ type agentServices struct {
 	// configWrite can ask the user whether a file tool may write a
 	// Reasonix-managed config file outside the workspace roots.
 	configWrite tool.ConfigWriteApprover
-	// hooks fires PreToolUse / PostToolUse shell hooks around each tool call.
-	hooks ToolHooks
 	// asker lets the `ask` tool put questions to the user; nil in headless runs.
 	asker Asker
 	// preEdit is the seam the checkpoint store uses to snapshot pre-edit
@@ -77,7 +75,7 @@ type agentServices struct {
 func newAgentServices(
 	prov provider.Provider, tools *tool.Registry, sink event.Sink, gate Gate,
 	planTrust PlanModeReadOnlyTrustGate, sandboxEscape sandbox.EscapeApprover,
-	configWrite tool.ConfigWriteApprover, hooks ToolHooks, opts Options,
+	configWrite tool.ConfigWriteApprover, opts Options,
 ) agentServices {
 	return agentServices{
 		prov:             prov,
@@ -90,7 +88,6 @@ func newAgentServices(
 		planTrust:        planTrust,
 		sandboxEscape:    sandboxEscape,
 		configWrite:      configWrite,
-		hooks:            hooks,
 		jobs:             opts.Jobs,
 		writeScheduler:   opts.WriteScheduler,
 		workspaceLease:   opts.WorkspaceLease,

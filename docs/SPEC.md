@@ -329,7 +329,7 @@ when the sole automatic threshold is crossed.
   fresh human approval even under Auto or YOLO. Guardian/safety review cannot
   answer these prompts on the user's behalf. Sub-agents and headless surfaces
   without the owning scoped controller fail closed. The approval request includes a compact preview, while
-  external notification hooks only receive the tool name.
+  external notifications only receive the tool name.
 - Facts carry immutable IDs, monotonic revisions, timestamps, type, and scope.
   Updates snapshot the previous revision; restore and archive recovery create a
   higher revision and reject path escapes, symlinks, collisions, and overwrites.
@@ -426,7 +426,7 @@ func (p Policy) Decide(toolName string, readOnly bool, args json.RawMessage) Dec
   without prompting. Nested or indirect execution is stricter: command and
   process substitution, a dynamic command name, parse failures, `eval`,
   `source`, shell `-c`, PowerShell/cmd command strings, and runtime inline-code
-  flags require a human in interactive Ask/Auto. Guardian, allowing hooks, and
+  flags require a human in interactive Ask/Auto. Guardian, allowing rules, and
   the approved-plan window cannot answer that decision; only an identical exact
   grant or YOLO can bypass it by default. The advanced
   `[permissions] allow_dynamic_bash = true` opt-in lets an Allow fallback,

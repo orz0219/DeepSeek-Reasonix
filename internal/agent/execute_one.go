@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"reasonix/internal/checkpoint"
 	"reasonix/internal/evidence"
 	"reasonix/internal/permission"
 	"reasonix/internal/planmode"
@@ -341,7 +340,7 @@ func (a *Agent) applyPlanModeAndProxy(ctx context.Context, plan *toolCallPlan) (
 		}
 	}
 	// Resolve proxy tools (use_capability) to the real MCP target before
-	// permission, hooks, and evidence. Provider transcript keeps call.Name.
+	// permission, recovery observation, and evidence. Provider transcript keeps call.Name.
 	if resolver, ok := t.(tool.CallResolver); ok {
 		rc, rerr := resolver.ResolveCall(ctx, json.RawMessage(call.Arguments))
 		if rerr != nil {
@@ -644,7 +643,7 @@ func (a *Agent) applyRecoveryAndPermission(ctx context.Context, plan *toolCallPl
 }
 
 // prepareToolExecution acquires write leases, parent write claims, runs
-// PreToolUse hooks and preview checkpoints, and injects call context. All of
+// preview checkpoints, and injects call context. All of
 // this happens after permission and before the concrete Execute call.
 func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (toolOutcome, bool) {
 	policyArgs := plan.permArgs
@@ -655,7 +654,7 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 		return outcome, true
 	}
 	// Fast Path: skip workspace lease, parent write, mutation barrier,
-	// checkpoint, and hooks for read-only tools. Only build context.
+	// checkpoint for read-only tools. Only build context.
 	if plan.executionPath == pathFast {
 		// Still need to resolve the concrete execution target.
 		plan.runTool = plan.execTool
@@ -676,9 +675,8 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 		}
 		return toolOutcome{}, false
 	}
-	// Acquire after permission is granted but before PreToolUse: hooks are user
-	// shell code and can themselves change the workspace. This keeps readers
-	// concurrent and avoids holding the workspace during an approval prompt while
+	// Acquire after permission is granted but before execution. This keeps
+	// readers concurrent and avoids holding the workspace during an approval prompt while
 	// still covering every write-side action that follows authorization.
 	// Lazy workspace lease on the first real writer for every role setting.
 	if plan.trace != nil {
@@ -696,7 +694,7 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 	if plan.trace != nil {
 		plan.trace.workspaceDone = time.Now()
 	}
-	// Resolve the concrete execution target before hooks. A proxy may carry a
+	// Resolve the concrete execution target before execution gates. A proxy may carry a
 	// different target/name/argument set than the provider-visible call.
 	plan.runTool = plan.execTool
 	plan.runArgs = plan.execArgs
@@ -707,9 +705,8 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 			plan.runArgs = json.RawMessage(`{}`)
 		}
 	}
-	// Hold the parent claim before PreToolUse: hooks are user shell code and may
-	// mutate the same workspace. The reservation remains live through hooks,
-	// checkpointing, and the concrete Execute call, closing both hook-side and
+	// Hold the parent claim before execution. The reservation remains live
+	// through checkpointing and the concrete Execute call, closing both mutation-side and
 	// check-before-write TOCTOU windows. Dynamic Economy/MCP tools are covered
 	// here after registry lookup without schema-changing wrappers.
 	// executeOne defers plan.releaseParentWrite so every return path releases.
@@ -722,8 +719,8 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 	} else if releaseParentWrite != nil {
 		plan.releaseParentWrite = releaseParentWrite
 	}
-	// Acquire the checkpoint barrier before preimage capture and any hook. It is
-	// held through post hooks and AfterMutation so rewind cannot interleave with
+	// Acquire the checkpoint barrier before preimage capture. It is
+	// held through AfterMutation so rewind cannot interleave with
 	// writer-side user code.
 	if !plan.readOnly && a.svc.mutationObserver != nil && a.svc.mutationObserver.Store() != nil {
 		barrier := a.svc.mutationObserver.Store().Barrier()
@@ -732,8 +729,8 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 		}
 		plan.releaseMutationWrite = barrier.ExitWrite
 	}
-	// Checkpoint the file this writer is about to change before PreToolUse.
-	// A hook may mutate and then block the call, so the deferred AfterMutation
+	// Checkpoint the file this writer is about to change before execution.
+	// The deferred AfterMutation
 	// still finalizes the fingerprint on every return path. Built-in
 	// Previewers get precise paths (complete coverage). Bash / opaque MCP
 	// writers record explicit coverage gaps instead of guessing targets.
@@ -743,31 +740,9 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 	if !plan.readOnly {
 		a.observeBeforeMutation(ctx, plan)
 		plan.mutationObserved = plan.mutationPath != ""
-		if toolHooksMayMutateWorkspace(a.svc.hooks) && a.svc.mutationObserver != nil {
-			a.svc.mutationObserver.RecordGap(checkpoint.CoverageGap{Reason: checkpoint.GapHookWrite, Tool: plan.evidenceName, Detail: "tool hook may write paths that are not declared by the tool"})
-		}
 	}
 	if plan.trace != nil {
 		plan.trace.checkpointDone = time.Now()
-	}
-	// Proxy tools fire hooks against the real MCP target name and arguments.
-	if plan.trace != nil {
-		plan.trace.hookStart = time.Now()
-	}
-	if a.svc.hooks != nil {
-		if block, msg := a.svc.hooks.PreToolUse(ctx, plan.permName, plan.permArgs); block {
-			if msg == "" {
-				msg = "blocked by a PreToolUse hook"
-			}
-			return toolOutcome{
-				output:  "blocked: " + msg,
-				blocked: true,
-				errMsg:  "blocked by PreToolUse hook",
-			}, true
-		}
-	}
-	if plan.trace != nil {
-		plan.trace.hookDone = time.Now()
 		plan.trace.contextStart = time.Now()
 	}
 	// Start from session-level base context, add per-call values only.
@@ -778,11 +753,8 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 	return toolOutcome{}, false
 }
 
-// Custom ToolHooks implementations predate the capability report. Preserve
-// conservative coverage for them because their callbacks may write files.
-
 // finishToolExecution performs the concrete Execute, records evidence, runs
-// post hooks and recovery observation, and truncates the model-facing result.
+// recovery observation, and truncates the model-facing result.
 
 // A call that was authorized under reader classification carries that
 // basis into dispatch: the MCP execution layer re-verifies it linearizably
@@ -798,7 +770,7 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 // prove mutation completeness.
 
 // tool.after: extensions rule on the executed result (success or error)
-// before evidence, hooks, and recovery observation, so every downstream
+// before evidence and recovery observation, so every downstream
 // consumer sees the final (possibly replaced) outcome.
 
 // A tool that refused its own call never ran: report it like the permission
@@ -806,10 +778,10 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 
 // Track skill/capability outcomes for Delivery gates.
 
-// Success and failure hooks observe the result after the tool ran. Use the
+// Success and failure recovery observation runs after the tool ran. Use the
 // real target name for proxied tools.
 
-// Always re-read after post hooks — partial writes and hook side effects can
+// Always re-read after recovery observation — partial writes and side effects can
 // change the previewed path even when the concrete tool returned an error.
 
 // Malformed-args failures are a transient model JSON glitch (e.g. options
@@ -819,7 +791,7 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 
 // A foreground `task` sub-agent just finished — its result is the final answer.
 // (A backgrounded one returns a "Started…" string and stops later in a job, so
-// it doesn't fire here.) SubagentStop lets a hook react to delegated work.
+// it doesn't fire here.)
 
 // observeBeforeMutation captures preimages for Previewable writers and records
 // explicit coverage gaps for bash / opaque MCP tools. Host-internal only.

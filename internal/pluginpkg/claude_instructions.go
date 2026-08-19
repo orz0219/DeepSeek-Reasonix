@@ -16,12 +16,6 @@ func appendRootClaudeInstructions(root string, manifest *Manifest) {
 	if err != nil || !info.Mode().IsRegular() {
 		return
 	}
-	if manifest.Hooks == nil {
-		manifest.Hooks = map[string][]Hook{}
-	}
-	manifest.Hooks["SessionStart"] = append(manifest.Hooks["SessionStart"], Hook{
-		ContextFile: claudeInstructions,
-		Cwd:         ".",
-		Description: "Plugin CLAUDE.md startup context from " + manifest.Name,
-	})
+	// CLAUDE.md startup context is no longer added as a hook.
+	// The file is recognized as a plugin instruction source.
 }

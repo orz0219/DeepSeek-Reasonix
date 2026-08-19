@@ -265,7 +265,6 @@ var English = Messages{
 	CmdRemember:         "save a memory note",
 	CmdForget:           "archive a saved memory",
 	CmdMcp:              "MCP servers",
-	CmdHooks:            "manage hooks",
 	CmdPlugins:          "manage plugin packages",
 	CmdPasteImage:       "paste clipboard image",
 	CmdOutputStyle:      "list output styles",
@@ -275,7 +274,7 @@ var English = Messages{
 	CmdSkill:            "manage skills",
 	CmdVerbose:          "toggle thinking text",
 	CmdReloadCmd:        "reload custom commands",
-	CmdReload:           "reload the agent runtime (tools, skills, commands, hooks, providers) keeping this session",
+	CmdReload:           "reload the agent runtime (tools, skills, commands, providers) keeping this session",
 	CmdDiffFold:         "toggle diff fold/expand",
 	CmdSandbox:          "show sandbox status",
 	CmdEffort:           "set reasoning effort",
@@ -298,7 +297,6 @@ var English = Messages{
 	ArgMcpAdd:           "connect a server",
 	ArgMcpRemove:        "disconnect a server",
 	ArgMcpConnected:     "connected",
-	ArgHooksList:        "list active hooks",
 	ArgModelCurrent:     "current",
 	ArgEffortAuto:       "use the model default",
 	ArgEffortLow:        "lighter reasoning",
@@ -318,8 +316,6 @@ var English = Messages{
 	ListMemoryNone:      "memory: none — add with “/remember <note>” or run /init to generate AGENTS.md",
 	ListSkillsHeaderFmt: "skills (%d)",
 	ListSkillsNone:      "skills: none defined — invoke a built-in like /init, or author one with install_skill",
-	ListHooksHeaderFmt:  "hooks (%d active)",
-	ListHooksNone:       "hooks: none active — configure in .reasonix/settings.json (project) or <Reasonix home>/settings.json (global)",
 	ListMcpHeader:       "mcp servers",
 	ListMcpNone:         "mcp: no servers connected — add one in reasonix.toml ([[plugins]]) or a project .mcp.json",
 
@@ -565,7 +561,6 @@ Usage:
   reasonix session list --json [--dir PATH]             list redacted sessions for machine clients
   reasonix session show|status <machine-session-id> --json [--dir PATH]  query one redacted session
   reasonix session recovery [<machine-session-id>] --json [--dir PATH]  query redacted recovery state
-  reasonix hook list|status --json [--dir PATH]         inspect redacted hook state
   reasonix task list|show|status|events|stop|cancel|monitor|tmux --json [--dir PATH]
                                                          inspect or control redacted tasks
   reasonix upgrade [--check] [--force]                   update to the latest official release (also: reasonix update)

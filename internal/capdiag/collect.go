@@ -9,7 +9,6 @@ import (
 
 	"reasonix/internal/command"
 	"reasonix/internal/config"
-	"reasonix/internal/hook"
 	"reasonix/internal/instruction"
 	"reasonix/internal/plugin"
 	"reasonix/internal/pluginpkg"
@@ -66,14 +65,12 @@ func Collect(opts Options) Report {
 	instr, instructionIssues := collectInstructions(root, home, disp)
 	skillsR, skillIssues := collectSkills(root, home, reasonixHome, cfg, disp)
 	cmdsR, cmdIssues := collectCommands(root, disp)
-	hooksR, hookIssues := collectHooks(root, home, reasonixHome, cfg, disp)
 	pluginsR, pluginIssues := collectPlugins(reasonixHome, disp)
 	mcpR, mcpIssues := collectMCP(cfg, root, home, reasonixHome, disp)
 
 	issues = append(issues, instructionIssues...)
 	issues = append(issues, skillIssues...)
 	issues = append(issues, cmdIssues...)
-	issues = append(issues, hookIssues...)
 	issues = append(issues, pluginIssues...)
 	issues = append(issues, mcpIssues...)
 
@@ -93,7 +90,6 @@ func Collect(opts Options) Report {
 		Instructions:  instr,
 		Skills:        skillsR,
 		Commands:      cmdsR,
-		Hooks:         hooksR,
 		Plugins:       pluginsR,
 		MCP:           mcpR,
 		Issues:        issues,
@@ -124,7 +120,6 @@ func buildSummary(r Report) Summary {
 		Instructions: len(r.Instructions.Docs),
 		Skills:       r.Skills.Winners,
 		Commands:     r.Commands.Winners,
-		Hooks:        len(r.Hooks.Entries),
 		Plugins:      len(r.Plugins.Packages),
 		MCPServers:   len(r.MCP.Servers),
 	}
@@ -281,104 +276,6 @@ func collectCommands(root string, disp func(string) string) (AssetReport, []Issu
 	return rep, issues
 }
 
-func collectHooks(root, home, reasonixHome string, cfg *config.Config, disp func(string) string) (HookReport, []Issue) {
-	var issues []Issue
-	insp := hook.Inspect(hook.LoadOptions{
-		ProjectRoot:     root,
-		HomeDir:         home,
-		ReasonixHomeDir: reasonixHome,
-	})
-	runtimeOptions := hook.RuntimeOptions{}
-	if cfg != nil {
-		runtimeOptions = hook.RuntimeOptionsForShell(cfg.Tools.Shell.Prefer, cfg.Tools.Shell.Path)
-	}
-	rep := HookReport{
-		// Retained in schema v1 for compatibility; project hooks are enabled by
-		// default whenever a project root is present.
-		TrustedProject: insp.TrustedProject,
-		ProjectDefines: insp.ProjectDefines,
-		Sources:        []HookSource{},
-		Entries:        []HookEntry{},
-	}
-	for _, s := range insp.Sources {
-		rep.Sources = append(rep.Sources, HookSource{
-			Scope: string(s.Scope), Path: disp(s.Path), Status: s.Status,
-			HookCount: s.HookCount, ParseError: sanitizeErrText(s.ParseError),
-		})
-		if s.Status == "malformed" {
-			issues = append(issues, Issue{
-				Severity: "error", Code: "hook.malformed_settings", Subsystem: "hooks",
-				Source:      disp(s.Path),
-				Message:     "hooks settings JSON is malformed",
-				Remediation: "Fix JSON syntax in the settings file",
-				SettingsTab: "hooks",
-			})
-		}
-	}
-	for _, e := range insp.Entries {
-		rep.Entries = append(rep.Entries, HookEntry{
-			Event: string(e.Event), Match: e.Match, Command: redactCommandDisplay(e.Command, root, home, reasonixHome),
-			ContextFile: disp(e.ContextFile), Description: e.Description, TimeoutMS: e.Timeout,
-			Scope: string(e.Scope), Source: disp(e.Source), Blocking: hook.IsBlocking(e.Event),
-		})
-		if strings.TrimSpace(e.Command) == "" && strings.TrimSpace(e.ContextFile) == "" {
-			issues = append(issues, Issue{
-				Severity: "error", Code: "hook.missing_command", Subsystem: "hooks",
-				Name: string(e.Event), Source: disp(e.Source),
-				Message:     "hook entry has neither command nor contextFile",
-				Remediation: "Set command or contextFile for the hook entry",
-				SettingsTab: "hooks",
-			})
-		}
-		if issue, ok := hookRuntimeIssue(e, hook.CheckEntryRuntime(e, runtimeOptions), disp); ok {
-			issues = append(issues, issue)
-		}
-		if e.ContextFile != "" {
-			if !hook.ContextFileUsable(e.ContextFile) {
-				issues = append(issues, Issue{
-					Severity: "error", Code: "hook.missing_context_file", Subsystem: "hooks",
-					Name: string(e.Event), Source: disp(e.ContextFile),
-					Message:     "hook contextFile is missing or unreadable",
-					Remediation: "Create a readable regular context file or fix the path in the hook entry",
-					SettingsTab: "hooks",
-				})
-			}
-		}
-		if msg := hook.ValidateMatcher(e.Match); hook.UsesToolMatcher(e.Event) && msg != "" {
-			issues = append(issues, Issue{
-				Severity: "error", Code: "hook.invalid_matcher", Subsystem: "hooks",
-				Name: string(e.Event), Source: disp(e.Source),
-				Message:     msg,
-				Remediation: "Use an anchored regex (or empty/*); remember matchers are fully anchored",
-				SettingsTab: "hooks",
-			})
-		}
-		if !hook.IsKnownEvent(string(e.Event)) {
-			issues = append(issues, Issue{
-				Severity: "warning", Code: "hook.unknown_event", Subsystem: "hooks",
-				Name: string(e.Event), Source: disp(e.Source),
-				Message:     "hook event is not one of the 11 supported events",
-				Remediation: "Use a supported event name from the hooks documentation",
-				SettingsTab: "hooks",
-			})
-		}
-	}
-	return rep, issues
-}
-
-func hookRuntimeIssue(entry hook.Entry, err error, disp func(string) string) (Issue, bool) {
-	if err == nil {
-		return Issue{}, false
-	}
-	return Issue{
-		Severity: "error", Code: "hook.shell_unavailable", Subsystem: "hooks",
-		Name: string(entry.Event), Source: disp(entry.Source),
-		Message:     sanitizeErrText(err.Error()),
-		Remediation: "Install Git for Windows, or configure [tools.shell] prefer=\"bash\" and path to a usable bash.exe, then re-run doctor capabilities",
-		SettingsTab: "hooks",
-	}, true
-}
-
 func collectPlugins(reasonixHome string, disp func(string) string) (PluginPackageReport, []Issue) {
 	var issues []Issue
 	rep := PluginPackageReport{
@@ -432,8 +329,8 @@ func collectPlugins(reasonixHome string, disp func(string) string) (PluginPackag
 			rep.Packages = append(rep.Packages, info)
 			continue
 		}
-		sk, commands, hk, mcp := pkg.CapabilityCounts()
-		info.Skills, info.Commands, info.Hooks, info.MCPServers = sk, commands, hk, mcp
+		sk, commands, mcp := pkg.CapabilityCounts()
+		info.Skills, info.Commands, info.MCPServers = sk, commands, mcp
 		info.Prompts, info.Themes = pkg.PromptCount(), pkg.ThemeCount()
 		info.Runtime = pkg.Manifest.Runtime != nil
 		if p.ManifestKind == "" {

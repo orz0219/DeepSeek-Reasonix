@@ -30,7 +30,7 @@ no-op、UI/interceptor-only 以及只滚动 backend 的 Provider/MCP 计划会�
 system prompt、tool schemas 与 `CacheHash` 字节稳定。Provider capability 变化通过
 `providerChanged` 呈现，不会误报 `prefixChanged`；MCP schema 新增、删除或改名则
 归类为全量 rebuild，并有意重新计算 prefix。保留 `ReuseAssembly` 时仍可跳过
-skill/command/hook rediscovery。
+skill/command rediscovery。
 
 ## Sidecar 启动 / drain
 

@@ -120,7 +120,6 @@ func RecordCompletionReport(s Sink, a CompletionReportAudit) {
 	}
 }
 
-
 // DelegationAdmissionAudit is the shadow admission verdict for one expensive
 // delegation call: tool name and enums only, never the query or prompt text.
 // Shadow means observed, not enforced — no call is blocked.

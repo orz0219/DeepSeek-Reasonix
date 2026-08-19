@@ -61,7 +61,7 @@ Reasonix 桌面端输入框下方的“询问 / 自动 / Yolo”控制的是工�
 - 全局、偏好、feedback、更新、重复、敏感或超长的 `remember`，以及所有 `forget`
   仍需要新鲜人工审批；Guardian/安全审查不能代替用户批准。新的、有界、非敏感
   project/reference 事实可被判定为 create-only 并免提示保存。
-- 嵌套或间接 Bash 即使处于获批计划执行窗口也需要人工审批，Guardian 与 hook allow 不能代替用户批准；普通展开、赋值、重定向和 glob 仍走 Auto 快速路径。
+- 嵌套或间接 Bash 即使处于获批计划执行窗口也需要人工审批，Guardian 与 allow 规则不能代替用户批准；普通展开、赋值、重定向和 glob 仍走 Auto 快速路径。
 - 用户安装或明确授权的 MCP 直接执行，不再受这套逐调用模式影响；显式 `deny`、Plan 和严格只读子会话边界仍然生效。
 - ask 问题仍然等待你回答，不会由自动模式代选。
 

@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"reasonix/internal/config"
-	"reasonix/internal/hook"
 	"reasonix/internal/installsource"
 	"reasonix/internal/pluginpkg"
 )
@@ -237,8 +236,8 @@ func pluginShowCommand(args []string) int {
 		return 1
 	}
 	summary := pkg.CapabilitySummary()
-	fmt.Printf("name: %s\nversion: %s\nenabled: %t\nkind: %s\nroot: %s\nsource: %s\nskills: %d\ncommands: %d\nprompts: %d\nhooks: %d\nmcpServers: %d\nthemes: %d\n",
-		p.Name, p.Version, p.Enabled, p.ManifestKind, root, p.Source, summary.Skills, summary.Commands, summary.Prompts, summary.Hooks, summary.MCPServers, summary.Themes)
+	fmt.Printf("name: %s\nversion: %s\nenabled: %t\nkind: %s\nroot: %s\nsource: %s\nskills: %d\ncommands: %d\nprompts: %d\nmcpServers: %d\nthemes: %d\n",
+		p.Name, p.Version, p.Enabled, p.ManifestKind, root, p.Source, summary.Skills, summary.Commands, summary.Prompts, summary.MCPServers, summary.Themes)
 	if summary.Runtime {
 		fmt.Print(pluginpkg.RuntimeTrustText(pkg.Manifest.Runtime))
 	}
@@ -300,24 +299,6 @@ func printPluginInventory(pluginName string, inv pluginpkg.Inventory) {
 		fmt.Println("themes:")
 		for _, theme := range inv.Themes {
 			fmt.Printf("  %s\t%s\n", theme.Name, theme.Path)
-		}
-	}
-	if len(inv.Hooks) > 0 {
-		fmt.Println("hooks:")
-		for _, hook := range inv.Hooks {
-			target := hook.Command
-			if target == "" {
-				target = hook.ContextFile
-			}
-			match := hook.Match
-			if match == "" {
-				match = "*"
-			}
-			if hook.Description != "" {
-				fmt.Printf("  %s\tmatch=%s\t%s\t%s\n", hook.Event, match, target, hook.Description)
-			} else {
-				fmt.Printf("  %s\tmatch=%s\t%s\n", hook.Event, match, target)
-			}
 		}
 	}
 	if len(inv.MCPServers) > 0 {
@@ -449,20 +430,6 @@ func pluginDoctorCommand(args []string) int {
 	}
 	for _, warning := range warnings {
 		fmt.Println("warning:", warning)
-	}
-	workspaceRoot, _ := os.Getwd()
-	cfg, _ := config.LoadForRootReadOnly(workspaceRoot)
-	runtimeOptions := hook.RuntimeOptions{}
-	if cfg != nil {
-		runtimeOptions = hook.RuntimeOptionsForShell(cfg.Tools.Shell.Prefer, cfg.Tools.Shell.Path)
-	}
-	runtimeIssues := hook.CheckPackageRuntime(pkg, runtimeOptions)
-	for _, issue := range runtimeIssues {
-		fmt.Fprintf(os.Stderr, "unavailable %s hook: %v\n", issue.Event, issue.Err)
-	}
-	if len(runtimeIssues) > 0 {
-		fmt.Fprintln(os.Stderr, "remediation: install Git for Windows, or configure [tools.shell] prefer=\"bash\" and path to a usable bash.exe")
-		return 1
 	}
 	fmt.Printf("ok: %s (%s)\n", p.Name, filepath.Clean(root))
 	return 0

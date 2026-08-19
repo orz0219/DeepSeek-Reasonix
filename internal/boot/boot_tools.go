@@ -9,7 +9,6 @@ import (
 	"reasonix/internal/config"
 	"reasonix/internal/control"
 	"reasonix/internal/event"
-	"reasonix/internal/hook"
 	"reasonix/internal/instruction"
 	"reasonix/internal/lsp"
 	"reasonix/internal/mcplaunch"
@@ -26,7 +25,7 @@ import (
 )
 
 // buildTools wires the tool layer: built-ins, MCP/plugin specs, LSP, the
-// permission policy and headless gate, hooks, and the sub-agent task tool.
+// permission policy and headless gate, and the sub-agent task tool.
 // It also persists the composed + skill-indexed prompt so buildAssemble
 // freezes the enhanced version (boot-split regression: without it the
 // memory and implicit-skill-index enhancements are dropped).
@@ -379,20 +378,6 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 		WithSessionAllow(opts.PermissionAllow)
 	headlessGate := control.NewSharedHeadlessGate(policy, opts.HeadlessApprovalMode)
 
-	var resolvedHooks []hook.ResolvedHook
-	if opts.ReuseAssembly != nil && shouldReuseDiscovery(opts.PreviousPlan) {
-		resolvedHooks = opts.ReuseAssembly.Hooks
-	} else {
-		resolvedHooks = hook.Load(hook.LoadOptions{ProjectRoot: root})
-	}
-	hookRuntime := hook.RuntimeOptions{}
-	if shell.Kind == sandbox.ShellBash {
-		hookRuntime.BashPath = shell.Path
-	}
-	hookRunner := hook.NewRunner(
-		resolvedHooks, root, hook.NewDefaultSpawner(hookRuntime),
-		func(msg string) { sink.Emit(event.Event{Kind: event.Notice, Level: event.LevelWarn, Text: msg}) },
-	)
 	// The `task` tool spawns sub-agents reusing the parent's provider and tool
 	// registry; wired here after built-ins/plugins load so sub-agents inherit
 	// the full tool set (minus `task` itself).
@@ -559,8 +544,6 @@ func buildTools(ctx context.Context, bc *bootContext, opts Options) error {
 	bc.maxSubagentDepth = maxSubagentDepth
 	bc.policy = policy
 	bc.headlessGate = headlessGate
-	bc.resolvedHooks = resolvedHooks
-	bc.hookRunner = hookRunner
 	bc.resolveSubagentProvider = resolveSubagentProvider
 	bc.subagentIdentity = subagentIdentity
 	bc.subagentScheduler = subagentScheduler

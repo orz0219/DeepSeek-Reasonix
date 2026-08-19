@@ -65,7 +65,7 @@ func sniffManifestAPIVersion(b []byte) (string, error) {
 // (json.Decoder.DisallowUnknownFields). path prefixes the error so a typo
 // names where it happened — root keys report under the manifest name,
 // nested keys under their container ("contributes", "runtime",
-// "hooks.<event>[i]", "mcpServers.<name>").
+// "mcpServers.<name>").
 func strictDecode(data []byte, v any, path string) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
@@ -79,13 +79,12 @@ func strictDecode(data []byte, v any, path string) error {
 // parser. Agents, prompts, and themes exist ONLY here — the legacy top level
 // has no such keys.
 type v1Contributes struct {
-	Skills     json.RawMessage              `json:"skills"`
-	Agents     json.RawMessage              `json:"agents"`
-	Commands   json.RawMessage              `json:"commands"`
-	Prompts    json.RawMessage              `json:"prompts"`
-	Themes     json.RawMessage              `json:"themes"`
-	Hooks      map[string][]json.RawMessage `json:"hooks"`
-	MCPServers map[string]json.RawMessage   `json:"mcpServers"`
+	Skills     json.RawMessage            `json:"skills"`
+	Agents     json.RawMessage            `json:"agents"`
+	Commands   json.RawMessage            `json:"commands"`
+	Prompts    json.RawMessage            `json:"prompts"`
+	Themes     json.RawMessage            `json:"themes"`
+	MCPServers map[string]json.RawMessage `json:"mcpServers"`
 }
 
 // parseV1PathList parses a native path list. The flexible string | []string |
@@ -119,52 +118,6 @@ func parseV1PathList(raw json.RawMessage, path string) ([]string, error) {
 		return cleanPathList(paths)
 	}
 	return nil, fmt.Errorf("%s must be a path string, string array, or object array", path)
-}
-
-// parseV1HookMap strict-decodes a hooks map. Each entry is decoded
-// individually so an unknown key reports its full event/index path.
-func parseV1HookMap(raw map[string][]json.RawMessage, path string) (map[string][]Hook, error) {
-	if len(raw) == 0 {
-		return nil, nil
-	}
-	out := make(map[string][]Hook, len(raw))
-	for _, event := range sortedKeys(raw) {
-		entries := raw[event]
-		hooks := make([]Hook, 0, len(entries))
-		for i, entry := range entries {
-			h, err := parseV1Hook(entry, fmt.Sprintf("%s.%s[%d]", path, event, i))
-			if err != nil {
-				return nil, err
-			}
-			hooks = append(hooks, h)
-		}
-		out[event] = hooks
-	}
-	return out, nil
-}
-
-// parseV1Hook strict-decodes one hook entry, preserving the args presence
-// bit exactly like Hook.UnmarshalJSON (exec form vs shell form depends on
-// it). Decoding goes through a method-free alias so the lenient legacy
-// unmarshaler cannot weaken v2 strictness.
-func parseV1Hook(data json.RawMessage, path string) (Hook, error) {
-	type hookJSON Hook
-	var decoded hookJSON
-	if err := strictDecode(data, &decoded, path); err != nil {
-		return Hook{}, err
-	}
-	h := Hook(decoded)
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil {
-		return Hook{}, err
-	}
-	for name := range fields {
-		if strings.EqualFold(name, "args") {
-			h.ArgsSet = true
-			break
-		}
-	}
-	return h, nil
 }
 
 func parseV1MCPServerMap(raw map[string]json.RawMessage, path string) (map[string]MCPServer, error) {
@@ -219,52 +172,6 @@ func unionPathLists(legacy, contrib []string) []string {
 	return out
 }
 
-// hookIdentity is the merge key for a hook entry: the event (applied by the
-// caller) plus what the entry runs. Two entries with the same identity but
-// different remaining fields are a conflict, not two hooks.
-func hookIdentity(h Hook) string {
-	return h.Command + "\x00" + h.ContextFile
-}
-
-// mergeV1Hooks unions legacy top-level hooks with contributes.hooks. Both
-// sides are normalized first (trimmed, shell inferred, empty entries
-// dropped); entries are keyed by event plus executable identity. The same
-// key with a different definition is a manifest error naming the key;
-// byte-identical entries dedupe.
-func mergeV1Hooks(legacy, contrib map[string][]Hook) (map[string][]Hook, error) {
-	legacy = normalizeHooks(legacy)
-	contrib = normalizeHooks(contrib)
-	if len(legacy) == 0 {
-		return contrib, nil
-	}
-	if len(contrib) == 0 {
-		return legacy, nil
-	}
-	out := make(map[string][]Hook, len(legacy))
-	for event, hooks := range legacy {
-		out[event] = append([]Hook(nil), hooks...)
-	}
-	for _, event := range sortedKeys(contrib) {
-		for _, h := range contrib[event] {
-			duplicate := false
-			for _, existing := range out[event] {
-				if hookIdentity(existing) != hookIdentity(h) {
-					continue
-				}
-				if reflect.DeepEqual(existing, h) {
-					duplicate = true
-					break
-				}
-				return nil, fmt.Errorf("hook %q (event %s) is defined differently in hooks and contributes.hooks", firstNonEmpty(h.Command, h.ContextFile), event)
-			}
-			if !duplicate {
-				out[event] = append(out[event], h)
-			}
-		}
-	}
-	return out, nil
-}
-
 // mergeV1MCPServers unions legacy top-level mcpServers with
 // contributes.mcpServers, keyed by server name. The same name with a
 // different definition is a manifest error naming the server; identical
@@ -294,7 +201,7 @@ func mergeV1MCPServers(legacy, contrib map[string]MCPServer) (map[string]MCPServ
 // The interceptor points, replacement slots, and priority bounds below
 // duplicate internal/extension (intercept.go, replace.go). They are NOT
 // imported: extension depends on pluginpkg transitively
-// (extension -> hook -> pluginpkg), so pluginpkg importing extension would
+// (extension -> pluginpkg), so pluginpkg importing extension would
 // create an import cycle. Keep these lists in sync with extension — the
 // adapter tests in the extension package pin them together by parsing a
 // manifest that exercises every value.

@@ -296,7 +296,7 @@ func loadBodyWithReferences(skillPath, body string) string {
 
 // loadBodyWithScripts appends a directory-layout skill's sibling scripts/
 // directory listing to the body, so the model knows what scripts are
-// available and can run them via bash (inheriting sandbox, gate, hooks).
+// available and can run them via bash (inheriting sandbox, gate).
 func loadBodyWithScripts(skillPath, body string) string {
 	if filepath.Base(skillPath) != SkillFile {
 		return body

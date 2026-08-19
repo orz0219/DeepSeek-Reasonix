@@ -278,7 +278,7 @@ func parseRewind(args string, cps []checkpoint.Meta) (int, RewindScope, error) {
 // requestApproval emits an ApprovalRequest and blocks until Approve(ID, …)
 // answers or ctx is cancelled. A prior session grant (or a bypass posture) for
 // the same approval scope short-circuits. The approvalManager's promptMu
-// serialises outstanding prompts; this method keeps the I/O (events, hooks,
+// serialises outstanding prompts; this method keeps the I/O (events,
 // remember) that the manager deliberately stays out of.
 func (c *Controller) requestApproval(ctx context.Context, tool, subject string, args json.RawMessage) (bool, bool, error) {
 	return c.requestApprovalWithReason(ctx, tool, subject, args, "")
@@ -313,7 +313,7 @@ type approvalDecisionOptions struct {
 	// must not answer or drain the prompt.
 	fresh bool
 	// requireHuman marks an ordinary tool approval that Auto, an approved-plan
-	// window, Guardian, or an allowing hook must not answer. Unlike fresh it
+	// window, Guardian, or an allowing rule must not answer. Unlike fresh it
 	// retains the ordinary four-choice UI and YOLO remains an explicit bypass.
 	requireHuman bool
 }
@@ -331,18 +331,6 @@ func (c *Controller) requestApprovalDecisionWithOptions(ctx context.Context, too
 		return approvalReply{allow: true}, nil
 	}
 
-	if hookSubject, hookArgs, ok := permissionRequestHookPayload(tool, subject, args); ok {
-		if decision, _ := c.hooks.PermissionRequest(ctx, tool, hookSubject, hookArgs); decision != nil {
-			switch {
-			case !*decision:
-				return approvalReply{}, nil
-			case !opts.fresh && !opts.requireHuman && !requiresFreshApprovalTool(tool):
-				return approvalReply{allow: true}, nil
-			}
-
-		}
-	}
-
 	c.approval.promptEmitMu.Lock()
 	var id string
 	var reply chan approvalReply
@@ -358,8 +346,6 @@ func (c *Controller) requestApprovalDecisionWithOptions(ctx context.Context, too
 
 	c.sink.Emit(c.approvalRequestEvent(event.Approval{ID: id, Tool: tool, Subject: subject, Reason: reason, RawInput: append(json.RawMessage(nil), args...), Fresh: opts.fresh}))
 	c.approval.promptEmitMu.Unlock()
-
-	go c.hooks.Notification(ctx, approvalNotificationText(tool, subject), "permission_prompt")
 
 	waitCtx, cancelWait := c.approval.waitContext(ctx)
 	defer cancelWait()

@@ -313,14 +313,6 @@ func (a *Agent) planVisibleCompression(snap explicitCompressionSnapshot, directi
 }
 
 func (a *Agent) prepareVisibleCompression(ctx context.Context, trigger string, fold []provider.Message, instructions string) (preparedVisibleCompression, string, error) {
-	if a.svc.hooks != nil {
-		if hookInstructions := a.svc.hooks.PreCompact(ctx, trigger); hookInstructions != "" {
-			if instructions != "" {
-				instructions += "\n"
-			}
-			instructions += hookInstructions
-		}
-	}
 	preparedFold, preparedInstructions, err := a.interceptCompactionPrepare(ctx, fold, instructions)
 	if err != nil {
 		return preparedVisibleCompression{}, "", err
@@ -408,14 +400,6 @@ func (a *Agent) compactToProjection(ctx context.Context, trigger, instructions s
 	}
 
 	a.svc.sink.Emit(event.Event{Kind: event.CompactionStarted, Compaction: event.Compaction{Trigger: trigger}})
-	if a.svc.hooks != nil {
-		if hookInstr := a.svc.hooks.PreCompact(ctx, trigger); hookInstr != "" {
-			if instructions != "" {
-				instructions += "\n"
-			}
-			instructions += hookInstr
-		}
-	}
 	var err error
 	fold, instructions, err = a.interceptCompactionPrepare(ctx, fold, instructions)
 	if err != nil {

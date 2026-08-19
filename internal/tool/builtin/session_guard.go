@@ -56,7 +56,7 @@ func (g SessionDataGuard) Check(target string) error {
 		return nil // can't resolve -> let the caller's normal error path handle it
 	}
 	if g.deniesSecurity(abs) {
-		return fmt.Errorf("path %q is a Reasonix security boundary file (%s holds the global hooks; hooks execute arbitrary shell commands on every future session). Agents may not modify it. "+
+		return fmt.Errorf("path %q is a Reasonix security boundary file (%s holds the global configuration). Agents may not modify it. "+
 			"Ask the user to edit it themselves, or to add the directory to [sandbox] allow_write in reasonix.toml if raw access is truly intended",
 			target, g.stateRoot)
 	}
@@ -70,8 +70,7 @@ func (g SessionDataGuard) Check(target string) error {
 
 // securityStateFile reports whether name (a state-root-direct file name,
 // already case-folded when the platform folds) is a security boundary rather
-// than a mere runtime ledger. settings.json defines the global hooks:
-// arbitrary shell commands executed on harness events in every project.
+// than a mere runtime ledger. settings.json holds the global configuration.
 func securityStateFile(name string) bool {
 	switch name {
 	case "settings.json":

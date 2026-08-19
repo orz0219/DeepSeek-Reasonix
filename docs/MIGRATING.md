@@ -129,7 +129,7 @@ freshness, recovery, cache, privacy, and remote-workspace contract.
 ## What's the same
 
 The agent core carries over: the loop, tools (read/write/edit/glob/grep/bash/…),
-subagents (`task`, explore/research/review), skills, hooks, plan mode, MCP client,
+subagents (`task`, explore/research/review), skills, plan mode, MCP client,
 and DeepSeek prefix-cache–oriented design.
 
 ## What's different
@@ -154,7 +154,7 @@ and DeepSeek prefix-cache–oriented design.
   Treat opening an unfamiliar repository as opting into executable project
   configuration: review `.reasonix/settings.json`, `reasonix.toml`, and
   `.mcp.json` before starting Reasonix. If a repository causes unexpected MCP
-  or Hook behavior, close that workspace and correct or remove the project-local
+  close that workspace and correct or remove the project-local
   entries before reopening it.
 - **stdio MCP connections are persistent.** This fixes stateful servers that
   lost browser/session state when writer calls received a fresh process.

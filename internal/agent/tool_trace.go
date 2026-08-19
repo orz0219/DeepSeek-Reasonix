@@ -33,8 +33,6 @@ type toolCallTrace struct {
 	workspaceDone   time.Time
 	checkpointStart time.Time
 	checkpointDone  time.Time
-	hookStart       time.Time
-	hookDone        time.Time
 	contextStart    time.Time
 	contextDone     time.Time
 
@@ -105,7 +103,7 @@ func (r *traceReport) PrintReport(w io.Writer) {
 	var totalOverhead, totalExec, totalAll time.Duration
 	var parseTotal, policyTotal, prepareTotal, finalizeTotal time.Duration
 	var recoveryTotal, permissionTotal time.Duration
-	var workspaceTotal, checkpointTotal, hookTotal, contextTotal time.Duration
+	var workspaceTotal, checkpointTotal, contextTotal time.Duration
 	var evidenceTotal, recoveryObserveTotal time.Duration
 
 	for _, c := range r.calls {
@@ -131,9 +129,6 @@ func (r *traceReport) PrintReport(w io.Writer) {
 		if !c.checkpointStart.IsZero() && !c.checkpointDone.IsZero() {
 			checkpointTotal += c.checkpointDone.Sub(c.checkpointStart)
 		}
-		if !c.hookStart.IsZero() && !c.hookDone.IsZero() {
-			hookTotal += c.hookDone.Sub(c.hookStart)
-		}
 		if !c.contextStart.IsZero() && !c.contextDone.IsZero() {
 			contextTotal += c.contextDone.Sub(c.contextStart)
 		}
@@ -155,7 +150,6 @@ func (r *traceReport) PrintReport(w io.Writer) {
 	fmt.Fprintf(w, "  %-22s %10s\n", "  prepare", prepareTotal)
 	fmt.Fprintf(w, "  %-22s %10s\n", "    workspace", workspaceTotal)
 	fmt.Fprintf(w, "  %-22s %10s\n", "    checkpoint", checkpointTotal)
-	fmt.Fprintf(w, "  %-22s %10s\n", "    hook", hookTotal)
 	fmt.Fprintf(w, "  %-22s %10s\n", "    context", contextTotal)
 	fmt.Fprintf(w, "  %-22s %10s\n", "execute", totalExec)
 	fmt.Fprintf(w, "  %-22s %10s\n", "finalize", finalizeTotal)

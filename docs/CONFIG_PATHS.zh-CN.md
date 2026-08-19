@@ -28,7 +28,6 @@ Legacy 迁移、OS home 约定目录扫描以及其他 fallback 路径都会跳�
 | 旧 credentials 导入来源 | `<Reasonix home>/credentials` |
 | 全局斜杠命令 | `<Reasonix home>/commands/` |
 | 全局 skills | `<Reasonix home>/skills/` |
-| 全局 hooks | `<Reasonix home>/settings.json` |
 | 远程 SSH 托管 known_hosts | `<Reasonix home>/remote/known_hosts` |
 | 会话 | `<state root>/sessions/` |
 | 归档 | `<state root>/archive/` |

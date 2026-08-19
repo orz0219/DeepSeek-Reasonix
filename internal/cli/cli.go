@@ -126,9 +126,6 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 		return reportCommand(rest)
 	case "session", "sessions", "catalogs":
 		return runSessionOrCatalogCommand(cmd, rest)
-	case "hook", "hooks":
-		configureCLIThemeFromConfig()
-		return hookCommand(rest)
 	case "task":
 		configureCLIThemeFromConfig()
 		return taskCommand(rest)
@@ -341,7 +338,7 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 // orphan a duplicate (#2807).
 
 // /reload support: rebuild the runtime through boot.Rebuild so tools,
-// skills, commands, hooks, MCP servers, and providers are discovered fresh
+// skills, commands, MCP servers, and providers are discovered fresh
 // while the boot layer migrates the session (history, approval grants,
 // goal/recovery state, lifecycle). Same construction inputs as
 // buildController so the replacement matches this session's launch wiring;
@@ -357,7 +354,7 @@ func RunWithBuildInfo(args []string, info BuildInfo) int {
 
 // Close the active controller plus any retired ones from /model switches.
 // Retired controllers were stashed rather than closed at switch time
-// because Controller.Close() runs SessionEnd hooks and kills plugin
+// because Controller.Close() runs the SessionEnd lifecycle event and kills plugin
 // subprocesses — operations that corrupt bubbletea's terminal raw mode
 // when executed while the TUI is alive.
 

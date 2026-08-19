@@ -280,7 +280,7 @@ func parseMCPServerCapabilityID(id string) (string, bool) {
 // resolveServerConnect resolves action=call on an mcp-server id. A connected
 // server lists its tools immediately (side-effect free); an unconnected one
 // resolves to a deferred connect target that runs only after the permission
-// gate and PreToolUse hooks approve it. Stored project authorization is applied
+// gate and execution approve it. Stored project authorization is applied
 // at resolve time so unauthorized project MCP never reaches process startup.
 func (t *UseCapabilityTool) resolveServerConnect(ctx context.Context, server string, base tool.ResolvedCall) (tool.ResolvedCall, error) {
 	id := "mcp-server:" + server

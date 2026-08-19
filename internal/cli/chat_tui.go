@@ -262,7 +262,7 @@ import (
 // don't travel through carry/resumePath (see Controller.RestoreSessionAuthorizations).
 
 // rebuildRuntime builds the /reload replacement through boot.Rebuild:
-// same model/profile/effort, but tools, skills, commands, hooks, MCP
+// same model/profile/effort, but tools, skills, commands, MCP
 // servers, and providers are discovered fresh and the session state
 // migrates inside the boot layer. Set by chatREPL (it must NOT touch
 // this model — the swap happens on the running copy); nil disables
@@ -301,7 +301,7 @@ import (
 // and work-mode changes all share the same atomic swap path.
 
 // oldControllers accumulates controllers retired by runtime switches.
-// They cannot be closed during the switch (Close runs SessionEnd hooks
+// They cannot be closed during the switch (Close runs the SessionEnd lifecycle event
 // and kills plugin subprocesses, both of which corrupt the terminal's
 // raw mode). Instead they are closed at process exit when the terminal
 // is already being restored.
@@ -356,7 +356,7 @@ const statuslineCommandTimeout = 2 * time.Second
 // the new controller is ready in ctrl; label/commands/skills/host mirror the
 // fields that runModelSubcommand used to set synchronously. oldCtrl is the
 // previous controller that must be closed after the switch — its cleanup
-// (SessionEnd hooks, plugin subprocess kill) is deferred to a tea.Cmd so it
+// (SessionEnd lifecycle event, plugin subprocess kill) is deferred to a tea.Cmd so it
 // runs after the render completes, avoiding corruption of the terminal's raw
 // mode that would occur if Close() were called from the build goroutine.
 

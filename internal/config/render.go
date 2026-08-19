@@ -518,7 +518,7 @@ func RenderTOMLForScope(c *Config, scope RenderScope) string {
 	if scope != RenderScopeProject {
 		b.WriteString("[secrets]   # credential protection; user/global only, ./reasonix.toml cannot override\n")
 		if c.Secrets.FilterSubprocessEnv {
-			b.WriteString("filter_subprocess_env = true   # strip credential-named env vars from tool/hook/LSP/MCP subprocesses\n")
+			b.WriteString("filter_subprocess_env = true   # strip credential-named env vars from tool/LSP/MCP subprocesses\n")
 		} else {
 			b.WriteString("# filter_subprocess_env = false   # opt-in; stripping tokens breaks gh, HTTPS git push, npm publish\n")
 		}

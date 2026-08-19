@@ -13,7 +13,6 @@ import (
 	"reasonix/internal/config"
 	"reasonix/internal/evidence"
 	"reasonix/internal/guardian"
-	"reasonix/internal/hook"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
 	"reasonix/internal/skill"
@@ -244,7 +243,7 @@ func (c *Controller) Commands() []command.Command {
 }
 
 // ReloadCommands rescans all command directories and hot-swaps the slash_command
-// tool and the internal command slice — no MCP restart, no hook rerun.
+// tool and the internal command slice — no MCP restart, no extension rerun.
 func (c *Controller) ReloadCommands(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
@@ -399,10 +398,6 @@ func (c *Controller) DeleteSkill(name string, scope skill.Scope) error {
 	}
 	return w.Delete(name, scope)
 }
-
-// HookRunner returns the session's hook runner (nil-safe; may hold zero hooks),
-// so a frontend can list the active hooks via `/hooks`.
-func (c *Controller) HookRunner() *hook.Runner { return c.hooks }
 
 // AddMCPServer connects an MCP server live and persists it to the user-global
 // config. Its tools are registered immediately and become available on the next

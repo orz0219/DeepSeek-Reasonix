@@ -330,7 +330,7 @@ func (s *service) sessionSteer(_ context.Context, raw json.RawMessage) (any, err
 }
 
 // sessionReloadExtensions rebuilds a session's agent runtime in place —
-// tools, skills, commands, hooks, MCP servers, and providers are re-discovered
+// tools, skills, commands, MCP servers, and providers are re-discovered
 // — while the session (transcript, approval grants, goal and recovery state)
 // carries over via boot.Rebuild. It follows the same contract as a config
 // switch: a turn or rebuild in flight coalesces exactly one queued reload,

@@ -267,11 +267,10 @@ func (c *Controller) Compact(ctx context.Context, instructions string) error {
 	return nil
 }
 
-// maybeSessionStart fires the SessionStart hook exactly once per session, lazily
-// on the first turn — by then the sink/notify is wired, and a resumed session
-// fires it too (its first post-resume turn).
+// maybeSessionStart fires the SessionStart extension event exactly once per
+// session, lazily on the first turn — by then the sink/notify is wired, and a
+// resumed session fires it too (its first post-resume turn).
 func (c *Controller) maybeSessionStart(ctx context.Context) {
-	c.hooks.SetSessionID(c.parentSessionID())
 	c.mu.Lock()
 	if c.startedOnce {
 		c.mu.Unlock()
@@ -279,6 +278,5 @@ func (c *Controller) maybeSessionStart(ctx context.Context) {
 	}
 	c.startedOnce = true
 	c.mu.Unlock()
-	c.enqueueHookContexts(c.hooks.SessionStart(ctx))
 	c.extensionSessionEvent(extension.PointSessionStart, dispatch.PhaseStart, c.SessionPath())
 }

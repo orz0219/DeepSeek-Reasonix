@@ -235,7 +235,7 @@ Reasonix 还在 `agentCapabilities._meta["reasonix.io"]` 中通告两个扩展�
 - `sessionReloadExtensions`——vendor method
   `_reasonix.io/session/reloadExtensions`。调用后按与 CLI `/reload`
   相同的失败原子语义重载该会话的 agent 运行时（扩展、工具、skills、
-  commands、hooks、providers）：回合或重建进行中只排队一次
+  commands、providers）：回合或重建进行中只排队一次
   （`{"queued": true}`），空闲后执行；否则原子重建并交换，重建失败时
   保留旧运行时。重载成功后 Reasonix 会推送新的
   `available_commands_update`。

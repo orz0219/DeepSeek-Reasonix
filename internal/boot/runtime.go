@@ -13,7 +13,6 @@ import (
 	"reasonix/internal/extension/protocol"
 	"reasonix/internal/extension/sidecar"
 	"reasonix/internal/extension/uihub"
-	"reasonix/internal/hook"
 	"reasonix/internal/plugin"
 	"reasonix/internal/provider"
 	"reasonix/internal/skill"
@@ -87,7 +86,7 @@ func nextRuntimeGeneration() uint64 { return runtimeGeneration.Add(1) }
 
 // BuildRuntime runs the full boot assembly and returns the controller
 // together with the extension kernel's frozen snapshot of the exact resources
-// the build wired — tools, skills, commands, hooks, MCP servers, providers,
+// the build wired — tools, skills, commands, MCP servers, providers,
 // and the composed system prompt. The snapshot is assembled from the in-hand
 // objects the build itself produced (discovery never re-runs), so it cannot
 // drift from what the controller actually uses, and it never makes an
@@ -122,7 +121,6 @@ type legacyAssembly struct {
 	registry     *tool.Registry
 	skills       []skill.Skill
 	commands     []command.Command
-	hooks        []hook.ResolvedHook
 	mcpSpecs     []plugin.Spec
 	providers    []provider.Descriptor
 }
@@ -454,12 +452,6 @@ func legacyContributions(in legacyAssembly) []extension.Contribution {
 			continue
 		}
 		out = append(out, extension.CommandContribution(cmd))
-	}
-	perEvent := map[hook.Event]int{}
-	for _, h := range in.hooks {
-		seq := perEvent[h.Event]
-		perEvent[h.Event]++
-		out = append(out, extension.HookContribution(h, seq))
 	}
 	for _, spec := range in.mcpSpecs {
 		if !kernelID(spec.Name) {

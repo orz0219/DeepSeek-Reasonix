@@ -17,7 +17,6 @@ type Inventory struct {
 	Commands   []CommandRef
 	Prompts    []PromptRef
 	Themes     []ThemeRef
-	Hooks      []HookRef
 	MCPServers []MCPServerRef
 }
 
@@ -28,7 +27,6 @@ func (p Package) Inventory() Inventory {
 		Commands:   p.commandRefs(),
 		Prompts:    p.promptRefs(),
 		Themes:     p.themeRefs(),
-		Hooks:      p.hookRefs(),
 		MCPServers: p.mcpServerRefs(),
 	}
 }
@@ -242,27 +240,6 @@ func pluginSkillRunMode(fm map[string]string) string {
 		return "subagent"
 	}
 	return "inline"
-}
-
-func (p Package) hookRefs() []HookRef {
-	events := make([]string, 0, len(p.Manifest.Hooks))
-	for event := range p.Manifest.Hooks {
-		events = append(events, event)
-	}
-	sort.Strings(events)
-	var out []HookRef
-	for _, event := range events {
-		for _, hook := range p.Manifest.Hooks[event] {
-			out = append(out, HookRef{
-				Event:       event,
-				Match:       hook.Match,
-				Command:     hook.Command,
-				ContextFile: hook.ContextFile,
-				Description: hook.Description,
-			})
-		}
-	}
-	return out
 }
 
 func (p Package) mcpServerRefs() []MCPServerRef {

@@ -31,7 +31,7 @@ system prompt, tool schemas, and `RuntimeSnapshot.CacheHash` byte-stable.
 Provider capability changes remain visible through `providerChanged` without
 falsely reporting `prefixChanged`. MCP schema additions, removals, or renames
 are classified as full rebuilds and intentionally recompute the prefix.
-Discovery of skills/commands/hooks is skipped while `ReuseAssembly` is retained.
+Discovery of skills/commands is skipped while `ReuseAssembly` is retained.
 
 ## Sidecar start / drain
 

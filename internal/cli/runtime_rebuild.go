@@ -44,7 +44,7 @@ func (m *chatTUI) reloadDisposition() reloadDisposition {
 }
 
 // runReloadCommand handles "/reload": rebuild the agent runtime (tools,
-// skills, commands, hooks, MCP servers, providers) in place, keeping this
+// skills, commands, MCP servers, providers) in place, keeping this
 // session. A turn or rebuild in flight queues exactly one reload; the
 // TurnDone drain runs it once the TUI is idle.
 func (m *chatTUI) runReloadCommand() tea.Cmd {

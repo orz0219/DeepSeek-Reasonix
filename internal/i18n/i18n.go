@@ -250,7 +250,6 @@ type Messages struct {
 	CmdRemember         string // /remember
 	CmdForget           string // /forget
 	CmdMcp              string // /mcp
-	CmdHooks            string // /hooks
 	CmdPlugins          string // /plugins
 	CmdPasteImage       string // /paste-image
 	CmdOutputStyle      string // /output-style
@@ -283,7 +282,6 @@ type Messages struct {
 	ArgMcpAdd           string // /mcp add
 	ArgMcpRemove        string // /mcp remove
 	ArgMcpConnected     string // /mcp remove <server> tag
-	ArgHooksList        string // /hooks list
 	ArgModelCurrent     string // /model <ref> active tag
 	ArgEffortAuto       string // /effort auto
 	ArgEffortLow        string // /effort low
@@ -304,8 +302,6 @@ type Messages struct {
 	ListMemoryNone      string // no memory docs
 	ListSkillsHeaderFmt string // "skills (%d)"
 	ListSkillsNone      string // no skills
-	ListHooksHeaderFmt  string // "hooks (%d active)"
-	ListHooksNone       string // no hooks
 	ListMcpHeader       string // "mcp servers"
 	ListMcpNone         string // no mcp servers
 

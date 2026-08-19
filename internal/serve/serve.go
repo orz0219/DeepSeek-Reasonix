@@ -165,7 +165,7 @@ func titleProviderConfig(entry *config.ProviderEntry) provider.Config {
 // conversation history. This replicates the TUI/desktop model-switch path.
 //
 // The heavy steps — Snapshot (may touch disk), Build (provider init IO), and the
-// old controller's Close (jobs.CloseWithGrace up to 15s + SessionEnd hook) — all
+// old controller's Close (jobs.CloseWithGrace up to 15s + SessionEnd lifecycle event) — all
 // run OFF s.mu. Holding the write lock across them would wedge every HTTP handler
 // on s.ctl()'s RLock for the duration, stalling the whole serve frontend
 // (mirrors the acp rebuildSession fix and PR #5920). bindMu serializes the
@@ -205,7 +205,7 @@ func (s *Server) switchModelLocked(ctx context.Context, ref string) error {
 		return fmt.Errorf("switch model: %w", err)
 	}
 	// Run/RunGraceful only wire the initial controller. Every replacement must
-	// receive the same frontend hooks or the ask tool falls back to headless mode.
+	// receive the same frontend or the ask tool falls back to headless mode.
 	newCtrl.EnableInteractiveApproval()
 	// Keep the carried conversation in its existing file so the switch doesn't
 	// orphan a duplicate (#2807).

@@ -23,7 +23,6 @@ var TransientUserBlockTags = []string{
 	"background-jobs",
 	"active-goal",
 	"autoresearch-runtime",
-	"hook-context",
 	"capability-route",
 	"interrupted-turn-recovery",
 	"execution-policy",

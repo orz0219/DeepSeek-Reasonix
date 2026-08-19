@@ -263,18 +263,12 @@ reasonix task show <task-id> --json [--dir SESSION_DIR | --project-root PATH] [-
 reasonix task monitor list --json [--dir PROJECT_DIR]
 reasonix task monitor status <task-id> --json [--dir PROJECT_DIR]
 reasonix task monitor events <task-id> --json|--jsonl [--dir PROJECT_DIR] [--after N] [--follow]
-reasonix hook list --json [--project-root PATH] [--home-dir PATH]
-reasonix hook status --json [--project-root PATH] [--home-dir PATH]
 ```
 
 For `session` and `task`, `--dir` explicitly selects the session storage
 directory, while `--project-root` resolves the selected project's session
 store. The two options cannot be combined. Without either option, Reasonix
 selects the current project's session store.
-For `hook`, `--dir` is an alias for `--project-root`.
-`hook list` reports `active` or `invalid`; `invalid` means the
-configured event cannot execute because its event, command/context source, or
-tool-event matcher is unusable. Matchers on non-tool events are ignored.
 
 Machine session IDs are keyed opaque hashes, not transcript file names. They
 remain stable for the same session and Reasonix user-state directory, while a
@@ -452,12 +446,12 @@ the displayed list matches the commands the TUI accepts.
 | `/goal clear` | End goal mode permanently. |
 | `/docs [question]` | Show the embedded corpus identity, or search it locally and ask the configured AI to answer from version-matched evidence. |
 | `/reasonix:docs [question]` | Preferred built-in fallback when an existing custom command or compatible plugin/skill alias owns `/docs`; if this spelling is also owned, the menu selects the next free `reasonix:`-qualified name without displacing it. |
-| `/mcp`, `/skills`, `/hooks` | Inspect and manage extensions. |
+| `/mcp`, `/skills` | Inspect and manage extensions. |
 | `/remember <note>` | Append a standing note to the project instruction document; `# <note>` is a shortcut. |
 | `/memory [subcommand]` | Inspect instructions, memory provenance, recall, revisions, and recovery. |
 | `/rewind` | Restore conversation and/or code to an earlier turn. |
 | `/tree`, `/branch`, `/switch` | Inspect or navigate conversation branches. |
-| `/reload` | Reload the agent runtime (extensions, tools, skills, commands, hooks, providers) while keeping the session. Queued once while a turn runs, then fail-atomic: a failed rebuild keeps the current runtime. |
+| `/reload` | Reload the agent runtime (extensions, tools, skills, commands, providers) while keeping the session. Queued once while a turn runs, then fail-atomic: a failed rebuild keeps the current runtime. |
 
 Switching model or effort rebuilds the runtime while preserving the
 active conversation, session-scoped permission overrides, additional directory

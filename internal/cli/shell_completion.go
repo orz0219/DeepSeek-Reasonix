@@ -203,10 +203,6 @@ func cliCompletionRootSpec() cliCompletionSpec {
 			completionSpec("status", machineSessionCompletionFlags(help)),
 			completionSpec("recovery", machineSessionCompletionFlags(help)),
 		),
-		completionSpecWithAliases("hook", []string{"hooks"}, []cliCompletionFlag{help},
-			completionSpec("list", hookCompletionFlags(help)),
-			completionSpec("status", hookCompletionFlags(help)),
-		),
 		completionSpec("task", []cliCompletionFlag{help},
 			// Machine list/show: --json --dir --project-root --session (task_machine.go).
 			completionSpec("list", completionTaskMachineListFlags(help)),
@@ -292,13 +288,6 @@ func machineSessionCompletionFlags(help cliCompletionFlag) []cliCompletionFlag {
 	return []cliCompletionFlag{
 		completionFlag("--json", cliCompletionNoValue),
 		completionFlag("--dir --project-root", cliCompletionStaticValue), help,
-	}
-}
-
-func hookCompletionFlags(help cliCompletionFlag) []cliCompletionFlag {
-	return []cliCompletionFlag{
-		completionFlag("--json", cliCompletionNoValue),
-		completionFlag("--dir --project-root --home-dir", cliCompletionStaticValue), help,
 	}
 }
 

@@ -233,8 +233,8 @@ func (a *Agent) interceptProviderResponse(ctx context.Context, text, reasoning, 
 }
 
 // interceptToolBefore runs tool.before right after the call parsed. A block
-// fails the call with the reason as the tool-result error (mirroring a
-// PreToolUse hook block). A replacement substitutes the provider-visible name
+// fails the call with the reason as the tool-result error. A replacement
+// substitutes the provider-visible name
 // and arguments, but only after host revalidation — the arguments must decode
 // as a JSON object and the name must still resolve in the registry — and the
 // substituted call is then re-parsed so policy, permission, and evidence all
@@ -390,8 +390,7 @@ func (a *Agent) interceptToolAfter(ctx context.Context, call provider.ToolCall, 
 }
 
 // interceptCompactionPrepare runs compaction.prepare before the fold is
-// archived and summarized, colocated with the PreCompact hook so the payload's
-// Guidance is the hook-contributed guidance (plus any /compact focus text). A
+// archived and summarized. A
 // replacement's messages and guidance drive only this compaction pass; a
 // block skips the pass with the reason surfaced through the caller's notice.
 func (a *Agent) interceptCompactionPrepare(ctx context.Context, fold []provider.Message, guidance string) ([]provider.Message, string, error) {
