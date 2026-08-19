@@ -354,6 +354,79 @@ func BashCommandMayBeOpaqueMutation(args json.RawMessage) bool {
 	return BashToolCallUsesOpaqueInlineInterpreter(args)
 }
 
+// Command-based variants that accept a pre-extracted bash command string.
+// Callers that already parsed the command (e.g. from a cached parsedArgs)
+// avoid a redundant json.Unmarshal per call.
+
+// BashCommandMasksVerificationExit is the command-based variant of
+// BashToolCallMasksVerificationExit.
+func BashCommandMasksVerificationExit(command string) bool {
+	command = strings.TrimSpace(command)
+	if command == "" || !bashContainsVerificationSegment(command) {
+		return false
+	}
+	segments, _, ok := shellparse.SplitTopLevel(command)
+	if !ok {
+		return false
+	}
+	seenVerifier := false
+	for _, segment := range segments {
+		normalized, _ := shellsafe.NormalizeBashSafeRedirectsForMatch(segment)
+		argv, malformed := shellparse.StaticFields(normalized)
+		if malformed == "" && bashSegmentIsVerification(argv) {
+			seenVerifier = true
+			continue
+		}
+		if !seenVerifier || !strings.Contains(segment, "$?") {
+			continue
+		}
+		lower := strings.ToLower(strings.TrimSpace(segment))
+		if strings.HasPrefix(lower, "echo ") || strings.HasPrefix(lower, "printf ") {
+			return true
+		}
+	}
+	return false
+}
+
+// BashCommandMixesMutationAndVerification is the command-based variant.
+func BashCommandMixesMutationAndVerification(command string) bool {
+	return bashContainsVerificationSegment(command) && bashMayMutate(command)
+}
+
+// BashCommandMixesMutationAndMaskableVerification is the command-based variant.
+func BashCommandMixesMutationAndMaskableVerification(command string) bool {
+	if !BashCommandMixesMutationAndVerification(command) {
+		return false
+	}
+	canMask, analyzed := shellparse.CanMaskEarlierFailure(command)
+	return analyzed && canMask
+}
+
+// BashCommandUsesOpaqueInlineInterpreter is the command-based variant.
+func BashCommandUsesOpaqueInlineInterpreter(command string) bool {
+	return bashCommandUsesOpaqueInlineInterpreter(command)
+}
+
+// BashCommandUsesNonTerminalInlineInterpreter is the command-based variant.
+func BashCommandUsesNonTerminalInlineInterpreter(command string) bool {
+	segments, _, ok := shellparse.SplitTopLevel(command)
+	if !ok || len(segments) < 2 {
+		return false
+	}
+	if canMask, analyzed := shellparse.CanMaskEarlierFailure(command); !analyzed || !canMask {
+		return false
+	}
+	for i, segment := range segments {
+		if !bashSegmentUsesOpaqueInlineInterpreter(segment) {
+			continue
+		}
+		if i < len(segments)-1 {
+			return true
+		}
+	}
+	return false
+}
+
 func bashCommandFromArgs(args json.RawMessage) (string, bool) {
 	var fields map[string]json.RawMessage
 	if err := json.Unmarshal(args, &fields); err != nil {

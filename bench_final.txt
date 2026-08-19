@@ -1,0 +1,42 @@
+# Reasonix Execution Fast Path - Final Benchmark Comparison
+# Machine: Apple M1, macOS, arm64
+# Go: 1.26.5
+# benchtime=100x
+
+# Comparison (averaged from multiple runs):
+
+Metric                      Baseline      After         Change
+SingleRead (1 call)         ~12us         ~13us         ~noise
+Write (2 calls)             ~17us         ~17us         ~same
+Bash (1 call)               ~320us        ~319us        ~same
+10 mixed calls              ~89us         ~90us         ~same
+50 mixed calls              ~364us        ~364us        ~same
+100 mixed calls             ~8.2ms        ~8.2ms        ~same
+Mixed R/W (5 calls)         ~469us        ~396us        -15%
+
+# Trace breakdown (per-call):
+Phase           Baseline     After        Change
+parse           37-57us      29-45us      -15-20% (ResolveCall cache)
+policy          ~1us         ~1us         ~same
+prepare         ~1us         ~0.5us       -50% (context base)
+execute         ~0.5us       ~0.3us       ~same
+finalize        9-15us       7-13us       -15% (cached bash command)
+
+# Structural improvements:
+# 1. ResolveCall cache: 4-6 lookups → 1 per tool name per batch
+# 2. ParsedArgs cache: 5-6 json.Unmarshal → 1 per bash tool call
+# 3. Checkpoint: eliminated redundant file read in CaptureBeforeFromChange
+# 4. Context building: ~10 session-level With* calls pre-built per batch
+# 5. Command-based evidence variants: avoid repeated JSON parsing
+
+# Notes:
+# - Mock tools are too fast to show full benefit (sub-microsecond Execute)
+# - Real-world bash commands with large args will show bigger improvement
+# - The checkpoint file-read elimination will show improvement on large files
+# - MCP tools with alias iteration will benefit more from ResolveCall cache
+
+# Remaining bottlenecks:
+# - Parse phase still dominates (~29-45us) due to loop guards and arg setup
+# - Checkpoint persistBestEffort is synchronous (requires mutex redesign)
+# - Event emission could be async for UI sinks (frontend concern)
+# - Batch guard functions (batchCallIsMutatingFailure) still parse JSON

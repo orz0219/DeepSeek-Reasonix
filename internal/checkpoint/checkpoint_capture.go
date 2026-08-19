@@ -50,20 +50,13 @@ func (s *Store) CaptureBeforeFromChange(ch diff.Change, opts CaptureBeforeOpts) 
 			mode = fp.Mode
 		}
 
-		if abs, aerr := safePath(s.root, ch.Path); aerr == nil {
-			if raw, rerr := secureReadFile(s.root, abs); rerr == nil {
-				sha = Digest(raw)
-				if s.blobs != nil {
-					if ref, perr := s.blobs.Put(raw); perr == nil {
-						blobRef = ref
-
-					}
-				}
-
-				if enc == nil {
-					e, _ := fileenc.Detect(raw)
-					enc = &e
-				}
+		// Use the preview's OldText for the blob instead of re-reading from
+		// disk. The preview already read the file to compute the diff, so
+		// OldText is identical to what CapturePath would read. This avoids a
+		// redundant file read on every mutation.
+		if s.blobs != nil && len(old) > 0 {
+			if ref, perr := s.blobs.Put([]byte(old)); perr == nil {
+				blobRef = ref
 			}
 		}
 	}

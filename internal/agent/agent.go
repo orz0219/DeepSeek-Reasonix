@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -207,10 +208,17 @@ type Agent struct {
 	// emitTodoState call increments it so the frontend always sees a fresh
 	// dispatch even when the same panel index is signed off in different turns.
 	hostAdvanceSeq atomic.Int64
+	// lastTrace holds the most recent per-call trace for benchmarking.
+	lastTrace atomic.Pointer[toolCallTrace]
 
 	// projectChecks are structured project instructions that complete_step can
 	// verify against same-turn bash receipts after a write-backed completion.
 	projectChecks []instruction.VerifyCheck
+
+	// toolContextBase is a pre-built context carrying session-level values
+	// (ledger, jobs, sandbox, memory, etc.) so prepareToolExecution only adds
+	// per-call values. Rebuilt when session-level state changes.
+	toolContextBase context.Context
 
 	// deliveryProfile enables the runtime-enforced delivery contract. The stable
 	// profile prompt explains intent; this is host state and never enters the

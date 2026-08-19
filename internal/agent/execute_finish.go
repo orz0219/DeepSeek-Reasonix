@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"reasonix/internal/checkpoint"
 	"reasonix/internal/evidence"
@@ -82,6 +83,10 @@ func (a *Agent) finishToolExecution(ctx context.Context, plan *toolCallPlan) too
 	}
 
 	result, err = a.interceptToolAfter(ctx, call, result, err)
+
+	if plan.trace != nil {
+		plan.trace.executeDone = time.Now()
+	}
 
 	if msg, refused := tool.BlockedMessage(err); refused {
 		return a.blockedToolOutcome(plan, msg)

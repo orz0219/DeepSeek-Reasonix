@@ -5,17 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"reasonix/internal/checkpoint"
 	"reasonix/internal/event"
 	"reasonix/internal/evidence"
-	"reasonix/internal/instruction"
-	"reasonix/internal/jobs"
-	"reasonix/internal/memory"
 	"reasonix/internal/permission"
 	"reasonix/internal/planmode"
 	"reasonix/internal/provider"
-	"reasonix/internal/sandbox"
 	"reasonix/internal/tool"
 )
 
@@ -59,6 +56,12 @@ type toolCallPlan struct {
 	mutationObserved  bool
 	mutationAfterDone bool
 	executed          bool
+	trace             *toolCallTrace
+	parsedArgs        *parsedToolArgs
+	// cachedBashCommand is set once for bash tools to avoid repeated
+	// json.Unmarshal in permission/evidence classification.
+	cachedBashCommand string
+	cachedBashChecked bool
 }
 
 // executeOne runs a single tool call. It is pure with respect to the event sink
@@ -67,7 +70,15 @@ type toolCallPlan struct {
 func (a *Agent) executeOne(ctx context.Context, turn *turnRuntime, call provider.ToolCall) (out toolOutcome) {
 	ctx = a.withAgentContext(ctx)
 	plan := &toolCallPlan{call: call}
+	plan.trace = newTrace(call.ID)
+	if plan.trace != nil {
+		plan.trace.parseStart = time.Now()
+	}
 	defer func() {
+		if plan.trace != nil {
+			plan.trace.finalizeDone = time.Now()
+			a.lastTrace.Store(plan.trace)
+		}
 		if plan.mutationObserved && !plan.mutationAfterDone {
 			a.observeAfterMutation(plan)
 		}
@@ -90,17 +101,34 @@ func (a *Agent) executeOne(ctx context.Context, turn *turnRuntime, call provider
 	if blocked, early := a.parseToolCall(ctx, plan); early {
 		return blocked
 	}
+	if plan.trace != nil {
+		plan.trace.parseDone = time.Now()
+		plan.trace.interceptStart = plan.trace.parseDone
+	}
 	// tool.before: extensions rule on the parsed call before any policy or
 	// permission check. A valid replacement is re-parsed so every later stage
 	// sees the call that will actually execute.
 	if blocked, early := a.interceptToolBefore(ctx, plan); early {
 		return blocked
 	}
+	if plan.trace != nil {
+		plan.trace.interceptDone = time.Now()
+		plan.trace.policyStart = plan.trace.interceptDone
+	}
 	if blocked, early := a.resolveToolPolicy(ctx, turn, plan); early {
 		return blocked
 	}
+	if plan.trace != nil {
+		plan.trace.policyDone = time.Now()
+		plan.trace.prepareStart = plan.trace.policyDone
+	}
 	if blocked, early := a.prepareToolExecution(ctx, plan); early {
 		return blocked
+	}
+	if plan.trace != nil {
+		plan.trace.prepareDone = time.Now()
+		plan.trace.executeStart = plan.trace.prepareDone
+		plan.trace.finalizeStart = plan.trace.prepareDone
 	}
 	return a.finishToolExecution(ctx, plan)
 }
@@ -108,7 +136,19 @@ func (a *Agent) executeOne(ctx context.Context, turn *turnRuntime, call provider
 // parseToolCall resolves the canonical tool, rejects ambiguity/unknown tools,
 // and applies repeat-success and stale-anchor guards.
 func (a *Agent) parseToolCall(ctx context.Context, plan *toolCallPlan) (toolOutcome, bool) {
-	t, canonicalName, ambiguous := a.svc.tools.ResolveCall(plan.call.Name)
+	var t tool.Tool
+	var canonicalName string
+	var ambiguous []string
+	if a.turn.resolveCache != nil {
+		entry := a.turn.resolveCache.get(plan.call.Name)
+		t = entry.tool
+		canonicalName = entry.canonical
+		if !entry.known && entry.tool == nil {
+			ambiguous = nil // treat as unknown
+		}
+	} else {
+		t, canonicalName, ambiguous = a.svc.tools.ResolveCall(plan.call.Name)
+	}
 	if len(ambiguous) > 0 {
 		msg := fmt.Sprintf("ambiguous MCP tool reference %q; use one of: %s", plan.call.Name, strings.Join(ambiguous, ", "))
 		return toolOutcome{
@@ -157,6 +197,7 @@ func (a *Agent) parseToolCall(ctx context.Context, plan *toolCallPlan) (toolOutc
 	plan.evidenceName = canonicalName
 	plan.evidenceArgs = json.RawMessage(plan.call.Arguments)
 	plan.readOnly = t.ReadOnly()
+	plan.parsedArgs = newParsedToolArgs(json.RawMessage(plan.call.Arguments))
 	if canonicalName == "bash" && permission.BashCommandIsReadOnly(plan.execArgs) {
 		// Bash is schema-level writer-capable, but the host can resolve a
 		// concrete invocation to read-only after parsing its arguments. Carry
@@ -405,7 +446,8 @@ func (a *Agent) applyDeliveryPolicyGates(turn *turnRuntime, plan *toolCallPlan) 
 	// npm test`, and every other short-circuit chain would be rejected for every
 	// user, though bash already reports the failing step's status for them.
 	if plan.evidenceName == "bash" {
-		if evidence.BashToolCallMasksVerificationExit(plan.evidenceArgs) {
+		cmd := plan.bashCommand()
+		if evidence.BashCommandMasksVerificationExit(cmd) {
 			msg := evidence.ShellContractPreflightMessage("mask_exit")
 			if a.deliveryProfile {
 				msg = "blocked: the trailing echo/printf of $? masks the verifier's exit status, so this command would look successful even when the check failed. Run the verifier or read-only extraction pipeline by itself and let its exit status be the tool result; for example: tail ... | head ... | node --check -"
@@ -417,11 +459,11 @@ func (a *Agent) applyDeliveryPolicyGates(turn *turnRuntime, plan *toolCallPlan) 
 				execution: shellPreflightExecution(plan, true),
 			}, true
 		}
-		mixed := evidence.BashToolCallMixesMutationAndMaskableVerification
+		mixed := evidence.BashCommandMixesMutationAndMaskableVerification
 		if a.deliveryProfile {
-			mixed = evidence.BashToolCallMixesMutationAndVerification
+			mixed = evidence.BashCommandMixesMutationAndVerification
 		}
-		if mixed(plan.evidenceArgs) {
+		if mixed(cmd) {
 			msg := evidence.ShellContractPreflightMessage("mixed")
 			if a.deliveryProfile {
 				msg = "blocked: this command mixes a verification check with a segment that may write state. Run the state-changing preparation separately while a todo is in_progress, then run a read-only verification command. For generated input, prefer a host-recognized read-only pipeline into the verifier (for example: tail ... | head ... | node --check -) instead of writing a temporary file."
@@ -433,7 +475,7 @@ func (a *Agent) applyDeliveryPolicyGates(turn *turnRuntime, plan *toolCallPlan) 
 				execution: shellPreflightExecution(plan, true),
 			}, true
 		}
-		if evidence.BashToolCallUsesNonTerminalInlineInterpreter(plan.evidenceArgs) {
+		if evidence.BashCommandUsesNonTerminalInlineInterpreter(cmd) {
 			msg := evidence.ShellContractPreflightMessage("inline_nonterminal")
 			return toolOutcome{
 				output:    msg,
@@ -444,7 +486,7 @@ func (a *Agent) applyDeliveryPolicyGates(turn *turnRuntime, plan *toolCallPlan) 
 		}
 	}
 	// Delivery-only: any opaque inline interpreter is unauditable as evidence.
-	if a.deliveryProfile && plan.evidenceName == "bash" && evidence.BashToolCallUsesOpaqueInlineInterpreter(plan.evidenceArgs) {
+	if a.deliveryProfile && plan.evidenceName == "bash" && evidence.BashCommandUsesOpaqueInlineInterpreter(plan.bashCommand()) {
 		return toolOutcome{
 			output:    "blocked: delivery mode cannot audit inline interpreter source such as node -e or python -c, so executing it would become an opaque mutation and invalidate prior verification. For inspection, use read_file/grep or another host-proven read-only command. For validation, use a conventional verifier such as node --check, a project test/check/lint command, or a read-only extraction pipeline into the verifier. For an intentional state change, use a file tool or a script file under the current in_progress todo. " + evidence.VerificationCommandSummary(),
 			blocked:   true,
@@ -454,6 +496,13 @@ func (a *Agent) applyDeliveryPolicyGates(turn *turnRuntime, plan *toolCallPlan) 
 	}
 
 	plan.mutates = evidence.ToolCallMutates(plan.evidenceName, plan.evidenceArgs, plan.readOnly)
+	// For bash, override with command-based check to avoid redundant JSON parse.
+	if plan.evidenceName == "bash" && !plan.readOnly {
+		cmd := plan.bashCommand()
+		if cmd != "" {
+			plan.mutates = evidence.BashCommandMayMutate(cmd)
+		}
+	}
 	persistentWorkflowCall := turn.deliveryPersistentExpected && !turn.deliveryMutationExpected && plan.evidenceName == "remember"
 	if a.deliveryProfile && !persistentWorkflowCall && evidence.ToolCallRequiresDeliveryCriteria(plan.evidenceName, plan.evidenceArgs, plan.readOnly) && !turn.deliveryCriteriaEstablished {
 		return toolOutcome{
@@ -668,32 +717,17 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 			}, true
 		}
 	}
-	cctx := tool.WithContextCompressor(withCallContext(ctx, plan.call.ID, a.svc.sink, a.svc.asker, a.planMode.Load()), a)
-	cctx = WithSubagentDepth(cctx, a.subagentDepth)
-	if a.task.ledger != nil {
-		cctx = evidence.WithLedger(cctx, a.task.ledger)
-		cctx = evidence.WithSessionMessages(cctx, a.sess.conversation.Snapshot)
-		if a.deliveryProfile {
-			cctx = evidence.WithDeliveryProfile(cctx)
-		}
+	// Start from session-level base context, add per-call values only.
+	cctx := a.toolContextBase
+	if cctx == nil {
+		cctx = context.Background()
 	}
-	if !a.planMode.Load() {
-		cctx = a.withContractState(cctx)
+	cctx = tool.WithContextCompressor(withCallContext(cctx, plan.call.ID, a.svc.sink, a.svc.asker, a.planMode.Load()), a)
+	if a.task.ledger != nil {
+		cctx = evidence.WithSessionMessages(cctx, a.sess.conversation.Snapshot)
 	}
 	if plan.planReplacementAuthorized {
 		cctx = tool.WithPlanReplacementAuthorization(cctx)
-	}
-	if len(a.projectChecks) > 0 {
-		cctx = instruction.WithChecks(cctx, a.projectChecks)
-	}
-	if a.svc.jobs != nil {
-		cctx = jobs.WithManager(cctx, a.svc.jobs)
-	}
-	if a.svc.sandboxEscape != nil {
-		cctx = sandbox.WithEscapeApprover(cctx, a.svc.sandboxEscape)
-	}
-	if a.svc.configWrite != nil {
-		cctx = tool.WithConfigWriteApprover(cctx, a.svc.configWrite)
 	}
 	if v := a.responseLanguage.Load(); v != nil {
 		if lang, ok := v.(string); ok {
@@ -704,9 +738,6 @@ func (a *Agent) prepareToolExecution(ctx context.Context, plan *toolCallPlan) (t
 		if lang, ok := v.(string); ok {
 			cctx = WithReasoningLanguagePreference(cctx, lang)
 		}
-	}
-	if a.svc.memQueue != nil {
-		cctx = memory.WithQueue(cctx, a.svc.memQueue)
 	}
 	callID := plan.call.ID
 	cctx = tool.WithProgress(cctx, func(chunk string) {

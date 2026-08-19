@@ -1,0 +1,27 @@
+# Reasonix Execution Fast Path - Baseline Benchmark
+# Machine: Apple M1, macOS, arm64
+# Go: 1.26.5
+# benchtime=100x, count=1
+
+BenchmarkExecuteBatchReadOnly-8         	     100	     53892 ns/op    (~54us, 4 read-only calls)
+BenchmarkExecuteBatchSingleRead-8       	     100	     11972 ns/op    (~12us, 1 read-only call)
+BenchmarkExecuteBatchWrite-8            	     100	     16687 ns/op    (~17us, 2 write calls)
+BenchmarkExecuteBatchBash-8             	     100	    319908 ns/op    (~320us, 1 bash call)
+BenchmarkExecuteBatch10-8               	     100	     89222 ns/op    (~89us, 10 mixed calls)
+BenchmarkExecuteBatch50-8               	     100	    363525 ns/op    (~364us, 50 mixed calls)
+BenchmarkExecuteBatch100-8              	     100	   8165514 ns/op    (~8.2ms, 100 mixed calls)
+BenchmarkExecuteBatchMixedReadWrite-8   	     100	    468684 ns/op    (~469us, 5 mixed calls)
+
+# Per-stage trace breakdown (from BenchmarkExecuteBatchWithTrace):
+#   parse:    ~37-57us  (dominant — ResolveCall + loop guards + arg setup)
+#   policy:   ~1us      (fast)
+#   prepare:  ~1us      (fast)
+#   execute:  ~0.3-0.5us (negligible mock)
+#   finalize: ~9-15us   (evidence + hooks + recovery observation)
+#   host overhead ratio: 99.3%
+
+# Per-call estimated overhead:
+#   read_file:  ~12us   (read-only fast path)
+#   edit_file:  ~17us   (includes checkpoint preview)
+#   bash:       ~320us  (JSON parsing x4 + evidence classify + permission)
+#   grep/ls:    ~12us   (read-only fast path, parallelizable)

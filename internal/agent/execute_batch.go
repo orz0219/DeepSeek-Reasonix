@@ -82,10 +82,20 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 	// previews. The first writer stays on the single-preview fast path.
 	earlierWriterRan := false
 	surfaceWriters := make([]bool, len(calls))
+	// Resolve cache: collapse 4-6 ResolveCall lookups per tool name to one.
+	// Pre-populate for all calls so parallel goroutines only read (no writes).
+	rc := newResolveCache(a.svc.tools)
+	for _, c := range calls {
+		rc.get(c.Name)
+	}
+	turn.resolveCache = rc
+	defer func() { turn.resolveCache = nil }()
+	// Rebuild session-level context base for this batch.
+	a.rebuildToolContextBase()
 	run := func(i int) {
-		t, _, ambiguous := a.svc.tools.ResolveCall(calls[i].Name)
-		known := t != nil && len(ambiguous) == 0
-		writer := known && !t.ReadOnly()
+		entry := rc.get(calls[i].Name)
+		t, known := entry.tool, entry.known
+		writer := known && !entry.readOnly
 		surfaceWriters[i] = writer
 		if earlierWriterRan && writer {
 			if refreshed, changed := refreshCurrentFileDiff(ctx, t, calls[i]); changed {
@@ -186,7 +196,7 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 			// Pre-classify when statically certain. Proxies and ambiguous
 			// targets fall through to run() so executeOne can resolve the real
 			// target and re-apply the barrier before Commit/Execute.
-			if !batchCallStaticallySkippable(a, calls[j]) {
+			if !batchCallStaticallySkippable(rc, calls[j]) {
 				continue
 			}
 			isVerification := calls[j].Name == "bash" && evidence.IsDeliveryVerificationCommand(bashCommandFromArgs(json.RawMessage(calls[j].Arguments)))
@@ -204,8 +214,8 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 				if isVerification {
 					ex.Verification = tool.ShellVerificationNotRun
 				}
-				if t, _, amb := a.svc.tools.ResolveCall(calls[j].Name); t != nil && len(amb) == 0 {
-					if bt, ok := t.(tool.DetailedExecutor); ok {
+				if entry := rc.get(calls[j].Name); entry.known {
+					if bt, ok := entry.tool.(tool.DetailedExecutor); ok {
 						if desc := bt.ExecutionDescriptor(json.RawMessage(calls[j].Arguments)); desc != nil {
 							ex.Shell = desc.Shell
 							ex.ShellVersion = desc.ShellVersion
@@ -280,9 +290,8 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 				if results[i] != "" {
 					continue
 				}
-				t, _, ambiguous := a.svc.tools.ResolveCall(calls[i].Name)
-				known := t != nil && len(ambiguous) == 0
-				readOnly := known && t.ReadOnly()
+				entry := rc.get(calls[i].Name)
+				readOnly := entry.readOnly
 				if calls[i].Name == "bash" && permission.BashCommandIsReadOnly(json.RawMessage(calls[i].Arguments)) {
 					readOnly = true
 				}
@@ -310,7 +319,7 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 				break
 			}
 			// Mutation/verification failure barrier for the rest of this batch.
-			if batchCallIsMutatingFailure(a, calls[i], outcomes[i]) {
+			if batchCallIsMutatingFailure(a, rc, calls[i], outcomes[i]) {
 				mutationBatchStop = true
 				markDependencySkipped(i + 1)
 			}
@@ -329,9 +338,8 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 
 	for i, c := range calls {
 		o := outcomes[i]
-		t, _, ambiguous := a.svc.tools.ResolveCall(c.Name)
-		ok := t != nil && len(ambiguous) == 0
-		readOnly := ok && t.ReadOnly()
+		entry := rc.get(c.Name)
+		readOnly := entry.readOnly
 		if c.ResolvedReadOnly != nil {
 			readOnly = *c.ResolvedReadOnly
 		}
@@ -388,17 +396,17 @@ func (a *Agent) executeBatch(ctx context.Context, turn *turnRuntime, calls []pro
 // batchCallIsMutatingFailure reports whether a finished call was a mutation
 // (file write / non-readonly bash mutation) that failed or was blocked, so later
 // mutations and verifications in the same batch must not run.
-func batchCallIsMutatingFailure(a *Agent, call provider.ToolCall, o toolOutcome) bool {
+func batchCallIsMutatingFailure(a *Agent, rc *resolveCache, call provider.ToolCall, o toolOutcome) bool {
 	if o.errMsg == "" && !o.blocked {
 		return false
 	}
 	readOnly := false
 	toolName := call.Name
 	toolArgs := json.RawMessage(call.Arguments)
-	t, _, ambiguous := a.svc.tools.ResolveCall(call.Name)
-	known := t != nil && len(ambiguous) == 0
+	entry := rc.get(call.Name)
+	known := entry.known
 	if known {
-		readOnly = t.ReadOnly()
+		readOnly = entry.readOnly
 	}
 	if call.ResolvedReadOnly != nil {
 		readOnly = *call.ResolvedReadOnly
@@ -436,9 +444,10 @@ func batchCallIsMutatingFailure(a *Agent, call provider.ToolCall, o toolOutcome)
 // batchCallStaticallySkippable reports whether a remaining call can be marked
 // not_run/dependency without resolving a proxy. Proxies and unknown tools
 // return false so executeOne can resolve the real target first.
-func batchCallStaticallySkippable(a *Agent, call provider.ToolCall) bool {
-	t, _, ambiguous := a.svc.tools.ResolveCall(call.Name)
-	if t == nil || len(ambiguous) > 0 {
+func batchCallStaticallySkippable(rc *resolveCache, call provider.ToolCall) bool {
+	entry := rc.get(call.Name)
+	t := entry.tool
+	if t == nil || !entry.known {
 		// Unknown / ambiguous: fail closed via executeOne path.
 		return false
 	}

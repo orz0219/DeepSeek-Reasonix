@@ -40,6 +40,9 @@ type turnRuntime struct {
 	// the ledger whenever a live view is needed, so one replay serves both the
 	// per-round observation and the end-of-turn record.
 	turnInput string
+	// resolveCache is set per-batch by executeBatch so executeOne can reuse
+	// pre-resolved tool lookups. Nil outside a batch.
+	resolveCache *resolveCache
 	// completion is the report built as the turn ends; the host reads it while
 	// emitting TurnDone, before the next turn resets this state.
 	completion *completion.Report

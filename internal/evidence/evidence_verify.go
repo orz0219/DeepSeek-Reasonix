@@ -79,6 +79,13 @@ func bashMayMutate(command string) bool {
 	return false
 }
 
+// BashCommandMayMutate reports whether a bash command string (already extracted
+// from JSON args) may have side effects. Callers with cached parsed args use
+// this to avoid a redundant json.Unmarshal in ToolCallMutates.
+func BashCommandMayMutate(command string) bool {
+	return bashMayMutate(command)
+}
+
 func bashCommandIsVerification(command string) bool {
 	command = strings.TrimSpace(command)
 	if command == "" {
